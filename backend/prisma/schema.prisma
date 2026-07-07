@@ -1,0 +1,397 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN          // Ops Manager
+  INVENTORY_STAFF
+  TEAM_LEADER
+  EMPLOYEE
+}
+
+enum CategoryType {
+  CONSUMABLE
+  NON_CONSUMABLE
+}
+
+enum RequestStatus {
+  PENDING_APPROVAL
+  PENDING_OPS_APPROVAL
+  APPROVED
+  READY_FOR_PICKUP
+  PENDING_PROCUREMENT
+  REJECTED
+  RELEASED       // Checked Out
+  AWAITING_CONFIRMATION
+  ITEM_RECEIVED
+  RETURNED       // Checked Back In
+  CANCELLED
+}
+
+enum AssetStatus {
+  AVAILABLE
+  ASSIGNED
+  UNDER_MAINTENANCE
+  RETIRED
+}
+
+enum POStatus {
+  DRAFT
+  ORDERED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+model Site {
+  id              String           @id @default(uuid())
+  name            String           @unique
+  prefix          String           @unique // e.g. "CEB" for Cebu
+  address         String?
+  users           User[]
+  stockLevels     SiteStock[]
+  assets          Asset[]
+  purchaseOrders  PurchaseOrder[]
+  receivingReports ReceivingReport[]
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@map("sites")
+}
+
+model User {
+  id                String            @id @default(uuid())
+  email             String            @unique
+  passwordHash      String
+  name              String
+  employeeId        String?           @unique // EID
+  department        String?
+  role              Role              @default(EMPLOYEE)
+  isActive          Boolean           @default(true)
+  
+  // Site scoping (Except Super Admin, users belong to a Site)
+  siteId            String?
+  site              Site?             @relation(fields: [siteId], references: [id])
+  
+  // Request relations
+  requestsMade      Request[]         @relation("Requester")
+  requestsApproved  Request[]         @relation("Approver")
+  requestsReleased  Request[]         @relation("Releaser")
+  requestsReturned  Request[]         @relation("Returnee")
+  requestsReceived  Request[]         @relation("Receiver")
+  requestsStaffApproved Request[]     @relation("StaffApproved")
+  requestsOpsApproved   Request[]     @relation("OpsApproved")
+  requestEventsReceived RequestEvent[] @relation("ReceivedBy")
+  
+  // Admin/Inventory relations
+  posCreated        PurchaseOrder[]   @relation("PoCreator")
+  rrsReceived       ReceivingReport[] @relation("RrReceiver")
+  assetsAssigned    Asset[]           @relation("AssetAssignment")
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+  requestEvents     RequestEvent[]
+  assetEvents       AssetEvent[]
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@map("users")
+}
+
+model Supplier {
+  id             String          @id @default(uuid())
+  name           String          @unique
+  contactName    String?
+  email          String?
+  phone          String?
+  address        String?
+  leadTimeDays   Int             @default(7) // Estimated lead time for stock arrivals
+  purchaseOrders PurchaseOrder[]
+
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@map("suppliers")
+}
+
+model AssetCategory {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  prefix      String       @unique // e.g. "CON" for office consumables, "EQP" for equipment
+  type        CategoryType @default(NON_CONSUMABLE)
+  description String?
+  items       Item[]
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("asset_categories")
+}
+
+// Represents the general catalog item/product (e.g. MacBook Pro, Dell Monitor, Box of Pens)
+model Item {
+  id            String        @id @default(uuid())
+  name          String
+  sku           String        @unique // e.g. IT-MBP-14
+  description   String?
+  unitPrice     Decimal       @default(0.00) @db.Decimal(10, 2) // Track item cost/value
+  leadTimeDays  Int           @default(7) // Estimated lead time for this specific item type
+  
+  categoryId    String
+  category      AssetCategory @relation(fields: [categoryId], references: [id])
+  
+  // Relations
+  stockLevels   SiteStock[]
+  assets        Asset[]
+  poItems       PurchaseOrderItem[]
+  requests      Request[]
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("items")
+}
+
+// Track stock quantities, reorder points, and alerts per site
+model SiteStock {
+  id           String   @id @default(uuid())
+  siteId       String
+  site         Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  itemId       String
+  item         Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  
+  quantity     Int      @default(0)
+  reorderPoint Int      @default(5) // Triggers alert if quantity <= reorderPoint
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([siteId, itemId])
+  @@map("site_stocks")
+}
+
+// Individual physical instances of serialized catalog items (e.g. specific laptops, monitors)
+model Asset {
+  id           String      @id @default(uuid())
+  serialNumber String      @unique
+  tagCode      String      @unique // Auto-generated tag: e.g. CEB-CON-0042
+  barcode      String?     @unique
+  status       AssetStatus @default(AVAILABLE)
+  condition    String?     @default("GOOD")
+  
+  itemId       String
+  item         Item        @relation(fields: [itemId], references: [id])
+  
+  siteId       String
+  site         Site        @relation(fields: [siteId], references: [id])
+  
+  // Assigned to which Employee
+  assignedToId String?
+  assignedTo   User?       @relation("AssetAssignment", fields: [assignedToId], references: [id])
+  
+  requests     Request[]
+  events       AssetEvent[]
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@map("assets")
+}
+
+model PurchaseOrder {
+  id           String              @id @default(uuid())
+  poNumber     String              @unique
+  status       POStatus            @default(DRAFT)
+  
+  supplierId   String
+  supplier     Supplier            @relation(fields: [supplierId], references: [id])
+  
+  siteId       String
+  site         Site                @relation(fields: [siteId], references: [id])
+  
+  creatorId    String
+  creator      User                @relation("PoCreator", fields: [creatorId], references: [id])
+  
+  items        PurchaseOrderItem[]
+  receivingReports ReceivingReport[]
+
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(uuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  
+  itemId          String
+  item            Item          @relation(fields: [itemId], references: [id])
+  
+  quantityOrdered Int
+  quantityReceived Int          @default(0)
+  unitCost        Decimal       @db.Decimal(10, 2)
+
+  @@map("purchase_order_items")
+}
+
+model ReceivingReport {
+  id              String        @id @default(uuid())
+  rrNumber        String        @unique
+  deliveryNoteRef String?       // Invoice or delivery note ref
+  invoiceNumber   String?       // Supplier invoice number
+  invoiceFileUrl  String?       // Attached invoice file reference
+  
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  
+  siteId          String
+  site            Site          @relation(fields: [siteId], references: [id])
+  
+  receivedById    String
+  receivedBy      User          @relation("RrReceiver", fields: [receivedById], references: [id])
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@map("receiving_reports")
+}
+
+model Request {
+  id           String        @id @default(uuid())
+  status       RequestStatus @default(PENDING_APPROVAL)
+  purpose      String?       // Reason/purpose for request
+  comments     String?       // Approver or fulfillment comments
+  
+  itemId       String
+  item         Item          @relation(fields: [itemId], references: [id])
+  
+  // Requester (Employee or Team Leader)
+  requesterId  String
+  requester    User          @relation("Requester", fields: [requesterId], references: [id])
+  
+  // Approver (Team Leader or Ops Manager)
+  approverId   String?
+  approver     User?         @relation("Approver", fields: [approverId], references: [id])
+  
+  // Staff Approver (Inventory Staff)
+  staffApprovedById String?
+  staffApproved     User?         @relation("StaffApproved", fields: [staffApprovedById], references: [id])
+  staffApprovedAt   DateTime?
+  
+  // Ops Approver (Ops Manager)
+  opsApprovedById   String?
+  opsApproved       User?         @relation("OpsApproved", fields: [opsApprovedById], references: [id])
+  opsApprovedAt     DateTime?
+  
+  // Release Handled By (Inventory Staff)
+  releasedById String?
+  releasedBy   User?         @relation("Releaser", fields: [releasedById], references: [id])
+  releasedAt   DateTime?
+  
+  // Return Handled By (Inventory Staff)
+  returnedById String?
+  returnedBy   User?         @relation("Returnee", fields: [returnedById], references: [id])
+  returnedAt   DateTime?
+
+  // Receiver (Requester confirming receipt)
+  receivedById String?
+  receivedBy   User?         @relation("Receiver", fields: [receivedById], references: [id])
+  receivedAt   DateTime?
+
+  // Fulfilled Asset
+  assetId      String?
+  asset        Asset?        @relation(fields: [assetId], references: [id])
+  
+  events       RequestEvent[]
+  assetEvents  AssetEvent[]
+
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("requests")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  details   String?
+  ipAddress String?
+  
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+model Department {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("departments")
+}
+
+model RequestEvent {
+  id        String        @id @default(uuid())
+  
+  requestId String
+  request   Request       @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  
+  status    RequestStatus
+  comment   String?
+  
+  userId    String?
+  user      User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  receivedById  String?
+  receivedBy    User?         @relation("ReceivedBy", fields: [receivedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime      @default(now())
+
+  @@map("request_events")
+}
+
+model AssetEvent {
+  id        String        @id @default(uuid())
+  
+  assetId   String
+  asset     Asset         @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  
+  action    String        // e.g. "CHECKED_OUT", "RETURNED", "MAINTENANCE", "RETIRED"
+  details   String?
+  
+  userId    String?
+  user      User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  requestId String?
+  request   Request?      @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  
+  createdAt DateTime      @default(now())
+
+  @@map("asset_events")
+}

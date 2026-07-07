@@ -1,0 +1,93 @@
+import { OnModuleInit } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+export type Req = {
+    id: string;
+    itemId: string;
+    itemName: string;
+    itemCategory?: string;
+    requestedById: string;
+    requestedByName: string;
+    requestedByRole?: string;
+    requestedByDepartment?: string;
+    quantity: number;
+    reason: string;
+    urgency: string;
+    status: 'PENDING' | 'PENDING_OPS_APPROVAL' | 'APPROVED' | 'READY_FOR_PICKUP' | 'PENDING_PROCUREMENT' | 'REJECTED' | 'RETURNED' | 'CANCELLED' | 'RELEASED' | 'AWAITING_CONFIRMATION' | 'ITEM_RECEIVED';
+    reviewComment?: string;
+    returnComment?: string;
+    returnedAt?: string;
+    receivedByName?: string;
+    receivedAt?: string;
+    senderName?: string;
+    senderSiteName?: string;
+    senderSiteAddress?: string;
+    receiverName?: string;
+    receiverSiteName?: string;
+    receiverSiteAddress?: string;
+    staffApprovedById?: string;
+    staffApprovedByName?: string;
+    staffApprovedAt?: string;
+    opsApprovedById?: string;
+    opsApprovedByName?: string;
+    opsApprovedAt?: string;
+    siteId?: string;
+    siteName?: string;
+    approvedByName?: string;
+    requestedBySiteId?: string;
+    approvedBySiteId?: string;
+    assetId?: string;
+    assetTag?: string;
+    createdAt: string;
+    history?: {
+        status: string;
+        comment?: string;
+        timestamp: string;
+        byName?: string;
+    }[];
+};
+export declare class RequestsService implements OnModuleInit {
+    private prisma;
+    constructor(prisma: PrismaService);
+    onModuleInit(): Promise<void>;
+    private requestInclude;
+    private mapRequestToDto;
+    create(dto: any, userEmail: string): Promise<Req>;
+    findAll(q: any, user: string): Promise<Req[]>;
+    getSummary(user: string): Promise<{
+        pending: number;
+        approvedThisMonth: number;
+        rejectedThisMonth: number;
+        avgApprovalDays: number;
+        pendingDelta: number;
+        urgencyBreakdown: {
+            CRITICAL: number;
+            HIGH: number;
+            NORMAL: number;
+            LOW: number;
+        };
+        latestPending: {
+            id: string;
+            itemName: string;
+            requestedBy: string;
+            site: string;
+            quantity: number;
+            urgency: "CRITICAL" | "HIGH" | "NORMAL" | "LOW";
+            createdAt: string;
+        }[];
+    }>;
+    findMine(userEmail: string, status?: string): Promise<{
+        items: Req[];
+        pendingCount: number;
+    }>;
+    findOne(id: string): Promise<Req | null>;
+    approve(id: string, comment?: string, approverEmail?: string): Promise<void>;
+    reject(id: string, comment?: string, approverEmail?: string): Promise<Req>;
+    approveStaff(id: string, staffEmail: string, comment?: string): Promise<Req>;
+    approveOps(id: string, opsEmail: string, comment?: string): Promise<Req>;
+    preparePickup(id: string, staffEmail: string, comment?: string): Promise<Req>;
+    release(id: string, assetId: string, releaserEmail: string): Promise<Req>;
+    cancel(id: string): Promise<Req>;
+    return(id: string, returnComment?: string, returnerEmail?: string): Promise<Req | null>;
+    addComment(id: string, comment: string, userEmail: string): Promise<Req>;
+    confirmReceipt(id: string, userEmail: string): Promise<Req>;
+}
