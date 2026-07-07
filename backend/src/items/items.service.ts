@@ -1,0 +1,514 @@
+import { Injectable, ConflictException, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { NotificationsService } from "../notifications/notifications.service";
+import { AuditLogsService } from "../audit-logs/audit-logs.service";
+
+@Injectable()
+export class ItemsService {
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+    private auditLogsService: AuditLogsService,
+  ) {}
+
+  async findAll(categoryId?: string, search?: string) {
+    const where: any = {};
+    if (categoryId) {
+      where.categoryId = categoryId;
+    }
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { sku: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    return this.prisma.item.findMany({
+      where,
+      include: {
+        category: true,
+        stockLevels: true,
+        assets: {
+          include: {
+            assignedTo: true,
+          },
+        },
+      },
+      orderBy: { name: "asc" },
+    });
+  }
+
+  async create(
+    data: {
+      name: string;
+      sku?: string;
+      description?: string;
+      unitPrice: number;
+      leadTimeDays: number;
+      categoryId: string;
+      siteId?: string;
+      quantity?: number;
+    },
+    meta?: { userId?: string; ipAddress?: string },
+  ) {
+    // Check if category exists
+    const category = await this.prisma.assetCategory.findUnique({
+      where: { id: data.categoryId },
+    });
+    if (!category) {
+      throw new NotFoundException("Category not found.");
+    }
+
+    const isConsumable = category.type === "CONSUMABLE";
+    const qty = (data.quantity !== undefined && data.quantity > 0) ? data.quantity : 1;
+
+    const sites = await this.prisma.site.findMany();
+
+    // Single catalog item logic
+    let finalSku = data.sku?.trim().toUpperCase();
+    let nextNum = 1;
+    const categoryPrefix = category.prefix || "AST";
+    const prefix = `AST-${categoryPrefix.toUpperCase()}-`;
+
+    if (!finalSku) {
+      // Find all matching items to compute true numerical maximum suffix
+      const matchingItems = await this.prisma.item.findMany({
+        where: { sku: { startsWith: prefix } },
+        select: { sku: true },
+      });
+      if (matchingItems.length > 0) {
+        const numbers = matchingItems.map((item) => {
+          const parts = item.sku.split("-");
+          const numStr = parts[parts.length - 1];
+          const num = parseInt(numStr, 10);
+          return isNaN(num) ? 0 : num;
+        });
+        nextNum = Math.max(...numbers, 0) + 1;
+      }
+    }
+
+    // Create within a transaction with collision checking loop
+    return this.prisma.$transaction(async (tx) => {
+      if (!finalSku) {
+        let isUnique = false;
+        while (!isUnique) {
+          finalSku = `${prefix}${String(nextNum).padStart(4, "0")}`;
+          const duplicate = await tx.item.findUnique({
+            where: { sku: finalSku },
+          });
+          if (!duplicate) {
+            isUnique = true;
+          } else {
+            nextNum++;
+          }
+        }
+      } else {
+        const existingSku = await tx.item.findUnique({
+          where: { sku: finalSku },
+        });
+        if (existingSku) {
+          throw new ConflictException(`An item with Asset Tag "${finalSku}" already exists.`);
+        }
+      }
+
+      const item = await tx.item.create({
+        data: {
+          name: data.name,
+          sku: finalSku as string,
+          description: data.description || null,
+          unitPrice: data.unitPrice,
+          leadTimeDays: data.leadTimeDays,
+          categoryId: data.categoryId,
+        },
+      });
+
+      if (sites.length > 0) {
+        const stockData = sites.map((site) => ({
+          siteId: site.id,
+          itemId: item.id,
+          quantity: (data.siteId === site.id) ? qty : 0,
+          reorderPoint: 5,
+        }));
+        await tx.siteStock.createMany({
+          data: stockData,
+        });
+      }
+
+      // Generate physical assets for NON_CONSUMABLE categories
+      if (!isConsumable && data.siteId) {
+        const site = sites.find(s => s.id === data.siteId);
+        const actualSitePrefix = (site?.prefix || "SYS").toUpperCase();
+        const actualCategoryPrefix = (category.prefix || "AST").toUpperCase();
+        const assetTagPrefix = `${actualSitePrefix}-${actualCategoryPrefix}-`;
+
+        // Find current max sequential tagCode in Asset table for this prefix
+        const matchingAssets = await tx.asset.findMany({
+          where: { tagCode: { startsWith: assetTagPrefix } },
+          select: { tagCode: true },
+        });
+
+        let assetNum = 1;
+        if (matchingAssets.length > 0) {
+          const numbers = matchingAssets.map((asset) => {
+            const parts = asset.tagCode.split("-");
+            const numStr = parts[parts.length - 1];
+            const num = parseInt(numStr, 10);
+            return isNaN(num) ? 0 : num;
+          });
+          assetNum = Math.max(...numbers, 0) + 1;
+        }
+
+        // Loop to create physical assets
+        for (let i = 0; i < qty; i++) {
+          let tagCode = "";
+          let isUnique = false;
+          while (!isUnique) {
+            tagCode = `${assetTagPrefix}${String(assetNum).padStart(4, "0")}`;
+            const duplicate = await tx.asset.findUnique({
+              where: { tagCode },
+            });
+            if (!duplicate) {
+              isUnique = true;
+            }
+            assetNum++; // Always increment
+          }
+
+          const serialNumber = `SN-${tagCode}`;
+
+          await tx.asset.create({
+            data: {
+              itemId: item.id,
+              siteId: data.siteId,
+              status: "AVAILABLE",
+              condition: "GOOD",
+              tagCode,
+              serialNumber,
+            },
+          });
+        }
+      }
+
+      await tx.auditLog.create({
+        data: {
+          action: "ITEM_CREATED",
+          details: `Item "${item.name}" (SKU: ${item.sku}) was created.`,
+          userId: meta?.userId || null,
+          itemId: item.id,
+          itemName: item.name,
+          itemSku: item.sku,
+          ipAddress: meta?.ipAddress || null,
+        },
+      });
+
+      return tx.item.findUnique({
+        where: { id: item.id },
+        include: { category: true, stockLevels: true },
+      });
+    });
+  }
+
+  async update(
+    id: string,
+    data: {
+      name?: string;
+      sku?: string;
+      description?: string;
+      unitPrice?: number;
+      leadTimeDays?: number;
+      categoryId?: string;
+    },
+    meta?: { userId?: string; ipAddress?: string },
+  ) {
+    const item = await this.prisma.item.findUnique({ where: { id } });
+    if (!item) {
+      throw new NotFoundException("Catalog item not found.");
+    }
+
+    if (data.categoryId) {
+      const category = await this.prisma.assetCategory.findUnique({
+        where: { id: data.categoryId },
+      });
+      if (!category) {
+        throw new NotFoundException("Category not found.");
+      }
+    }
+
+    if (data.sku) {
+      const existingSku = await this.prisma.item.findUnique({
+        where: { sku: data.sku.toUpperCase() },
+      });
+      if (existingSku && existingSku.id !== id) {
+        throw new ConflictException("An item with this SKU already exists.");
+      }
+    }
+
+    const updatedItem = await this.prisma.item.update({
+      where: { id },
+      data: {
+        name: data.name,
+        sku: data.sku ? data.sku.toUpperCase() : undefined,
+        description: data.description !== undefined ? (data.description || null) : undefined,
+        unitPrice: data.unitPrice,
+        leadTimeDays: data.leadTimeDays,
+        categoryId: data.categoryId,
+      },
+      include: { category: true, stockLevels: true },
+    });
+
+    const changes: string[] = [];
+    if (data.name && data.name !== item.name) changes.push(`Name: "${item.name}" -> "${data.name}"`);
+    if (data.sku && data.sku.toUpperCase() !== item.sku) changes.push(`SKU: "${item.sku}" -> "${data.sku.toUpperCase()}"`);
+    if (data.description !== undefined && (data.description || null) !== item.description) {
+      changes.push(`Description: "${item.description || ''}" -> "${data.description || ''}"`);
+    }
+    if (data.unitPrice !== undefined && Number(data.unitPrice) !== Number(item.unitPrice)) {
+      changes.push(`Unit Price: ${item.unitPrice} -> ${data.unitPrice}`);
+    }
+    if (data.leadTimeDays !== undefined && data.leadTimeDays !== item.leadTimeDays) {
+      changes.push(`Lead Time: ${item.leadTimeDays} -> ${data.leadTimeDays}`);
+    }
+
+    if (changes.length > 0) {
+      await this.prisma.auditLog.create({
+        data: {
+          action: "ITEM_UPDATED",
+          details: `Item updated. Changes: ${changes.join(", ")}`,
+          userId: meta?.userId || null,
+          itemId: id,
+          itemName: updatedItem.name,
+          itemSku: updatedItem.sku,
+          ipAddress: meta?.ipAddress || null,
+        },
+      });
+    }
+
+    return updatedItem;
+  }
+
+  async remove(id: string, meta?: { userId?: string; ipAddress?: string }) {
+    const item = await this.prisma.item.findUnique({ where: { id } });
+    if (!item) {
+      throw new NotFoundException("Catalog item not found.");
+    }
+
+    // Safety checks: Can't delete if assets are in use (not AVAILABLE)
+    const activeAssetsCount = await this.prisma.asset.count({
+      where: {
+        itemId: id,
+        status: { not: "AVAILABLE" },
+      },
+    });
+    if (activeAssetsCount > 0) {
+      throw new ConflictException("Cannot delete item as it has assets that are currently assigned or not available.");
+    }
+
+    const poItemsCount = await this.prisma.purchaseOrderItem.count({ where: { itemId: id } });
+    if (poItemsCount > 0) {
+      throw new ConflictException("Cannot delete item as it is currently associated with purchase orders.");
+    }
+
+    const requestsCount = await this.prisma.request.count({ where: { itemId: id } });
+    if (requestsCount > 0) {
+      throw new ConflictException("Cannot delete item as it is currently associated with request orders.");
+    }
+
+    // Delete associated assets and the item inside transaction
+    return this.prisma.$transaction(async (tx) => {
+      await tx.asset.deleteMany({ where: { itemId: id } });
+
+      await tx.auditLog.create({
+        data: {
+          action: "ITEM_DELETED",
+          details: `Item "${item.name}" (SKU: ${item.sku}) was deleted.`,
+          userId: meta?.userId || null,
+          itemId: id,
+          itemName: item.name,
+          itemSku: item.sku,
+          ipAddress: meta?.ipAddress || null,
+        },
+      });
+
+      return tx.item.delete({ where: { id } });
+    });
+  }
+
+  async findAssets(itemId: string) {
+    return this.prisma.asset.findMany({
+      where: { itemId },
+      orderBy: { tagCode: "asc" },
+    });
+  }
+
+  async updateAssetStatus(
+    itemId: string,
+    assetId: string,
+    status: string,
+    assignedToId?: string,
+    meta?: { userId?: string; ipAddress?: string }
+  ) {
+    const asset = await this.prisma.asset.findUnique({
+      where: { id: assetId },
+      include: { item: true }
+    });
+    if (!asset || asset.itemId !== itemId) {
+      throw new NotFoundException("Asset not found for this item.");
+    }
+
+    const updatedAsset = await this.prisma.$transaction(async (tx) => {
+      const oldStatus = asset.status;
+      const updated = await tx.asset.update({
+        where: { id: assetId },
+        data: {
+          status: status as any,
+          assignedToId: status === "ASSIGNED" ? (assignedToId || null) : null,
+        },
+        include: {
+          assignedTo: true,
+        }
+      });
+
+      let details = `Asset tag "${asset.tagCode}" status changed: ${oldStatus} -> ${status}`;
+      if (status === "ASSIGNED" && updated.assignedTo) {
+        details += ` (Assigned to: ${updated.assignedTo.name})`;
+      }
+
+      await tx.auditLog.create({
+        data: {
+          action: "STOCK_ADJUSTED",
+          details,
+          itemId,
+          itemName: asset.item?.name || null,
+          itemSku: asset.item?.sku || null,
+          userId: meta?.userId || null,
+          ipAddress: meta?.ipAddress || null,
+        }
+      });
+
+      return updated;
+    });
+
+    return updatedAsset;
+  }
+
+  async updateStock(
+    itemId: string,
+    siteId: string,
+    quantity?: number,
+    reorderPoint?: number,
+    reason?: string,
+    comments?: string,
+    assetIdsToRemove?: string[],
+    meta?: { userId?: string; ipAddress?: string },
+  ) {
+    const item = await this.prisma.item.findUnique({ where: { id: itemId } });
+    if (!item) {
+      throw new NotFoundException("Catalog item not found.");
+    }
+
+    const site = await this.prisma.site.findUnique({ where: { id: siteId } });
+    if (!site) {
+      throw new NotFoundException("Site not found.");
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const existingStock = await tx.siteStock.findUnique({
+        where: { siteId_itemId: { siteId, itemId } },
+      });
+
+      let stock;
+      if (existingStock) {
+        stock = await tx.siteStock.update({
+          where: { id: existingStock.id },
+          data: {
+            quantity: quantity !== undefined ? quantity : undefined,
+            reorderPoint: reorderPoint !== undefined ? reorderPoint : undefined,
+          },
+        });
+      } else {
+        stock = await tx.siteStock.create({
+          data: {
+            siteId,
+            itemId,
+            quantity: quantity !== undefined ? quantity : 0,
+            reorderPoint: reorderPoint !== undefined ? reorderPoint : 5,
+          },
+        });
+      }
+
+      if (assetIdsToRemove && assetIdsToRemove.length > 0) {
+        await tx.asset.updateMany({
+          where: { id: { in: assetIdsToRemove } },
+          data: {
+            status: "RETIRED",
+            condition: reason === "DAMAGED_OR_BROKEN" ? "DAMAGED" : (reason === "LOST_OR_STOLEN" ? "LOST" : "RETIRED"),
+          },
+        });
+      }
+
+      const changes: string[] = [];
+      const oldQty = existingStock ? existingStock.quantity : 0;
+      const oldReorder = existingStock ? existingStock.reorderPoint : 5;
+
+      if (quantity !== undefined && quantity !== oldQty) {
+        changes.push(`Quantity: ${oldQty} -> ${quantity}`);
+      }
+      if (reorderPoint !== undefined && reorderPoint !== oldReorder) {
+        changes.push(`Reorder Point: ${oldReorder} -> ${reorderPoint}`);
+      }
+
+      if (changes.length > 0) {
+        let details = `Stock levels adjusted at site "${site.name}" (${site.prefix}). Changes: ${changes.join(", ")}`;
+        if (reason) {
+          details += `. Reason: ${reason}`;
+        }
+        if (comments) {
+          details += `. Comments: ${comments}`;
+        }
+        if (assetIdsToRemove && assetIdsToRemove.length > 0) {
+          const retiredAssets = await tx.asset.findMany({
+            where: { id: { in: assetIdsToRemove } },
+            select: { tagCode: true }
+          });
+          const codes = retiredAssets.map(a => a.tagCode).join(", ");
+          details += `. Retired Assets: [${codes}]`;
+        }
+
+        await tx.auditLog.create({
+          data: {
+            action: "STOCK_ADJUSTED",
+            details,
+            userId: meta?.userId || null,
+            itemId,
+            itemName: item.name,
+            itemSku: item.sku,
+            ipAddress: meta?.ipAddress || null,
+          },
+        });
+      }
+
+      await this.notificationsService.checkAndTriggerLowStockAlert(itemId, siteId, stock.quantity, stock.reorderPoint);
+
+      return stock;
+    });
+  }
+
+  async findAuditLogs(itemId: string) {
+    return this.prisma.auditLog.findMany({
+      where: { itemId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+  }
+}

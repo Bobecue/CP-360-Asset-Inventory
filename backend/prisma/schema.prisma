@@ -151,6 +151,8 @@ model Item {
   assets        Asset[]
   poItems       PurchaseOrderItem[]
   requests      Request[]
+  auditLogs     AuditLog[]
+  receivingItems ReceivingReportItem[]
 
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -195,6 +197,10 @@ model Asset {
   assignedToId String?
   assignedTo   User?       @relation("AssetAssignment", fields: [assignedToId], references: [id])
   
+  // Receiving tracking
+  receivingReportId String?
+  receivingReport   ReceivingReport? @relation("RrAssets", fields: [receivingReportId], references: [id])
+
   requests     Request[]
   events       AssetEvent[]
 
@@ -243,27 +249,43 @@ model PurchaseOrderItem {
 }
 
 model ReceivingReport {
-  id              String        @id @default(uuid())
+  id              String                @id @default(uuid())
   rrNumber        String        @unique
   deliveryNoteRef String?       // Invoice or delivery note ref
   invoiceNumber   String?       // Supplier invoice number
   invoiceFileUrl  String?       // Attached invoice file reference
   
   purchaseOrderId String
-  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  purchaseOrder   PurchaseOrder         @relation(fields: [purchaseOrderId], references: [id])
   
   siteId          String
-  site            Site          @relation(fields: [siteId], references: [id])
+  site            Site                  @relation(fields: [siteId], references: [id])
   
   receivedById    String
-  receivedBy      User          @relation("RrReceiver", fields: [receivedById], references: [id])
+  receivedBy      User                  @relation("RrReceiver", fields: [receivedById], references: [id])
   
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  // Relations
+  receivedItems   ReceivingReportItem[]
+  assetsIntroduced Asset[]              @relation("RrAssets")
+
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
 
   @@map("receiving_reports")
 }
 
+model ReceivingReportItem {
+  id                String          @id @default(uuid())
+  receivingReportId String
+  receivingReport   ReceivingReport @relation(fields: [receivingReportId], references: [id], onDelete: Cascade)
+  
+  itemId            String
+  item              Item            @relation(fields: [itemId], references: [id])
+  
+  quantityReceived  Int
+
+  @@map("receiving_report_items")
+}
 model Request {
   id           String        @id @default(uuid())
   status       RequestStatus @default(PENDING_APPROVAL)
@@ -342,6 +364,12 @@ model AuditLog {
   userId    String?
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   
+  itemId    String?
+  item      Item?    @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  
+  itemName  String?
+  itemSku   String?
+  
   createdAt DateTime @default(now())
 
   @@map("audit_logs")
@@ -395,3 +423,4 @@ model AssetEvent {
 
   @@map("asset_events")
 }
+
