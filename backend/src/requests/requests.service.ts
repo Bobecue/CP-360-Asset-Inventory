@@ -40,6 +40,8 @@ export type Req = {
   approvedBySiteId?: string;
   assetId?: string;
   assetTag?: string;
+  assetSiteName?: string;
+  assetSiteAddress?: string;
   createdAt: string;
   history?: { status: string; comment?: string; timestamp: string; byName?: string }[];
 };
@@ -213,7 +215,7 @@ export class RequestsService implements OnModuleInit {
       include: { site: true }
     },
     asset: {
-      include: { item: true }
+      include: { item: true, site: true }
     },
     events: {
       include: { user: true, receivedBy: true },
@@ -221,27 +223,23 @@ export class RequestsService implements OnModuleInit {
     },
   };
 
-  private mapRequestToDto(r: any): Req {
-    let reason = r.purpose || '';
-    let urgency = 'NORMAL';
-    let quantity = 1;
-    let returnComment = undefined;
-    let returnedAtStr = r.returnedAt ? new Date(r.returnedAt).toISOString() : undefined;
-    let siteId = r.requester.siteId || undefined;
-    let siteName = r.requester.site?.name || undefined;
 
+  private mapRequestToDto(r: any): Req {
+    // Parse the purpose JSON to extract siteId, quantity, urgency, reason
+    let parsedPurpose: any = {};
+    let reason = '';
     try {
-      if (r.purpose && r.purpose.startsWith('{')) {
-        const parsed = JSON.parse(r.purpose);
-        reason = parsed.reason || '';
-        urgency = parsed.urgency || 'NORMAL';
-        quantity = parsed.quantity || 1;
-        returnComment = parsed.returnComment;
-        if (parsed.returnedAt) returnedAtStr = parsed.returnedAt;
-        if (parsed.siteId) siteId = parsed.siteId;
-        if (parsed.siteName) siteName = parsed.siteName;
-      }
-    } catch { }
+      parsedPurpose = JSON.parse(r.purpose || '{}');
+      reason = parsedPurpose.reason || r.purpose || '';
+    } catch {
+      reason = r.purpose || '';
+    }
+    if (r.comments && !reason) reason = r.comments;
+    const quantity = parsedPurpose.quantity || r.quantity || 1;
+    const urgency = parsedPurpose.urgency || r.urgency || 'NORMAL';
+    const returnedAtStr = r.returnedAt ? r.returnedAt.toISOString() : undefined;
+    const siteId = parsedPurpose.siteId || r.requester?.siteId || undefined;
+    const siteName = parsedPurpose.siteName || r.requester?.site?.name || undefined;
 
     let statusDto: 'PENDING' | 'PENDING_OPS_APPROVAL' | 'APPROVED' | 'READY_FOR_PICKUP' | 'PENDING_PROCUREMENT' | 'REJECTED' | 'RETURNED' | 'CANCELLED' | 'RELEASED' | 'AWAITING_CONFIRMATION' | 'ITEM_RECEIVED' = 'PENDING';
     if (r.status === 'PENDING_OPS_APPROVAL') statusDto = 'PENDING_OPS_APPROVAL';
@@ -286,13 +284,15 @@ export class RequestsService implements OnModuleInit {
       urgency,
       status: statusDto,
       reviewComment: r.comments || undefined,
-      returnComment,
+      returnComment: r.returnComment,
       returnedAt: returnedAtStr,
       receivedByName: r.receivedBy?.name || undefined,
       receivedAt: r.receivedAt ? r.receivedAt.toISOString() : undefined,
       senderName: r.releasedBy?.name || undefined,
       senderSiteName: r.releasedBy?.site?.name || undefined,
       senderSiteAddress: r.releasedBy?.site?.address || undefined,
+      assetSiteName: r.asset?.site?.name || undefined,
+      assetSiteAddress: r.asset?.site?.address || undefined,
       receiverName: r.receivedBy?.name || r.requester?.name || undefined,
       receiverSiteName: r.receivedBy?.site?.name || r.requester?.site?.name || undefined,
       receiverSiteAddress: r.receivedBy?.site?.address || r.requester?.site?.address || undefined,
@@ -480,6 +480,147 @@ export class RequestsService implements OnModuleInit {
     };
   }
 
+  async getDashboardSummary(siteId?: string) {
+    const activeSiteId = (siteId && siteId !== 'ALL' && siteId !== 'undefined' && siteId !== 'null' && siteId !== '') ? siteId : undefined;
+
+    // 1. Total Cataloged Assets
+    const totalAssets = await this.prisma.asset.count({
+      where: activeSiteId ? { siteId: activeSiteId } : {},
+    });
+
+    // 2. Assets registered in the last 7 days
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const assetsThisWeek = await this.prisma.asset.count({
+      where: {
+        createdAt: { gte: oneWeekAgo },
+        ...(activeSiteId ? { siteId: activeSiteId } : {}),
+      }
+    });
+
+    // 3. Active Workstation Checkouts
+    const activeCheckouts = await this.prisma.asset.count({
+      where: {
+        status: 'ASSIGNED',
+        ...(activeSiteId ? { siteId: activeSiteId } : {}),
+      },
+    });
+
+    // 4. Pending Request Orders
+    const pendingRequestsCount = await this.prisma.request.count({
+      where: {
+        status: {
+          in: ['PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'PENDING_PROCUREMENT', 'AWAITING_CONFIRMATION']
+        },
+        ...(activeSiteId ? { requester: { siteId: activeSiteId } } : {}),
+      }
+    });
+
+    const awaitingStaffCount = await this.prisma.request.count({
+      where: {
+        status: 'PENDING_APPROVAL',
+        ...(activeSiteId ? { requester: { siteId: activeSiteId } } : {}),
+      }
+    });
+
+    const awaitingOpsCount = await this.prisma.request.count({
+      where: {
+        status: 'PENDING_OPS_APPROVAL',
+        ...(activeSiteId ? { requester: { siteId: activeSiteId } } : {}),
+      }
+    });
+
+    // 5. Low-Stock Alerts
+    const stocks = await this.prisma.siteStock.findMany({
+      where: activeSiteId ? { siteId: activeSiteId } : {},
+      include: {
+        item: {
+          include: { category: true }
+        },
+        site: true
+      }
+    });
+    
+    const lowStockItems = stocks.filter(s => s.quantity <= s.reorderPoint);
+    const lowStockAlertsCount = lowStockItems.length;
+
+    const lowStockAlerts = lowStockItems.map(s => ({
+      name: s.item.name,
+      sku: s.item.sku,
+      stock: s.quantity,
+      min: s.reorderPoint,
+      category: s.item.category?.type === 'CONSUMABLE' ? 'Consumable' : 'Non-Consumable'
+    }));
+
+    // 6. Recent Request Transactions
+    const dbRecentRequests = await this.prisma.request.findMany({
+      where: activeSiteId ? { requester: { siteId: activeSiteId } } : {},
+      include: {
+        item: {
+          include: { category: true }
+        },
+        requester: {
+          include: { site: true }
+        },
+        approver: true,
+        releasedBy: true,
+        returnedBy: true,
+        receivedBy: true
+      },
+      orderBy: {
+        createdAt: 'desc'
+      },
+      take: 20
+    });
+
+    const recentRequests = dbRecentRequests.map(r => {
+      const dto = this.mapRequestToDto(r);
+      
+      let statusFriendly = 'Pending';
+      if (dto.status === 'PENDING') statusFriendly = 'Pending';
+      else if (dto.status === 'PENDING_OPS_APPROVAL') statusFriendly = 'Processing';
+      else if (dto.status === 'APPROVED') statusFriendly = 'Processing';
+      else if (dto.status === 'PENDING_PROCUREMENT') statusFriendly = 'Processing';
+      else if (dto.status === 'READY_FOR_PICKUP') statusFriendly = 'Ready';
+      else if (dto.status === 'RELEASED') statusFriendly = 'Released';
+      else if (dto.status === 'AWAITING_CONFIRMATION') statusFriendly = 'Released';
+      else if (dto.status === 'ITEM_RECEIVED') statusFriendly = 'Completed';
+      else if (dto.status === 'RETURNED') statusFriendly = 'Completed';
+      else if (dto.status === 'REJECTED') statusFriendly = 'Closed';
+      else if (dto.status === 'CANCELLED') statusFriendly = 'Closed';
+
+      return {
+        id: dto.id,
+        item: dto.itemName,
+        requester: dto.requestedByName,
+        site: dto.siteName || 'Toronto HQ',
+        status: statusFriendly,
+        date: new Date(dto.createdAt).toLocaleDateString('en-US', {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric'
+        })
+      };
+    });
+
+    const utilizationRate = totalAssets > 0 ? Math.round((activeCheckouts / totalAssets) * 100) : 0;
+
+    return {
+      metrics: {
+        totalAssets,
+        assetsThisWeek,
+        activeCheckouts,
+        utilizationRate,
+        pendingRequestsCount,
+        awaitingStaffCount,
+        awaitingOpsCount,
+        lowStockAlertsCount
+      },
+      recentRequests,
+      lowStockAlerts
+    };
+  }
+
   async findMine(userEmail: string, status?: string) {
     const user = await this.prisma.user.findFirst({
       where: { email: userEmail }
@@ -558,8 +699,8 @@ export class RequestsService implements OnModuleInit {
     if (!u) {
       throw new NotFoundException('User not found');
     }
-    if (u.role !== 'INVENTORY_STAFF') {
-      throw new ForbiddenException('Only Inventory Staff can perform staff approval.');
+    if (u.role !== 'SUPER_ADMIN' && u.role !== 'ADMIN' && u.role !== 'INVENTORY_STAFF') {
+      throw new ForbiddenException('Only Super Admin, Ops Manager, and Inventory Staff can perform staff approval.');
     }
 
     const currentReq = await this.prisma.request.findUnique({ where: { id } });
@@ -594,8 +735,8 @@ export class RequestsService implements OnModuleInit {
     if (!u) {
       throw new NotFoundException('User not found');
     }
-    if (u.role !== 'ADMIN') {
-      throw new ForbiddenException('Only Ops Manager can perform ops approval.');
+    if (u.role !== 'SUPER_ADMIN' && u.role !== 'ADMIN' && u.role !== 'INVENTORY_STAFF') {
+      throw new ForbiddenException('Only Super Admin, Ops Manager, and Inventory Staff can perform ops approval.');
     }
 
     const currentReq = await this.prisma.request.findUnique({
@@ -778,8 +919,8 @@ export class RequestsService implements OnModuleInit {
     if (!u) {
       throw new NotFoundException('User not found');
     }
-    if (u.role !== 'INVENTORY_STAFF') {
-      throw new ForbiddenException('Only Inventory Staff can prepare/stage items for pickup.');
+    if (u.role !== 'SUPER_ADMIN' && u.role !== 'ADMIN' && u.role !== 'INVENTORY_STAFF') {
+      throw new ForbiddenException('Only Super Admin, Ops Manager, and Inventory Staff can prepare/stage items for pickup.');
     }
 
     const currentReq = await this.prisma.request.findUnique({ where: { id } });
@@ -810,10 +951,18 @@ export class RequestsService implements OnModuleInit {
 
   async release(id: string, assetId: string, releaserEmail: string) {
     const u = await this.prisma.user.findUnique({ where: { email: releaserEmail } });
-    if (u && u.role === 'SUPER_ADMIN') {
-      throw new BadRequestException('Super Admins are unauthorized to release requests.');
+    if (u && u.role !== 'SUPER_ADMIN' && u.role !== 'ADMIN' && u.role !== 'INVENTORY_STAFF') {
+      throw new BadRequestException('Unauthorized role for releasing requests.');
     }
-    const req = await this.prisma.request.findUnique({ where: { id }, include: { item: true, requester: true } });
+    const req = await this.prisma.request.findUnique({
+      where: { id },
+      include: {
+        item: {
+          include: { category: true }
+        },
+        requester: true
+      }
+    });
     if (!req) throw new NotFoundException('Request not found');
 
     if (req.status !== 'READY_FOR_PICKUP') {
@@ -825,27 +974,134 @@ export class RequestsService implements OnModuleInit {
     }
 
     return await this.prisma.$transaction(async (tx) => {
-      let asset = await tx.asset.findUnique({ where: { tagCode: assetId } });
-      if (asset && asset.status !== 'AVAILABLE') {
-        throw new BadRequestException(`Asset Tag '${assetId}' is already checked out or unavailable. Please use a different tag.`);
-      }
-      if (!asset) {
-        asset = await tx.asset.create({
+      const isConsumable = req.item?.category?.type === 'CONSUMABLE';
+      if (isConsumable) {
+        const updatedReq = await tx.request.update({
+          where: { id },
           data: {
-            serialNumber: `SN-${assetId}`,
-            tagCode: assetId,
-            status: 'ASSIGNED',
-            itemId: req.itemId,
-            siteId: req.requester.siteId || (await tx.site.findFirst())!.id,
-            assignedToId: req.requesterId
-          }
+            status: 'AWAITING_CONFIRMATION',
+            releasedById: u ? u.id : undefined,
+            releasedAt: new Date(),
+            assetId: null,
+            events: {
+              create: [
+                {
+                  status: 'RELEASED',
+                  userId: u ? u.id : undefined
+                },
+                {
+                  status: 'AWAITING_CONFIRMATION',
+                  comment: 'Awaiting confirmation of receipt by requester'
+                }
+              ]
+            }
+          },
+          include: this.requestInclude
+        });
+        return this.mapRequestToDto(updatedReq);
+      }
+
+      let asset = null;
+      if (assetId) {
+        asset = await tx.asset.findFirst({
+          where: {
+            OR: [
+              { tagCode: assetId },
+              { barcode: assetId },
+              { id: assetId }
+            ]
+          },
+          include: { item: true }
         });
       } else {
-        asset = await tx.asset.update({
-          where: { id: asset.id },
-          data: { status: 'ASSIGNED', assignedToId: req.requesterId }
+        asset = await tx.asset.findFirst({
+          where: {
+            itemId: req.itemId,
+            status: 'AVAILABLE'
+          },
+          include: { item: true }
+        });
+        if (!asset && req.item?.categoryId) {
+          asset = await tx.asset.findFirst({
+            where: {
+              item: {
+                categoryId: req.item.categoryId
+              },
+              status: 'AVAILABLE'
+            },
+            include: { item: true }
+          });
+        }
+      }
+
+      if (!asset) {
+        // Parse siteId from the purpose JSON since it's not a direct column
+        let releaseSiteId: string | undefined;
+        try {
+          const purposeData = JSON.parse(req.purpose || '{}');
+          releaseSiteId = purposeData.siteId;
+        } catch { /* ignore parse errors */ }
+        releaseSiteId = releaseSiteId || req.requester?.siteId || undefined;
+
+        const site = (releaseSiteId ? await tx.site.findFirst({ where: { id: releaseSiteId } }) : null) || await tx.site.findFirst();
+        const category = await tx.assetCategory.findUnique({ where: { id: req.item.categoryId } });
+        const actualSitePrefix = (site?.prefix || "SYS").toUpperCase();
+        const actualCategoryPrefix = (category?.prefix || "AST").toUpperCase();
+        const assetTagPrefix = `${actualSitePrefix}-${actualCategoryPrefix}-`;
+
+        const matchingAssets = await tx.asset.findMany({
+          where: { tagCode: { startsWith: assetTagPrefix } },
+          select: { tagCode: true },
+        });
+
+        let assetNum = 1;
+        if (matchingAssets.length > 0) {
+          const numbers = matchingAssets.map((asset) => {
+            const parts = asset.tagCode.split("-");
+            const numStr = parts[parts.length - 1];
+            const num = parseInt(numStr, 10);
+            return isNaN(num) ? 0 : num;
+          });
+          assetNum = Math.max(...numbers, 0) + 1;
+        }
+
+        let tagCode = "";
+        let isUnique = false;
+        while (!isUnique) {
+          tagCode = `${assetTagPrefix}${String(assetNum).padStart(4, "0")}`;
+          const duplicate = await tx.asset.findUnique({
+            where: { tagCode },
+          });
+          if (!duplicate) {
+            isUnique = true;
+          }
+          assetNum++;
+        }
+
+        const serialNumber = `SN-${tagCode}`;
+
+        asset = await tx.asset.create({
+          data: {
+            itemId: req.itemId,
+            siteId: site ? site.id : 'default-site',
+            status: "AVAILABLE",
+            condition: "GOOD",
+            tagCode,
+            serialNumber,
+          },
+          include: { item: true, site: true }
         });
       }
+      if (asset.itemId !== req.itemId && asset.item.categoryId !== req.item.categoryId) {
+        throw new BadRequestException(`Asset Tag '${asset.tagCode}' does not match the requested item type or category.`);
+      }
+      if (asset.status !== 'AVAILABLE') {
+        throw new BadRequestException(`Asset Tag '${asset.tagCode}' is already checked out or unavailable. Please use a different tag.`);
+      }
+      asset = await tx.asset.update({
+        where: { id: asset.id },
+        data: { status: 'ASSIGNED', assignedToId: req.requesterId }
+      });
 
       const updatedReq = await tx.request.update({
         where: { id },
@@ -883,7 +1139,7 @@ export class RequestsService implements OnModuleInit {
   async cancel(id: string) {
     const currentReq = await this.prisma.request.findUnique({ where: { id } });
     if (!currentReq) throw new NotFoundException('Request not found');
-    if (currentReq.status !== 'PENDING_APPROVAL' && currentReq.status !== 'APPROVED' && currentReq.status !== 'READY_FOR_PICKUP') {
+    if (currentReq.status !== 'PENDING_APPROVAL' && currentReq.status !== 'PENDING_OPS_APPROVAL' && currentReq.status !== 'APPROVED' && currentReq.status !== 'READY_FOR_PICKUP') {
       throw new BadRequestException(`Cannot cancel a request that is currently ${currentReq.status}.`);
     }
 
@@ -906,7 +1162,8 @@ export class RequestsService implements OnModuleInit {
 
   async return(id: string, returnComment?: string, returnerEmail?: string) {
     const r = await this.prisma.request.findUnique({
-      where: { id }
+      where: { id },
+      include: { requester: true, asset: true }
     });
     if (!r) return null;
 
@@ -917,8 +1174,8 @@ export class RequestsService implements OnModuleInit {
     let adminUser = null;
     if (returnerEmail) {
       adminUser = await this.prisma.user.findUnique({ where: { email: returnerEmail } });
-      if (adminUser && adminUser.role === 'SUPER_ADMIN') {
-        throw new BadRequestException('Super Admins are unauthorized to process returns.');
+      if (adminUser && adminUser.role !== 'SUPER_ADMIN' && adminUser.role !== 'ADMIN' && adminUser.role !== 'INVENTORY_STAFF') {
+        throw new BadRequestException('Unauthorized role for processing returns.');
       }
     }
 
@@ -970,6 +1227,42 @@ export class RequestsService implements OnModuleInit {
         where: { id: r.assetId },
         data: { status: 'AVAILABLE', assignedToId: null }
       });
+    }
+
+    // Automatically update in the asset catalog (SiteStock level)
+    const siteId = r.asset?.siteId || r.requester?.siteId;
+    if (siteId) {
+      let quantity = 1;
+      try {
+        if (r.purpose && r.purpose.startsWith('{')) {
+          const parsed = JSON.parse(r.purpose);
+          quantity = parsed.quantity || 1;
+        }
+      } catch {}
+
+      const stock = await this.prisma.siteStock.findUnique({
+        where: {
+          siteId_itemId: {
+            siteId: siteId,
+            itemId: r.itemId
+          }
+        }
+      });
+
+      if (stock) {
+        await this.prisma.siteStock.update({
+          where: { id: stock.id },
+          data: { quantity: { increment: quantity } }
+        });
+      } else {
+        await this.prisma.siteStock.create({
+          data: {
+            siteId: siteId,
+            itemId: r.itemId,
+            quantity: quantity
+          }
+        });
+      }
     }
 
     return this.mapRequestToDto(updated);

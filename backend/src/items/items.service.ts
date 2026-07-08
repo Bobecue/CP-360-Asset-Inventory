@@ -337,6 +337,11 @@ export class ItemsService {
     return this.prisma.asset.findMany({
       where: { itemId },
       orderBy: { tagCode: "asc" },
+      include: {
+        assignedTo: {
+          select: { id: true, name: true }
+        }
+      },
     });
   }
 
@@ -401,7 +406,10 @@ export class ItemsService {
     assetIdsToRemove?: string[],
     meta?: { userId?: string; ipAddress?: string },
   ) {
-    const item = await this.prisma.item.findUnique({ where: { id: itemId } });
+    const item = await this.prisma.item.findUnique({
+      where: { id: itemId },
+      include: { category: true }
+    });
     if (!item) {
       throw new NotFoundException("Catalog item not found.");
     }
@@ -412,68 +420,67 @@ export class ItemsService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const existingStock = await tx.siteStock.findUnique({
+      const existingStock = await tx.siteStock.findUnique({ where: { siteId_itemId: { siteId, itemId } } });
+      const oldQty = existingStock?.quantity || 0;
+      const oldReorder = existingStock?.reorderPoint || 5;
+
+      const stock = await tx.siteStock.upsert({
         where: { siteId_itemId: { siteId, itemId } },
+        update: {
+          quantity: quantity !== undefined ? quantity : undefined,
+          reorderPoint: reorderPoint !== undefined ? reorderPoint : undefined,
+        },
+        create: { siteId, itemId, quantity: quantity ?? 0, reorderPoint: reorderPoint ?? 5 },
       });
 
-      let stock;
-      if (existingStock) {
-        stock = await tx.siteStock.update({
-          where: { id: existingStock.id },
-          data: {
-            quantity: quantity !== undefined ? quantity : undefined,
-            reorderPoint: reorderPoint !== undefined ? reorderPoint : undefined,
-          },
-        });
-      } else {
-        stock = await tx.siteStock.create({
-          data: {
-            siteId,
-            itemId,
-            quantity: quantity !== undefined ? quantity : 0,
-            reorderPoint: reorderPoint !== undefined ? reorderPoint : 5,
-          },
-        });
+      const isConsumable = item.category.type === "CONSUMABLE";
+      if (!isConsumable && quantity !== undefined) {
+        if (quantity > oldQty) {
+          const actualSitePrefix = (site.prefix || "SYS").toUpperCase();
+          const actualCategoryPrefix = (item.category.prefix || "AST").toUpperCase();
+          const assetTagPrefix = `${actualSitePrefix}-${actualCategoryPrefix}-`;
+          const matchingAssets = await tx.asset.findMany({ where: { tagCode: { startsWith: assetTagPrefix } }, select: { tagCode: true } });
+          let assetNum = matchingAssets.length > 0
+            ? Math.max(...matchingAssets.map(a => parseInt(a.tagCode.split("-").pop() || "0")), 0) + 1
+            : 1;
+          for (let i = 0; i < (quantity - oldQty); i++) {
+            let tagCode = "";
+            let isUnique = false;
+            while (!isUnique) {
+              tagCode = `${assetTagPrefix}${String(assetNum++).padStart(4, "0")}`;
+              if (!(await tx.asset.findUnique({ where: { tagCode } }))) isUnique = true;
+            }
+            await tx.asset.create({ data: { itemId, siteId, status: "AVAILABLE", condition: "GOOD", tagCode, serialNumber: `SN-${tagCode}` } });
+          }
+        } else if (quantity < oldQty) {
+          // Auto-select oldest AVAILABLE assets at this site if no explicit list is provided
+          const toRemove = (assetIdsToRemove && assetIdsToRemove.length > 0)
+            ? assetIdsToRemove
+            : (await tx.asset.findMany({
+                where: { itemId, siteId, status: "AVAILABLE" },
+                orderBy: { createdAt: "asc" },
+                take: oldQty - quantity,
+              })).map(a => a.id);
+
+          if (toRemove.length > 0) {
+            const retireCondition = reason === "DAMAGED_OR_BROKEN" ? "DAMAGED"
+              : reason === "LOST_OR_STOLEN" ? "LOST"
+              : "RETIRED";
+            await tx.asset.updateMany({
+              where: { id: { in: toRemove } },
+              data: { status: "RETIRED", condition: retireCondition },
+            });
+          }
+        }
       }
 
-      if (assetIdsToRemove && assetIdsToRemove.length > 0) {
-        await tx.asset.updateMany({
-          where: { id: { in: assetIdsToRemove } },
-          data: {
-            status: "RETIRED",
-            condition: reason === "DAMAGED_OR_BROKEN" ? "DAMAGED" : (reason === "LOST_OR_STOLEN" ? "LOST" : "RETIRED"),
-          },
-        });
-      }
-
-      const changes: string[] = [];
-      const oldQty = existingStock ? existingStock.quantity : 0;
-      const oldReorder = existingStock ? existingStock.reorderPoint : 5;
-
-      if (quantity !== undefined && quantity !== oldQty) {
-        changes.push(`Quantity: ${oldQty} -> ${quantity}`);
-      }
-      if (reorderPoint !== undefined && reorderPoint !== oldReorder) {
-        changes.push(`Reorder Point: ${oldReorder} -> ${reorderPoint}`);
-      }
-
+      const changes = [];
+      if (quantity !== undefined && quantity !== oldQty) changes.push(`Quantity: ${oldQty} -> ${quantity}`);
+      if (reorderPoint !== undefined && reorderPoint !== oldReorder) changes.push(`Reorder Point: ${oldReorder} -> ${reorderPoint}`);
       if (changes.length > 0) {
         let details = `Stock levels adjusted at site "${site.name}" (${site.prefix}). Changes: ${changes.join(", ")}`;
-        if (reason) {
-          details += `. Reason: ${reason}`;
-        }
-        if (comments) {
-          details += `. Comments: ${comments}`;
-        }
-        if (assetIdsToRemove && assetIdsToRemove.length > 0) {
-          const retiredAssets = await tx.asset.findMany({
-            where: { id: { in: assetIdsToRemove } },
-            select: { tagCode: true }
-          });
-          const codes = retiredAssets.map(a => a.tagCode).join(", ");
-          details += `. Retired Assets: [${codes}]`;
-        }
-
+        if (reason) details += `. Reason: ${reason}`;
+        if (comments) details += `. Comments: ${comments}`;
         await tx.auditLog.create({
           data: {
             action: "STOCK_ADJUSTED",
@@ -486,9 +493,7 @@ export class ItemsService {
           },
         });
       }
-
       await this.notificationsService.checkAndTriggerLowStockAlert(itemId, siteId, stock.quantity, stock.reorderPoint);
-
       return stock;
     });
   }

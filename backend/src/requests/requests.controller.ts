@@ -31,6 +31,14 @@ export class RequestsController {
     };
   }
 
+  @Get("dashboard-summary")
+  async getDashboardSummary(@ReqCtx() req: any) {
+    const q = req.query || {};
+    const siteId = q.siteId || undefined;
+    const data = await this.svc.getDashboardSummary(siteId);
+    return { data, message: "Dashboard summary fetched successfully", statusCode: 200 };
+  }
+
   @Get("mine")
   async findMine(@ReqCtx() req: any) {
     const q = req.query || {};

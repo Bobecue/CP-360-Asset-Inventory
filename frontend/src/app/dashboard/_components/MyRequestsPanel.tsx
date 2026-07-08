@@ -1,0 +1,746 @@
+'use client';
+
+import { useState, useEffect, useMemo } from 'react';
+import { InteractiveModal } from '../../../components/ui/InteractiveModal';
+
+type RequestStatus = 'PENDING' | 'PENDING_OPS_APPROVAL' | 'APPROVED' | 'READY_FOR_PICKUP' | 'PENDING_PROCUREMENT' | 'REJECTED' | 'RETURNED' | 'CANCELLED' | 'RELEASED' | 'AWAITING_CONFIRMATION' | 'ITEM_RECEIVED';
+type UrgencyLevel = 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
+
+interface RequestEntry {
+  id: string;
+  itemId: string;
+  itemName: string;
+  itemCategory?: string;
+  requestedById: string;
+  requestedByName: string;
+  requestedByRole?: string;
+  quantity: number;
+  reason: string;
+  urgency: UrgencyLevel;
+  status: RequestStatus;
+  reviewComment?: string;
+  siteId?: string;
+  siteName?: string;
+  returnedAt?: string;
+  returnComment?: string;
+  approvedByName?: string;
+  requestedBySiteId?: string;
+  approvedBySiteId?: string;
+  assetId?: string;
+  assetTag?: string;
+  senderName?: string;
+  senderSiteName?: string;
+  senderSiteAddress?: string;
+  receiverName?: string;
+  receiverSiteName?: string;
+  receiverSiteAddress?: string;
+  staffApprovedById?: string;
+  staffApprovedByName?: string;
+  staffApprovedAt?: string;
+  opsApprovedById?: string;
+  opsApprovedByName?: string;
+  opsApprovedAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+  history?: { status: string; timestamp: string; comment?: string; byName?: string }[];
+}
+
+interface MyRequestsPanelProps {
+  onCancel: (id: string) => Promise<void>;
+  renderStatusBadge: (status: RequestStatus) => React.ReactNode;
+  formatRelativeTime: (dateStr: string) => string;
+  // A trigger prop to force refetch when a new request is submitted
+  refreshTrigger?: number;
+  // Locally-cached requests used as an offline fallback
+  allRequests?: RequestEntry[];
+  // The current user's ID — used to filter allRequests in offline mode
+  currentUserId?: string;
+  // The current user's Name — used to filter requests in case of ID mismatch
+  currentUserName?: string;
+  collapsible?: boolean;
+  onRowClick?: (req: RequestEntry) => void;
+}
+
+const getCategoryIcon = (category?: string, name?: string) => {
+  const cat = (category || '').toLowerCase();
+  const itemName = (name || '').toLowerCase();
+  const text = cat + ' ' + itemName;
+
+  // Laptops / Computers
+  if (text.includes('laptop') || text.includes('macbook') || text.includes('computer') || text.includes('notebook') || text.includes('desktop') || text.includes('pc')) {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+        <line x1="2" y1="20" x2="22" y2="20" />
+        <line x1="12" y1="17" x2="12" y2="20" />
+      </svg>
+    );
+  }
+
+  // Monitors / Screens
+  if (text.includes('monitor') || text.includes('display') || text.includes('screen') || text.includes('tv')) {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="12" rx="2" ry="2" />
+        <line x1="12" y1="15" x2="12" y2="21" />
+        <line x1="8" y1="21" x2="16" y2="21" />
+      </svg>
+    );
+  }
+
+  // Headsets / Headphones / Jabra
+  if (text.includes('headset') || text.includes('headphones') || text.includes('audio') || text.includes('earphone') || text.includes('jabra')) {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+        <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+      </svg>
+    );
+  }
+
+  // Keyboards
+  if (text.includes('keyboard')) {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="4" width="20" height="16" rx="2" ry="2" />
+        <line x1="6" y1="8" x2="6.01" y2="8" />
+        <line x1="10" y1="8" x2="10.01" y2="8" />
+        <line x1="14" y1="8" x2="14.01" y2="8" />
+        <line x1="18" y1="8" x2="18.01" y2="8" />
+        <line x1="6" y1="12" x2="6.01" y2="12" />
+        <line x1="10" y1="12" x2="10.01" y2="12" />
+        <line x1="14" y1="12" x2="14.01" y2="12" />
+        <line x1="18" y1="12" x2="18.01" y2="12" />
+        <line x1="7" y1="16" x2="17" y2="16" />
+      </svg>
+    );
+  }
+
+  // Mice / Pointers
+  if (text.includes('mouse') || text.includes('logitech') || text.includes('trackpad') || text.includes('pointer')) {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="5" y="2" width="14" height="20" rx="7" />
+        <path d="M12 2v6" />
+      </svg>
+    );
+  }
+
+  // Cables
+  if (text.includes('cable') || text.includes('wire') || text.includes('ethernet') || text.includes('cat6') || text.includes('hdmi') || text.includes('usb')) {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2v8M18 12a6 6 0 0 1-6 6M6 12a6 6 0 0 0 6 6M12 18v4" />
+        <line x1="8" y1="2" x2="8" y2="5" />
+        <line x1="16" y1="2" x2="16" y2="5" />
+      </svg>
+    );
+  }
+
+  // Batteries & Power
+  if (text.includes('battery') || text.includes('batteries') || text.includes('powerbank') || text.includes('charger') || text.includes('adapter') || text.includes('power')) {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="7" width="16" height="10" rx="2" ry="2" />
+        <line x1="22" y1="11" x2="22" y2="13" />
+        <line x1="6" y1="11" x2="10" y2="11" />
+        <line x1="8" y1="9" x2="8" y2="13" />
+      </svg>
+    );
+  }
+
+  // Phones & Mobiles
+  if (text.includes('phone') || text.includes('mobile') || text.includes('smartphone') || text.includes('telephone')) {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+        <line x1="12" y1="18" x2="12.01" y2="18" />
+      </svg>
+    );
+  }
+
+  // Writing & Paper Stationery / Supplies
+  if (text.includes('pen') || text.includes('pencil') || text.includes('ink') || text.includes('stationery') || text.includes('paper') || text.includes('office') || text.includes('consumable')) {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 20h9"/>
+        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+      </svg>
+    );
+  }
+
+  // Accessories (Generic)
+  if (text.includes('peripheral') || text.includes('accessory') || text.includes('accessories')) {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </svg>
+    );
+  }
+
+  // Default box icon
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+      <line x1="12" y1="22.08" x2="12" y2="12" />
+    </svg>
+  );
+};
+
+export function MyRequestsPanel({
+  onCancel,
+  renderStatusBadge,
+  formatRelativeTime,
+  refreshTrigger: _refreshTrigger,
+  allRequests = [],
+  currentUserId = 'user-1',
+  currentUserName = 'Super Admin',
+  collapsible = true,
+  onRowClick
+}: MyRequestsPanelProps) {
+  const [open, setOpen] = useState(!collapsible);
+  const [filter, setFilter] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [cancelRequestId, setCancelRequestId] = useState<string | null>(null);
+  const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
+
+  // Initialize open state from localStorage only if collapsible
+  useEffect(() => {
+    if (collapsible && typeof window !== 'undefined') {
+      const stored = localStorage.getItem('salivio_myrequests_open');
+      if (stored !== null) {
+        setOpen(stored === 'true');
+      }
+    }
+  }, [collapsible]);
+
+  const handleToggle = () => {
+    if (!collapsible) return;
+    const nextState = !open;
+    setOpen(nextState);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('salivio_myrequests_open', String(nextState));
+    }
+  };
+
+  // Derive myRequests directly from the parent-managed allRequests prop.
+  // This avoids a race condition where the /requests/mine API returned stale or
+  // empty data right after a new request was submitted locally.
+  const myRequests = useMemo(() => {
+    const mine = allRequests.filter(r =>
+      r.requestedById === currentUserId ||
+      (currentUserName && r.requestedByName === currentUserName)
+    );
+    let filtered = mine;
+    if (filter === 'PENDING') {
+      filtered = mine.filter(r => r.status === 'PENDING' || r.status === 'PENDING_OPS_APPROVAL');
+    } else if (filter === 'PROCESSING') {
+      filtered = mine.filter(r => r.status === 'APPROVED' || r.status === 'PENDING_PROCUREMENT');
+    } else if (filter === 'READY') {
+      filtered = mine.filter(r => r.status === 'READY_FOR_PICKUP');
+    } else if (filter === 'RELEASED') {
+      filtered = mine.filter(r => r.status === 'RELEASED' || r.status === 'AWAITING_CONFIRMATION');
+    } else if (filter === 'COMPLETED') {
+      filtered = mine.filter(r => r.status === 'ITEM_RECEIVED');
+    } else if (filter === 'CLOSED') {
+      filtered = mine.filter(r => r.status === 'REJECTED' || r.status === 'RETURNED' || r.status === 'CANCELLED');
+    } else if (filter !== 'ALL') {
+      filtered = mine.filter(r => r.status === filter);
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(r =>
+        r.itemName.toLowerCase().includes(q) ||
+        r.reason.toLowerCase().includes(q) ||
+        r.id.toLowerCase().includes(q) ||
+        (r.status && r.status.toLowerCase().includes(q))
+      );
+    }
+
+    // Sort newest first
+    filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const pendingCount = mine.filter(r => r.status === 'PENDING').length;
+    return { items: filtered, pendingCount };
+  }, [allRequests, currentUserId, currentUserName, filter, searchQuery]);
+
+  const groupedCounts = useMemo(() => {
+    const mine = allRequests.filter(r =>
+      r.requestedById === currentUserId ||
+      (currentUserName && r.requestedByName === currentUserName)
+    );
+    return {
+      ALL: mine.length,
+      PENDING: mine.filter(r => r.status === 'PENDING' || r.status === 'PENDING_OPS_APPROVAL').length,
+      PROCESSING: mine.filter(r => r.status === 'APPROVED' || r.status === 'PENDING_PROCUREMENT').length,
+      READY: mine.filter(r => r.status === 'READY_FOR_PICKUP').length,
+      RELEASED: mine.filter(r => r.status === 'RELEASED' || r.status === 'AWAITING_CONFIRMATION').length,
+      COMPLETED: mine.filter(r => r.status === 'ITEM_RECEIVED').length,
+      CLOSED: mine.filter(r => r.status === 'REJECTED' || r.status === 'RETURNED' || r.status === 'CANCELLED').length,
+    };
+  }, [allRequests, currentUserId, currentUserName]);
+
+  const isLoading = false;
+
+  const handleCancelClick = async (id: string) => {
+    setCancelRequestId(id);
+  };
+
+  const getDisplayName = (req: RequestEntry) => {
+    if (req.status === 'RELEASED' || req.status === 'RETURNED') {
+      if (!req.assetTag) return req.itemName;
+
+      const prefix = req.assetTag.substring(0, 3);
+      const parts = req.assetTag.split('-');
+      if (parts.length < 2) return req.itemName;
+
+      const i = parseInt(parts[1], 10);
+      const name = (req.itemName || '').toLowerCase();
+
+      let displayItemName = req.itemName;
+      if (prefix === 'LAP' && !name.includes('macbook') && !name.includes('dell') && !name.includes('lenovo') && !name.includes('hp') && !name.includes('thinkpad')) {
+        if (i % 3 === 1) displayItemName = 'MacBook Pro 14"';
+        else if (i % 3 === 2) displayItemName = 'Dell Latitude 5440';
+        else displayItemName = 'Lenovo ThinkPad X1 Carbon';
+      }
+      return displayItemName;
+    }
+    if (req.itemCategory && req.itemCategory !== 'Consumables') {
+      const cat = req.itemCategory;
+      if (cat === 'Laptops') return 'Laptop';
+      if (cat === 'Accessories') return 'Accessory';
+      if (cat === 'Accessories') return 'Accessory';
+      return cat;
+    }
+    return req.itemName;
+  };
+
+  const requestOverview = (
+    <div 
+      onMouseEnter={() => setIsOverviewExpanded(true)}
+      onMouseLeave={() => setIsOverviewExpanded(false)}
+      style={{ 
+        width: '100%', 
+        backgroundColor: '#ffffff', 
+        borderRadius: 12, 
+        border: '1px solid #e2e8f0', 
+        boxShadow: '0 2px 10px rgba(15,23,42,0.02)', 
+        padding: isOverviewExpanded ? '1.25rem' : '0.85rem 1.25rem',
+        transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+        maxHeight: isOverviewExpanded ? '500px' : '48px',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        cursor: isOverviewExpanded ? 'default' : 'pointer',
+        marginBottom: '1rem'
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isOverviewExpanded ? '1rem' : '0', transition: 'margin-bottom 0.3s' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <h3 style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Request Overview</h3>
+          {!isOverviewExpanded && <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 500 }}>(Hover to expand)</span>}
+        </div>
+        {!isOverviewExpanded && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: 1, transition: 'opacity 0.3s ease-in' }}>
+            <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Active Filter:</span>
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#E85D00', backgroundColor: 'rgba(232, 93, 0, 0.08)', padding: '0.2rem 0.5rem', borderRadius: 4 }}>
+              {filter === 'ALL' ? 'All Requests' : filter.charAt(0) + filter.slice(1).toLowerCase()}
+            </span>
+          </div>
+        )}
+      </div>
+      <div style={{ 
+        display: 'flex', 
+        flexWrap: 'nowrap', 
+        gap: '0.75rem',
+        overflowX: 'auto',
+        paddingBottom: '0.5rem',
+        opacity: isOverviewExpanded ? 1 : 0,
+        transform: isOverviewExpanded ? 'translateY(0)' : 'translateY(-10px)',
+        transition: 'all 0.3s ease-in-out',
+        pointerEvents: isOverviewExpanded ? 'auto' : 'none'
+      }}>
+      {[
+        { id: 'ALL', label: 'All Requests', color: '#6366f1', bg: 'rgba(99, 102, 241, 0.1)', icon: <svg style={{ transition: 'all 0.3s ease' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> },
+        { id: 'PENDING', label: 'Pending', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)', icon: <svg style={{ transition: 'all 0.3s ease' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> },
+        { id: 'PROCESSING', label: 'Processing', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)', icon: <svg style={{ transition: 'all 0.3s ease' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4"></path><path d="M12 18v4"></path><path d="M4.93 4.93l2.83 2.83"></path><path d="M16.24 16.24l2.83 2.83"></path><path d="M2 12h4"></path><path d="M18 12h4"></path><path d="M4.93 19.07l2.83-2.83"></path><path d="M16.24 7.76l2.83-2.83"></path></svg> },
+        { id: 'READY', label: 'Ready', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)', icon: <svg style={{ transition: 'all 0.3s ease' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg> },
+        { id: 'RELEASED', label: 'Released', color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.1)', icon: <svg style={{ transition: 'all 0.3s ease' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg> },
+        { id: 'COMPLETED', label: 'Completed', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)', icon: <svg style={{ transition: 'all 0.3s ease' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> },
+        { id: 'CLOSED', label: 'Closed', color: '#64748b', bg: 'rgba(100, 116, 139, 0.1)', icon: <svg style={{ transition: 'all 0.3s ease' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> },
+      ].map((s) => {
+        const isActive = filter === s.id;
+        const count = groupedCounts[s.id as keyof typeof groupedCounts] || 0;
+        const itemColor = isActive ? s.color : '#64748b';
+        const itemBg = isActive ? s.bg : '#fcfcfc';
+        const hoverBg = isActive ? s.bg : '#f8fafc';
+        const borderColor = isActive ? s.color : '#f1f5f9';
+
+        return (
+          <div 
+            key={s.id}
+            onClick={() => setFilter(s.id as any)}
+            style={{ 
+              flex: 1,
+              minWidth: '110px',
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '0.35rem',
+              padding: '1rem', 
+              borderRadius: 12, 
+              cursor: 'pointer', 
+              backgroundColor: itemBg, 
+              border: `1px solid ${isActive ? borderColor : '#f1f5f9'}`,
+              color: itemColor,
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: isActive ? `0 4px 12px ${s.bg}` : 'none',
+            }}
+            onMouseEnter={(e) => { 
+              if (!isActive) { e.currentTarget.style.backgroundColor = hoverBg; e.currentTarget.style.borderColor = '#e2e8f0'; }
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              const iconDiv = e.currentTarget.querySelector('.icon-container') as HTMLElement;
+              const iconSvg = e.currentTarget.querySelector('svg') as SVGSVGElement | null;
+              if (iconDiv && iconSvg) {
+                iconDiv.style.backgroundColor = s.color;
+                iconSvg.style.color = '#ffffff';
+                iconSvg.style.transform = s.id === 'PROCESSING' ? 'rotate(180deg)' : 'scale(1.1)';
+                iconSvg.style.filter = 'drop-shadow(0 0 4px rgba(255,255,255,0.8))';
+              }
+            }}
+            onMouseLeave={(e) => { 
+              if (!isActive) { e.currentTarget.style.backgroundColor = itemBg; e.currentTarget.style.borderColor = '#f1f5f9'; }
+              e.currentTarget.style.transform = 'translateY(0)';
+              const iconDiv = e.currentTarget.querySelector('.icon-container') as HTMLElement;
+              const iconSvg = e.currentTarget.querySelector('svg') as SVGSVGElement | null;
+              if (iconDiv && iconSvg) {
+                iconDiv.style.backgroundColor = isActive ? s.color : s.bg;
+                iconSvg.style.color = isActive ? '#ffffff' : s.color;
+                iconSvg.style.transform = 'rotate(0deg) scale(1)';
+                iconSvg.style.filter = 'none';
+              }
+            }}
+          >
+            <div 
+              className="icon-container"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                backgroundColor: isActive ? s.color : s.bg,
+                color: isActive ? '#ffffff' : s.color,
+                transition: 'all 0.3s ease',
+                marginBottom: '4px'
+              }}
+            >
+              {s.icon}
+            </div>
+            <span style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em', color: isActive ? s.color : '#64748b', transition: 'color 0.3s ease' }}>{s.label}</span>
+            <span style={{ fontSize: '1.4rem', fontWeight: 700, color: isActive ? s.color : '#0f172a', transition: 'color 0.3s ease' }}>{count}</span>
+          </div>
+        );
+      })}
+      </div>
+    </div>
+
+  );
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {requestOverview}
+      <div style={{ border: '1px solid #cbd5e1', borderRadius: 12, overflow: 'hidden', backgroundColor: '#ffffff', boxShadow: '0 2px 10px rgba(15,23,42,0.02)' }}>
+      {/* Header Container */}
+      <div
+        onClick={collapsible ? handleToggle : undefined}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '1rem 1.25rem',
+          backgroundColor: '#ffffff',
+          border: 'none',
+          cursor: collapsible ? 'pointer' : 'default',
+          transition: 'background-color 0.15s ease'
+        }}
+        onMouseEnter={collapsible ? (e) => e.currentTarget.style.backgroundColor = '#f8fafc' : undefined}
+        onMouseLeave={collapsible ? (e) => e.currentTarget.style.backgroundColor = '#ffffff' : undefined}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textAlign: 'left' }}>
+          <svg style={{ color: '#94a3b8' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          <div>
+            <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: 600, color: '#0f172a' }}>My Requests</p>
+            <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>Your submitted requests and their current status</p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {myRequests?.pendingCount > 0 && (
+            <span
+              style={{
+                fontSize: '0.7rem',
+                fontWeight: 600,
+                backgroundColor: '#FFF0E8',
+                color: '#E85D00',
+                border: '1px solid rgba(232,93,0,0.3)',
+                padding: '0.15rem 0.5rem',
+                borderRadius: 99
+              }}
+            >
+              {myRequests.pendingCount} pending
+            </span>
+          )}
+          {collapsible && (
+            <svg
+              style={{
+                color: '#94a3b8',
+                transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s'
+              }}
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          )}
+        </div>
+      </div>
+
+      {/* Expandable body */}
+      {open && (
+        <div style={{ borderTop: '1px solid #e2e8f0', padding: '1rem 1.25rem', backgroundColor: '#ffffff' }}>
+          {/* Search bar */}
+          <div style={{ position: 'relative', marginBottom: '1rem' }}>
+            <input
+              type="text"
+              placeholder="Search item, reason, or status..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-glow"
+              style={{
+                width: '100%',
+                padding: '0.45rem 0.75rem 0.45rem 2.25rem',
+                fontSize: '0.8rem',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                outline: 'none',
+                transition: 'border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out',
+                color: '#0f172a',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#E85D00';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(232, 93, 0, 0.1)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#cbd5e1';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            />
+            <svg
+              style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                style={{
+                  position: 'absolute',
+                  right: '0.75rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* Card list */}
+          {isLoading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {[0, 1, 2].map(i => (
+                <div key={i} style={{ height: '56px', borderRadius: 8, backgroundColor: '#f1f5f9', animation: 'pulse 1.5s infinite' }} />
+              ))}
+            </div>
+          ) : myRequests?.items.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+              <p style={{ fontSize: '0.82rem', color: '#94a3b8', margin: 0 }}>No requests found.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {myRequests.items.map(req => (
+                <div
+                  key={req.id}
+                  onClick={() => onRowClick && onRowClick(req)}
+                  style={{
+                    backgroundColor: '#ffffff',
+                    padding: '1rem',
+                    borderRadius: 12,
+                    border: '1px solid #e2e8f0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.6rem',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.01)',
+                    cursor: onRowClick ? 'pointer' : 'default',
+                    transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                  }}
+                  onMouseEnter={(e) => { 
+                    if (onRowClick) { 
+                      e.currentTarget.style.borderColor = '#94a3b8'; 
+                      e.currentTarget.style.transform = 'translateY(-4px)';
+                      e.currentTarget.style.boxShadow = '0 10px 24px rgba(15, 23, 42, 0.08)';
+                    } 
+                  }}
+                  onMouseLeave={(e) => { 
+                    if (onRowClick) { 
+                      e.currentTarget.style.borderColor = '#e2e8f0'; 
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.01)';
+                    } 
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
+                      <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', marginTop: '0.15rem' }}>
+                        {getCategoryIcon(req.itemCategory, req.itemName)}
+                      </span>
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>{getDisplayName(req)}</h4>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.15rem', display: 'block' }}>
+                          Qty: {req.quantity} • Submitted: {formatRelativeTime(req.createdAt)}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
+                      {renderStatusBadge(req.status)}
+                      {req.status === 'RETURNED' && (
+                        <>
+                          {req.returnComment?.includes('Missing') && (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.15rem',
+                              padding: '0.1rem 0.35rem',
+                              borderRadius: 4,
+                              backgroundColor: '#fffbeb',
+                              color: '#b45309',
+                              border: '1px solid #fde68a',
+                              fontSize: '0.65rem',
+                              fontWeight: 600,
+                              whiteSpace: 'nowrap'
+                            }}>
+                              ⚠️ Incomplete Qty
+                            </span>
+                          )}
+                          {(req.returnComment?.includes('Bad') || req.returnComment?.includes('Damaged')) && (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.15rem',
+                              padding: '0.1rem 0.35rem',
+                              borderRadius: 4,
+                              backgroundColor: '#fef2f2',
+                              color: '#b91c1c',
+                              border: '1px solid #fecaca',
+                              fontSize: '0.65rem',
+                              fontWeight: 600,
+                              whiteSpace: 'nowrap'
+                            }}>
+                              🚨 Damaged
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#475569', lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {req.reason}
+                  </p>
+
+                  {req.reviewComment && (
+                    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '0.5rem', fontSize: '0.78rem', color: '#64748b', fontStyle: 'italic' }}>
+                      <strong>Review comment:</strong> "{req.reviewComment}"
+                    </div>
+                  )}
+
+                  {(req.status === 'PENDING' || req.status === 'PENDING_OPS_APPROVAL') && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleCancelClick(req.id); }}
+                        style={{
+                          padding: '0.3rem 0.65rem',
+                          borderRadius: 6,
+                          border: '1px solid #fecaca',
+                          backgroundColor: '#ffffff',
+                          color: '#dc2626',
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#ffffff'; }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      </div>
+
+      <InteractiveModal
+        isOpen={cancelRequestId !== null}
+        type="confirm"
+        title="Cancel Request"
+        message="Are you sure you want to cancel this request? This action cannot be undone."
+        confirmText="Cancel Request"
+        theme="danger"
+        onConfirm={async () => {
+          if (cancelRequestId) {
+            try {
+              await onCancel(cancelRequestId);
+            } catch (err) {
+              console.error('Error cancelling request:', err);
+            } finally {
+              setCancelRequestId(null);
+            }
+          }
+        }}
+        onCancel={() => setCancelRequestId(null)}
+      />
+    </div>
+  );
+}
