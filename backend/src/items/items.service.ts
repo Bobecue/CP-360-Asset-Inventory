@@ -142,9 +142,9 @@ export class ItemsService {
         const actualCategoryPrefix = (category.prefix || "AST").toUpperCase();
         const assetTagPrefix = `${actualSitePrefix}-${actualCategoryPrefix}-`;
 
-        // Find current max sequential tagCode in Asset table for this prefix
+        // Find current max sequential tagCode in Asset table for this category across all sites
         const matchingAssets = await tx.asset.findMany({
-          where: { tagCode: { startsWith: assetTagPrefix } },
+          where: { tagCode: { contains: `-${actualCategoryPrefix}-` } },
           select: { tagCode: true },
         });
 
@@ -439,7 +439,7 @@ export class ItemsService {
           const actualSitePrefix = (site.prefix || "SYS").toUpperCase();
           const actualCategoryPrefix = (item.category.prefix || "AST").toUpperCase();
           const assetTagPrefix = `${actualSitePrefix}-${actualCategoryPrefix}-`;
-          const matchingAssets = await tx.asset.findMany({ where: { tagCode: { startsWith: assetTagPrefix } }, select: { tagCode: true } });
+          const matchingAssets = await tx.asset.findMany({ where: { tagCode: { contains: `-${actualCategoryPrefix}-` } }, select: { tagCode: true } });
           let assetNum = matchingAssets.length > 0
             ? Math.max(...matchingAssets.map(a => parseInt(a.tagCode.split("-").pop() || "0")), 0) + 1
             : 1;

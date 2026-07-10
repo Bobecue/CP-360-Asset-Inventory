@@ -2157,6 +2157,7 @@ export default function DashboardPage() {
         viewTagsAssets={viewTagsAssets}
         isLoadingTags={isLoadingTags}
         onClose={() => setViewTagsItem(null)}
+        selectedSiteId={selectedSiteId}
       />
 
       <ItemHistoryModal

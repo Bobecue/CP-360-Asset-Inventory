@@ -9,6 +9,7 @@ interface ViewTagsModalProps {
   viewTagsAssets: any[];
   isLoadingTags: boolean;
   onClose: () => void;
+  selectedSiteId?: string;
 }
 
 export const ViewTagsModal = ({
@@ -16,6 +17,7 @@ export const ViewTagsModal = ({
   viewTagsAssets,
   isLoadingTags,
   onClose,
+  selectedSiteId,
 }: ViewTagsModalProps) => {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -203,10 +205,12 @@ export const ViewTagsModal = ({
     printWindow.document.close();
   };
 
-  const filteredAssets = viewTagsAssets.filter(asset => 
-    asset.tagCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (asset.serialNumber && asset.serialNumber.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredAssets = viewTagsAssets.filter(asset => {
+    const matchesSearch = asset.tagCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (asset.serialNumber && asset.serialNumber.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesSite = !selectedSiteId || asset.siteId === selectedSiteId;
+    return matchesSearch && matchesSite;
+  });
 
   return (
     <div style={{

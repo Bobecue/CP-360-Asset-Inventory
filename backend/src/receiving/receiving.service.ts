@@ -119,17 +119,27 @@ export class ReceivingService {
             );
           }
 
-          // Query current count of assets to compute sequential tag codes
-          const prefixPattern = `${site.prefix}-${item.category.prefix}-`;
-          const countAssets = await tx.asset.count({
+          // Find current max sequential number for this category across all sites
+          const actualCategoryPrefix = (item.category.prefix || "AST").toUpperCase();
+          const matchingAssets = await tx.asset.findMany({
             where: {
               tagCode: {
-                startsWith: prefixPattern,
+                contains: `-${actualCategoryPrefix}-`,
               },
             },
+            select: { tagCode: true },
           });
 
-          let currentSeq = countAssets + 1;
+          let currentSeq = 1;
+          if (matchingAssets.length > 0) {
+            const numbers = matchingAssets.map((asset) => {
+              const parts = asset.tagCode.split("-");
+              const numStr = parts[parts.length - 1];
+              const num = parseInt(numStr, 10);
+              return isNaN(num) ? 0 : num;
+            });
+            currentSeq = Math.max(...numbers, 0) + 1;
+          }
 
           for (const serial of serials) {
             // Verify serial is unique system-wide
@@ -138,8 +148,18 @@ export class ReceivingService {
               throw new BadRequestException(`Serial number "${serial}" is already registered in the system.`);
             }
 
-            const tagCode = `${site.prefix}-${item.category.prefix}-${String(currentSeq).padStart(4, "0")}`;
-            currentSeq++;
+            let tagCode = "";
+            let isUnique = false;
+            while (!isUnique) {
+              tagCode = `${site.prefix}-${actualCategoryPrefix}-${String(currentSeq).padStart(4, "0")}`;
+              const duplicate = await tx.asset.findUnique({
+                where: { tagCode },
+              });
+              if (!duplicate) {
+                isUnique = true;
+              }
+              currentSeq++;
+            }
 
             // Create individual serialized Asset record linked to this receipt
             await tx.asset.create({

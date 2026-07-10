@@ -121,9 +121,9 @@ export const mockItems: CatalogItem[] = [
       { id: "stock-1-2", siteId: "site-2", itemId: "item-1", quantity: 8, reorderPoint: 3 },
     ],
     assets: [
-      { id: "a-1-1", tagCode: "CEB-LAP-0001", serialNumber: "SN-CEB-LAP-0001", status: "AVAILABLE", condition: "GOOD" },
-      { id: "a-1-2", tagCode: "CEB-LAP-0002", serialNumber: "SN-CEB-LAP-0002", status: "AVAILABLE", condition: "GOOD" },
-      { id: "a-1-3", tagCode: "TOR-LAP-0001", serialNumber: "SN-TOR-LAP-0001", status: "AVAILABLE", condition: "GOOD" },
+      { id: "a-1-1", tagCode: "CEB-LAP-0001", serialNumber: "SN-CEB-LAP-0001", status: "AVAILABLE", condition: "GOOD", siteId: "site-1" },
+      { id: "a-1-2", tagCode: "CEB-LAP-0002", serialNumber: "SN-CEB-LAP-0002", status: "AVAILABLE", condition: "GOOD", siteId: "site-1" },
+      { id: "a-1-3", tagCode: "TOR-LAP-0001", serialNumber: "SN-TOR-LAP-0001", status: "AVAILABLE", condition: "GOOD", siteId: "site-2" },
     ],
   },
   {
@@ -140,8 +140,8 @@ export const mockItems: CatalogItem[] = [
       { id: "stock-2-2", siteId: "site-2", itemId: "item-2", quantity: 3, reorderPoint: 5 },
     ],
     assets: [
-      { id: "a-2-1", tagCode: "CEB-PER-0001", serialNumber: "SN-CEB-PER-0001", status: "AVAILABLE", condition: "GOOD" },
-      { id: "a-2-2", tagCode: "TOR-PER-0001", serialNumber: "SN-TOR-PER-0001", status: "AVAILABLE", condition: "GOOD" },
+      { id: "a-2-1", tagCode: "CEB-PER-0001", serialNumber: "SN-CEB-PER-0001", status: "AVAILABLE", condition: "GOOD", siteId: "site-1" },
+      { id: "a-2-2", tagCode: "TOR-PER-0001", serialNumber: "SN-TOR-PER-0001", status: "AVAILABLE", condition: "GOOD", siteId: "site-2" },
     ],
   },
   {
@@ -158,7 +158,7 @@ export const mockItems: CatalogItem[] = [
       { id: "stock-3-2", siteId: "site-2", itemId: "item-3", quantity: 12, reorderPoint: 5 },
     ],
     assets: [
-      { id: "a-3-1", tagCode: "TOR-PER-0002", serialNumber: "SN-TOR-PER-0002", status: "AVAILABLE", condition: "GOOD" },
+      { id: "a-3-1", tagCode: "TOR-PER-0002", serialNumber: "SN-TOR-PER-0002", status: "AVAILABLE", condition: "GOOD", siteId: "site-2" },
     ],
   },
   {

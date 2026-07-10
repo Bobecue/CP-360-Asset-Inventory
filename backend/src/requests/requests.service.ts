@@ -1050,7 +1050,7 @@ export class RequestsService implements OnModuleInit {
         const assetTagPrefix = `${actualSitePrefix}-${actualCategoryPrefix}-`;
 
         const matchingAssets = await tx.asset.findMany({
-          where: { tagCode: { startsWith: assetTagPrefix } },
+          where: { tagCode: { contains: `-${actualCategoryPrefix}-` } },
           select: { tagCode: true },
         });
 
