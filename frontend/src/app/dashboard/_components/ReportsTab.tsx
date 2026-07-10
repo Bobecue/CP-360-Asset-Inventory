@@ -529,18 +529,59 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   const paddingLeft = 30;
   const paddingRight = 15;
   const paddingTop = 15;
-  const paddingBottom = 25;
+  const paddingBottom = 30;
   const chartWidth = svgWidth - paddingLeft - paddingRight;
   const chartHeight = svgHeight - paddingTop - paddingBottom;
+
+  // Helper: get a distinct color per site name
+  const getSiteLineColor = (siteName: string) => {
+    const lc = (siteName || "").toLowerCase();
+    if (lc.includes("alpha")) return "#16a34a";
+    if (lc.includes("beta")) return "#9333ea";
+    if (lc.includes("4b")) return "#2563eb";
+    if (lc.includes("skyrise")) return "#3b82f6";
+    if (lc.includes("cebu") || lc.includes("it park")) return "#ea580c";
+    if (lc.includes("toronto") || lc.includes("hq")) return "#0284c7";
+    return "#6366f1";
+  };
 
   const logsDayCounts = last7Days.map(day => dashboardContextLogs.filter(log => isSameDay(day, log.createdAt)).length);
   const poDayCounts = last7Days.map(day => filteredVirtualPOLogs.filter(po => isSameDay(day, po.createdAt)).length);
 
+  // Per-site line series (when siteFilter=ALL and not LOW_STOCK_ALERTS/PO_ORDERS)
+  const perSiteLines: Array<{
+    siteId: string; siteName: string; color: string;
+    dayCounts: number[]; points: any[]; linePath: string;
+  }> = [];
+
+  const showPerSiteLines = siteFilter === "ALL" && activeMetricFilter !== "LOW_STOCK_ALERTS" && activeMetricFilter !== "PO_ORDERS";
+
+  if (showPerSiteLines) {
+    const allSiteIds = Array.from(new Set(
+      dashboardContextLogs.map((l: any) => l.siteId || l.user?.siteId || "").filter(Boolean)
+    )) as string[];
+    allSiteIds.forEach(sid => {
+      const site = sitesList.find((s: any) => s.id === sid);
+      const siteName = site?.name || sid;
+      const color = getSiteLineColor(siteName);
+      const siteLogs = dashboardContextLogs.filter((l: any) =>
+        (l.siteId || l.user?.siteId) === sid &&
+        (activeMetricFilter !== "STOCK_ADJUSTMENTS" || l.action === "STOCK_ADJUSTED")
+      );
+      const siteDayCounts = last7Days.map(day => siteLogs.filter((log: any) => isSameDay(day, log.createdAt)).length);
+      perSiteLines.push({ siteId: sid, siteName, color, dayCounts: siteDayCounts, points: [], linePath: "" });
+    });
+  }
+
   let maxLimit = 5;
   if (activeMetricFilter === "PO_ORDERS") {
     maxLimit = Math.max(...poDayCounts, 5);
-  } else if (activeMetricFilter === "STOCK_ADJUSTMENTS") {
-    maxLimit = Math.max(...logsDayCounts, 5);
+  } else if (activeMetricFilter === "STOCK_ADJUSTMENTS" || activeMetricFilter === "ALL") {
+    if (showPerSiteLines && perSiteLines.length > 0) {
+      maxLimit = Math.max(...perSiteLines.flatMap(s => s.dayCounts), ...poDayCounts, 5);
+    } else {
+      maxLimit = Math.max(...logsDayCounts, ...poDayCounts, 5);
+    }
   } else if (activeMetricFilter === "LOW_STOCK_ALERTS") {
     const topAlerts = filteredLowStockAlerts.slice(0, 7);
     maxLimit = Math.max(...topAlerts.flatMap(a => [a.quantity, a.reorderPoint]), 5);
@@ -548,14 +589,27 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     maxLimit = Math.max(...logsDayCounts, ...poDayCounts, 5);
   }
 
-  // Create standard vertices
+  // Compute per-site points with final maxLimit
+  if (showPerSiteLines) {
+    perSiteLines.forEach(series => {
+      series.points = series.dayCounts.map((count, i) => ({
+        x: paddingLeft + (i / 6) * chartWidth,
+        y: paddingTop + chartHeight - (count / maxLimit) * chartHeight,
+        count,
+        label: series.siteName,
+        color: series.color,
+        siteId: series.siteId,
+      }));
+      series.linePath = series.points.map((p, idx) => `${idx === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+    });
+  }
+
+  // Create standard vertices (used when specific site is selected or PO view)
   pointsLogs = logsDayCounts.map((count, i) => {
     const x = paddingLeft + (i / 6) * chartWidth;
     const y = paddingTop + chartHeight - (count / maxLimit) * chartHeight;
     return {
-      x,
-      y,
-      count,
+      x, y, count,
       label: activeMetricFilter === "STOCK_ADJUSTMENTS" ? "Stock Adjustments" : "Stock Activity",
       color: activeMetricFilter === "STOCK_ADJUSTMENTS" ? "#10b981" : "#3b82f6"
     };
@@ -564,13 +618,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   pointsPOs = poDayCounts.map((count, i) => {
     const x = paddingLeft + (i / 6) * chartWidth;
     const y = paddingTop + chartHeight - (count / maxLimit) * chartHeight;
-    return {
-      x,
-      y,
-      count,
-      label: "Purchase Orders",
-      color: "#7c3aed"
-    };
+    return { x, y, count, label: "Purchase Orders", color: "#7c3aed" };
   });
 
   // Calculate paths
@@ -583,6 +631,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   const areaPathPOs = pointsPOs.length > 0 && Math.max(...poDayCounts) > 0
     ? `${linePathPOs} L ${pointsPOs[pointsPOs.length - 1].x} ${paddingTop + chartHeight} L ${pointsPOs[0].x} ${paddingTop + chartHeight} Z`
     : "";
+
 
   if (activeMetricFilter === "PO_ORDERS") {
     dayCounts = poDayCounts;
@@ -1240,17 +1289,38 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                 </>
               ) : (
                 <>
-                  {activeMetricFilter !== "PO_ORDERS" && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                      <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", backgroundColor: activeMetricFilter === "STOCK_ADJUSTMENTS" ? "#10b981" : "#3b82f6" }} />
-                      <span>{activeMetricFilter === "STOCK_ADJUSTMENTS" ? "Stock Adjustments" : "Stock Activity"}</span>
-                    </div>
-                  )}
-                  {activeMetricFilter !== "STOCK_ADJUSTMENTS" && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                      <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", backgroundColor: "#7c3aed" }} />
-                      <span>Purchase Orders</span>
-                    </div>
+                  {showPerSiteLines ? (
+                    // All Sites: show a legend entry per site + PO line
+                    <>
+                      {perSiteLines.map(series => (
+                        <div key={series.siteId} style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                          <span style={{ display: "inline-block", width: 20, height: 2.5, borderRadius: "2px", backgroundColor: series.color }} />
+                          <span>{series.siteName}</span>
+                        </div>
+                      ))}
+                      {activeMetricFilter !== "STOCK_ADJUSTMENTS" && (
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                          <span style={{ display: "inline-block", width: 20, height: 0, borderTop: "2.5px dashed #7c3aed" }} />
+                          <span>Purchase Orders</span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    // Single site selected
+                    <>
+                      {activeMetricFilter !== "PO_ORDERS" && (
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                          <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", backgroundColor: activeMetricFilter === "STOCK_ADJUSTMENTS" ? "#10b981" : "#3b82f6" }} />
+                          <span>{activeMetricFilter === "STOCK_ADJUSTMENTS" ? "Stock Adjustments" : "Stock Activity"}</span>
+                        </div>
+                      )}
+                      {activeMetricFilter !== "STOCK_ADJUSTMENTS" && (
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                          <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", backgroundColor: "#7c3aed" }} />
+                          <span>Purchase Orders</span>
+                        </div>
+                      )}
+                    </>
                   )}
                 </>
               )}
@@ -1377,87 +1447,133 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                 })
               ) : (
                 <>
-                  {/* RENDER LOGS LINE */}
-                  {activeMetricFilter !== "PO_ORDERS" && (
+                  {/* PER-SITE LINES when All Sites active */}
+                  {showPerSiteLines ? (
                     <>
-                      {areaPathLogs && (
-                        <path d={areaPathLogs} fill="url(#chartAreaGradientLogs)" />
-                      )}
-                      {linePathLogs && (
-                        <path
-                          d={linePathLogs}
-                          fill="none"
-                          stroke={activeMetricFilter === "STOCK_ADJUSTMENTS" ? "#10b981" : "#3b82f6"}
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      )}
-                      {pointsLogs.map((p, idx) => (
-                        <g key={`log-${idx}`}>
-                          <circle
-                            cx={p.x}
-                            cy={p.y}
-                            r="4.5"
-                            fill={activeMetricFilter === "STOCK_ADJUSTMENTS" ? "#10b981" : "#3b82f6"}
-                            stroke="#ffffff"
-                            strokeWidth="2.5"
-                            className="chart-node"
-                            style={{ cursor: "pointer" }}
-                            onMouseEnter={() => setHoveredPoint({
-                              x: p.x,
-                              y: p.y,
-                              date: dayLabels[idx],
-                              count: p.count,
-                              label: p.label,
-                              color: p.color
-                            })}
-                            onMouseLeave={() => setHoveredPoint(null)}
+                      {perSiteLines.map(series => (
+                        <g key={`site-line-${series.siteId}`}>
+                          <path
+                            d={series.linePath}
+                            fill="none"
+                            stroke={series.color}
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            opacity="0.85"
                           />
+                          {series.points.map((p: any, idx: number) => (
+                            <circle
+                              key={`site-pt-${series.siteId}-${idx}`}
+                              cx={p.x}
+                              cy={p.y}
+                              r="3.5"
+                              fill={series.color}
+                              stroke="#ffffff"
+                              strokeWidth="2"
+                              className="chart-node"
+                              style={{ cursor: "pointer" }}
+                              onMouseEnter={() => setHoveredPoint({
+                                x: p.x, y: p.y,
+                                date: dayLabels[idx],
+                                count: p.count,
+                                label: `${series.siteName}`,
+                                color: series.color
+                              })}
+                              onMouseLeave={() => setHoveredPoint(null)}
+                            />
+                          ))}
                         </g>
                       ))}
+                      {/* Still show PO line unless filtering to stock adjustments only */}
+                      {activeMetricFilter !== "STOCK_ADJUSTMENTS" && (
+                        <>
+                          {linePathPOs && (
+                            <path
+                              d={linePathPOs}
+                              fill="none"
+                              stroke="#7c3aed"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeDasharray="5 3"
+                              opacity="0.7"
+                            />
+                          )}
+                          {pointsPOs.map((p, idx) => (
+                            <circle
+                              key={`po-all-${idx}`}
+                              cx={p.x} cy={p.y} r="3"
+                              fill="#7c3aed" stroke="#ffffff" strokeWidth="2"
+                              className="chart-node" style={{ cursor: "pointer" }}
+                              onMouseEnter={() => setHoveredPoint({ x: p.x, y: p.y, date: dayLabels[idx], count: p.count, label: p.label, color: p.color })}
+                              onMouseLeave={() => setHoveredPoint(null)}
+                            />
+                          ))}
+                        </>
+                      )}
                     </>
-                  )}
-
-                  {/* RENDER PO LINE */}
-                  {activeMetricFilter !== "STOCK_ADJUSTMENTS" && (
+                  ) : (
                     <>
-                      {areaPathPOs && (
-                        <path d={areaPathPOs} fill="url(#chartAreaGradientPOs)" />
+                      {/* RENDER LOGS LINE (single site selected) */}
+                      {activeMetricFilter !== "PO_ORDERS" && (
+                        <>
+                          {areaPathLogs && (
+                            <path d={areaPathLogs} fill="url(#chartAreaGradientLogs)" />
+                          )}
+                          {linePathLogs && (
+                            <path
+                              d={linePathLogs}
+                              fill="none"
+                              stroke={activeMetricFilter === "STOCK_ADJUSTMENTS" ? "#10b981" : "#3b82f6"}
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          )}
+                          {pointsLogs.map((p, idx) => (
+                            <g key={`log-${idx}`}>
+                              <circle
+                                cx={p.x} cy={p.y} r="4.5"
+                                fill={activeMetricFilter === "STOCK_ADJUSTMENTS" ? "#10b981" : "#3b82f6"}
+                                stroke="#ffffff" strokeWidth="2.5"
+                                className="chart-node" style={{ cursor: "pointer" }}
+                                onMouseEnter={() => setHoveredPoint({ x: p.x, y: p.y, date: dayLabels[idx], count: p.count, label: p.label, color: p.color })}
+                                onMouseLeave={() => setHoveredPoint(null)}
+                              />
+                            </g>
+                          ))}
+                        </>
                       )}
-                      {linePathPOs && (
-                        <path
-                          d={linePathPOs}
-                          fill="none"
-                          stroke="#7c3aed"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
+
+                      {/* RENDER PO LINE */}
+                      {activeMetricFilter !== "STOCK_ADJUSTMENTS" && (
+                        <>
+                          {areaPathPOs && (
+                            <path d={areaPathPOs} fill="url(#chartAreaGradientPOs)" />
+                          )}
+                          {linePathPOs && (
+                            <path
+                              d={linePathPOs}
+                              fill="none"
+                              stroke="#7c3aed"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          )}
+                          {pointsPOs.map((p, idx) => (
+                            <g key={`po-${idx}`}>
+                              <circle
+                                cx={p.x} cy={p.y} r="4.5"
+                                fill="#7c3aed" stroke="#ffffff" strokeWidth="2.5"
+                                className="chart-node" style={{ cursor: "pointer" }}
+                                onMouseEnter={() => setHoveredPoint({ x: p.x, y: p.y, date: dayLabels[idx], count: p.count, label: p.label, color: p.color })}
+                                onMouseLeave={() => setHoveredPoint(null)}
+                              />
+                            </g>
+                          ))}
+                        </>
                       )}
-                      {pointsPOs.map((p, idx) => (
-                        <g key={`po-${idx}`}>
-                          <circle
-                            cx={p.x}
-                            cy={p.y}
-                            r="4.5"
-                            fill="#7c3aed"
-                            stroke="#ffffff"
-                            strokeWidth="2.5"
-                            className="chart-node"
-                            style={{ cursor: "pointer" }}
-                            onMouseEnter={() => setHoveredPoint({
-                              x: p.x,
-                              y: p.y,
-                              date: dayLabels[idx],
-                              count: p.count,
-                              label: p.label,
-                              color: p.color
-                            })}
-                            onMouseLeave={() => setHoveredPoint(null)}
-                          />
-                        </g>
-                      ))}
                     </>
                   )}
                 </>
