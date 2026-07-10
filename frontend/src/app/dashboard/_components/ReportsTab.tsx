@@ -53,7 +53,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   const [actionFilter, setActionFilter] = useState("ALL");
   const [siteFilter, setSiteFilter] = useState("ALL");
   const [dateFilter, setDateFilter] = useState("");
-  
+
   // Interactive Overview Panel states
   const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
   const [activeMetricFilter, setActiveMetricFilter] = useState<"ALL" | "PO_ORDERS" | "STOCK_ADJUSTMENTS" | "LOW_STOCK_ALERTS">("ALL");
@@ -218,43 +218,6 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     return action.replace(/_/g, " ");
   };
 
-  // Returns a colored site badge pill from a siteId or site name string
-  const getSiteBadge = (siteIdOrName: string) => {
-    if (!siteIdOrName) return null;
-    // Look up site name from sitesList first
-    const matched = sitesList.find((s: any) => s.id === siteIdOrName);
-    const label = matched ? matched.name : siteIdOrName;
-    const lc = label.toLowerCase();
-    let bg = "#f1f5f9", color = "#475569", border = "#e2e8f0";
-    if (lc.includes("skyrise") || lc.includes("4b")) {
-      bg = "#eff6ff"; color = "#2563eb"; border = "#bfdbfe";
-    } else if (lc.includes("alpha")) {
-      bg = "#f0fdf4"; color = "#16a34a"; border = "#bbf7d0";
-    } else if (lc.includes("beta")) {
-      bg = "#fdf4ff"; color = "#9333ea"; border = "#e9d5ff";
-    } else if (lc.includes("cebu") || lc.includes("it park")) {
-      bg = "#fff7ed"; color = "#ea580c"; border = "#fed7aa";
-    } else if (lc.includes("toronto") || lc.includes("hq")) {
-      bg = "#f0f9ff"; color = "#0284c7"; border = "#bae6fd";
-    }
-    return (
-      <span style={{
-        display: "inline-block",
-        padding: "0.15rem 0.45rem",
-        borderRadius: "6px",
-        fontSize: "0.68rem",
-        fontWeight: 700,
-        backgroundColor: bg,
-        color,
-        border: `1px solid ${border}`,
-        letterSpacing: "0.02em",
-        whiteSpace: "nowrap",
-      }}>
-        {label}
-      </span>
-    );
-  };
-
   // ── 1. Resolve Strict Local Scopes ─────────────────────────────────────
   // Context logs filtered by siteFilter + dateFilter
   const dashboardContextLogs = logs.filter((log) => {
@@ -271,7 +234,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   });
 
   // Calculate real-time Low Stock Alerts from itemsList
-  const lowStockAlerts = itemsList.flatMap(it => 
+  const lowStockAlerts = itemsList.flatMap(it =>
     (it.stockLevels || [])
       .filter((sl: any) => sl.quantity <= sl.reorderPoint)
       .map((sl: any) => ({
@@ -289,7 +252,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   // Filtered Low Stock Alerts (by siteFilter)
   const filteredLowStockAlerts = lowStockAlerts.filter(alert => {
     const matchesSite = siteFilter === "ALL" || alert.siteId === siteFilter;
-    const matchesSearch = 
+    const matchesSearch =
       alert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       alert.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
       alert.category.toLowerCase().includes(searchQuery.toLowerCase());
@@ -406,7 +369,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   const filteredPOs = activePOsList.filter(po => {
     const poSiteId = po.siteId || (po.site?.id) || "site-1";
     const matchesSite = siteFilter === "ALL" || poSiteId === siteFilter;
-    const matchesSearch = 
+    const matchesSearch =
       po.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (po.supplier?.name || po.supplierName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (po.site?.name || po.siteName || "").toLowerCase().includes(searchQuery.toLowerCase());
@@ -589,24 +552,24 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   pointsLogs = logsDayCounts.map((count, i) => {
     const x = paddingLeft + (i / 6) * chartWidth;
     const y = paddingTop + chartHeight - (count / maxLimit) * chartHeight;
-    return { 
-      x, 
-      y, 
-      count, 
-      label: activeMetricFilter === "STOCK_ADJUSTMENTS" ? "Stock Adjustments" : "Stock Activity", 
-      color: activeMetricFilter === "STOCK_ADJUSTMENTS" ? "#10b981" : "#3b82f6" 
+    return {
+      x,
+      y,
+      count,
+      label: activeMetricFilter === "STOCK_ADJUSTMENTS" ? "Stock Adjustments" : "Stock Activity",
+      color: activeMetricFilter === "STOCK_ADJUSTMENTS" ? "#10b981" : "#3b82f6"
     };
   });
 
   pointsPOs = poDayCounts.map((count, i) => {
     const x = paddingLeft + (i / 6) * chartWidth;
     const y = paddingTop + chartHeight - (count / maxLimit) * chartHeight;
-    return { 
-      x, 
-      y, 
-      count, 
-      label: "Purchase Orders", 
-      color: "#7c3aed" 
+    return {
+      x,
+      y,
+      count,
+      label: "Purchase Orders",
+      color: "#7c3aed"
     };
   });
 
@@ -825,7 +788,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
       csvLines.push('"=== SECTION 1: INVENTORY SUMMARY ==="');
       const invHeaders = ["SKU", "Item Name", "Category", "Category Type", "Unit Price", "Lead Time (Days)", "Total Stock"];
       csvLines.push(invHeaders.map(h => `"${h.replace(/"/g, '""')}"`).join(","));
-      
+
       itemsListFetched.forEach((it: any) => {
         const totalStock = it.stockLevels?.reduce((sum: number, sl: any) => sum + sl.quantity, 0) ?? 0;
         const row = [
@@ -1004,15 +967,15 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
       </div>
 
       {/* Collapsible Overview Top Panel (contains ACTIVE PO ORDERS, STOCK ADJUSTMENTS & ALL RECORDS cards) */}
-      <div 
+      <div
         onMouseEnter={() => setIsOverviewExpanded(true)}
         onMouseLeave={() => setIsOverviewExpanded(false)}
-        style={{ 
-          width: '100%', 
-          backgroundColor: '#ffffff', 
-          borderRadius: 12, 
-          border: '1px solid #e2e8f0', 
-          boxShadow: '0 2px 10px rgba(15,23,42,0.02)', 
+        style={{
+          width: '100%',
+          backgroundColor: '#ffffff',
+          borderRadius: 12,
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 2px 10px rgba(15,23,42,0.02)',
           padding: isOverviewExpanded ? '1.25rem' : '0.85rem 1.25rem',
           transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
           maxHeight: isOverviewExpanded ? '200px' : '48px',
@@ -1045,10 +1008,10 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
             </div>
           )}
         </div>
-        
+
         {/* Expanded Content: The 4 clickable overview cards */}
-        <div style={{ 
-          display: 'grid', 
+        <div style={{
+          display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
           gap: '1.25rem',
           opacity: isOverviewExpanded ? 1 : 0,
@@ -1210,7 +1173,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
         width: "100%"
       }}>
         {/* Line Chart Card */}
-        <div 
+        <div
           className="stagger-card"
           style={{
             backgroundColor: "#ffffff",
@@ -1308,22 +1271,41 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                 filteredLowStockAlerts.slice(0, 7).map((alert: any, idx: number) => {
                   const sectionWidth = chartWidth / 7;
                   const x = paddingLeft + sectionWidth * (idx + 0.5);
-
                   const currentBarHeight = (alert.quantity / maxLimit) * chartHeight;
                   const currentY = paddingTop + chartHeight - currentBarHeight;
-
                   const reorderBarHeight = (alert.reorderPoint / maxLimit) * chartHeight;
                   const reorderY = paddingTop + chartHeight - reorderBarHeight;
 
+                  // Site-specific color
+                  const matchedSite = sitesList.find((s: any) => s.id === alert.siteId);
+                  const siteNameLc = (matchedSite?.name || alert.siteId || "").toLowerCase();
+                  const siteColor =
+                    siteNameLc.includes("skyrise") || siteNameLc.includes("4b") ? "#2563eb" :
+                    siteNameLc.includes("alpha") ? "#16a34a" :
+                    siteNameLc.includes("beta") ? "#9333ea" :
+                    siteNameLc.includes("cebu") || siteNameLc.includes("it park") ? "#ea580c" :
+                    siteNameLc.includes("toronto") || siteNameLc.includes("hq") ? "#0284c7" :
+                    "#ef4444";
+
                   return (
                     <g key={`alert-bar-${idx}`}>
+                      {/* Site dot indicator above bars when All Sites */}
+                      {siteFilter === "ALL" && (
+                        <circle
+                          cx={x}
+                          cy={Math.min(currentY, reorderY) - 8}
+                          r="3"
+                          fill={siteColor}
+                          opacity="0.9"
+                        />
+                      )}
                       {/* Current Stock Bar */}
                       <rect
                         x={x - 8}
                         y={currentY}
                         width="6"
                         height={Math.max(currentBarHeight, 2)}
-                        fill={alert.quantity === 0 ? "#dc2626" : "#ef4444"}
+                        fill={siteColor}
                         rx="1.5"
                         className="chart-node"
                         style={{ cursor: "pointer", transition: "all 0.15s ease" }}
@@ -1332,8 +1314,8 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                           y: currentY,
                           date: alert.name,
                           count: alert.quantity,
-                          label: `Current Stock (${alert.sku})`,
-                          color: "#ef4444"
+                          label: `Current Stock (${alert.sku})${siteFilter === "ALL" ? " — " + (matchedSite?.name || alert.siteId) : ""}`,
+                          color: siteColor
                         })}
                         onMouseLeave={() => setHoveredPoint(null)}
                       />
@@ -1352,7 +1334,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                           y: reorderY,
                           date: alert.name,
                           count: alert.reorderPoint,
-                          label: `Reorder Point (${alert.sku})`,
+                          label: `Reorder Point (${alert.sku})${siteFilter === "ALL" ? " — " + (matchedSite?.name || alert.siteId) : ""}`,
                           color: "#64748b"
                         })}
                         onMouseLeave={() => setHoveredPoint(null)}
@@ -1453,18 +1435,43 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                 filteredLowStockAlerts.slice(0, 7).map((alert: any, idx: number) => {
                   const sectionWidth = chartWidth / 7;
                   const x = paddingLeft + sectionWidth * (idx + 0.5);
+                  const matchedSite = sitesList.find((s: any) => s.id === alert.siteId);
+                  const siteNameLc = (matchedSite?.name || alert.siteId || "").toLowerCase();
+                  const siteColor =
+                    siteNameLc.includes("skyrise") || siteNameLc.includes("4b") ? "#2563eb" :
+                    siteNameLc.includes("alpha") ? "#16a34a" :
+                    siteNameLc.includes("beta") ? "#9333ea" :
+                    siteNameLc.includes("cebu") || siteNameLc.includes("it park") ? "#ea580c" :
+                    siteNameLc.includes("toronto") || siteNameLc.includes("hq") ? "#0284c7" :
+                    "#94a3b8";
+                  const shortSiteName = matchedSite?.name
+                    ? matchedSite.name.split(" ").slice(0, 2).join(" ")
+                    : (alert.siteId || "").slice(0, 6);
                   return (
-                    <text
-                      key={`sku-label-${idx}`}
-                      x={x}
-                      y={paddingTop + chartHeight + 16}
-                      textAnchor="middle"
-                      fontSize="8"
-                      fill="#94a3b8"
-                      style={{ fontWeight: 600 }}
-                    >
-                      {alert.sku}
-                    </text>
+                    <g key={`sku-label-${idx}`}>
+                      <text
+                        x={x}
+                        y={paddingTop + chartHeight + 14}
+                        textAnchor="middle"
+                        fontSize="8"
+                        fill="#94a3b8"
+                        style={{ fontWeight: 600 }}
+                      >
+                        {alert.sku}
+                      </text>
+                      {siteFilter === "ALL" && shortSiteName && (
+                        <text
+                          x={x}
+                          y={paddingTop + chartHeight + 25}
+                          textAnchor="middle"
+                          fontSize="7"
+                          fill={siteColor}
+                          style={{ fontWeight: 700 }}
+                        >
+                          {shortSiteName}
+                        </text>
+                      )}
+                    </g>
                   );
                 })
               ) : (
@@ -1518,7 +1525,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
         </div>
 
         {/* Doughnut Chart Card */}
-        <div 
+        <div
           className="stagger-card"
           style={{
             backgroundColor: "#ffffff",
@@ -1533,13 +1540,13 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           }}
         >
           <h2 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0f172a", margin: "0 0 1.25rem 0", width: "100%", textAlign: "left" }}>
-            {activeMetricFilter === "PO_ORDERS" 
-              ? "POs by status" 
-              : activeMetricFilter === "STOCK_ADJUSTMENTS" 
-              ? "Adjustments by type" 
-              : activeMetricFilter === "LOW_STOCK_ALERTS"
-              ? "Alerts by status"
-              : "Actions by type (incl. POs)"
+            {activeMetricFilter === "PO_ORDERS"
+              ? "POs by status"
+              : activeMetricFilter === "STOCK_ADJUSTMENTS"
+                ? "Adjustments by type"
+                : activeMetricFilter === "LOW_STOCK_ALERTS"
+                  ? "Alerts by status"
+                  : "Actions by type (incl. POs)"
             }
           </h2>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: "1.5rem", width: "100%" }}>
@@ -1554,7 +1561,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                   stroke="#f1f5f9"
                   strokeWidth="10"
                 />
-                
+
                 {/* Colored Segments */}
                 {totalDoughnutCount === 0 ? (
                   <circle
@@ -1572,7 +1579,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                     const strokeDasharray = `${pct * DOUGHNUT_CIRCUMFERENCE} ${DOUGHNUT_CIRCUMFERENCE}`;
                     const strokeDashoffset = -cumulativePercent * DOUGHNUT_CIRCUMFERENCE;
                     cumulativePercent += pct;
- 
+
                     return (
                       <circle
                         key={idx}
@@ -1594,7 +1601,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                 })()}
               </svg>
             </div>
- 
+
             {/* Legend */}
             <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", width: "100%" }}>
               {doughnutData.map((seg, idx) => (
@@ -1617,9 +1624,9 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
             </div>
           </div>
         </div>
- 
+
         {/* Graph: Activity by Category */}
-        <div 
+        <div
           className="stagger-card"
           style={{
             backgroundColor: "#ffffff",
@@ -1633,11 +1640,11 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           }}
         >
           <h2 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0f172a", margin: "0 0 1.25rem 0" }}>
-            {activeMetricFilter === "PO_ORDERS" 
-              ? "Orders by supplier" 
+            {activeMetricFilter === "PO_ORDERS"
+              ? "Orders by supplier"
               : activeMetricFilter === "LOW_STOCK_ALERTS"
-              ? "Alerts by category"
-              : "Activity by category"
+                ? "Alerts by category"
+                : "Activity by category"
             }
           </h2>
           <div style={{ display: "flex", flexDirection: "column", justifySelf: "center", flex: 1, gap: "1rem", width: "100%", justifyContent: "center" }}>
@@ -1666,11 +1673,11 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
             })}
             {activeCategories.length === 0 && (
               <span style={{ fontSize: "0.75rem", color: "#94a3b8", fontStyle: "italic", textAlign: "center" }}>
-                {activeMetricFilter === "PO_ORDERS" 
-                  ? "No supplier data" 
+                {activeMetricFilter === "PO_ORDERS"
+                  ? "No supplier data"
                   : activeMetricFilter === "LOW_STOCK_ALERTS"
-                  ? "No active alerts"
-                  : "No category data logged"
+                    ? "No active alerts"
+                    : "No category data logged"
                 }
               </span>
             )}
@@ -1699,11 +1706,11 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           <input
             type="text"
             placeholder={
-              activeMetricFilter === "PO_ORDERS" 
-                ? "Search supplier, site location..." 
+              activeMetricFilter === "PO_ORDERS"
+                ? "Search supplier, site location..."
                 : activeMetricFilter === "LOW_STOCK_ALERTS"
-                ? "Search SKU, item name, category..."
-                : "Search action, details, user, SKU..."
+                  ? "Search SKU, item name, category..."
+                  : "Search action, details, user, SKU..."
             }
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -1857,7 +1864,8 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
               <tbody>
                 {activeMetricFilter === "LOW_STOCK_ALERTS" ? (
                   filteredLowStockAlerts.map((alert: any, idx: number) => {
-                    const siteLabel = alert.siteId === "site-1" ? "Cebu IT Park" : alert.siteId === "site-2" ? "Toronto HQ" : alert.siteId;
+                    const matchedSiteObj = sitesList.find((s: any) => s.id === alert.siteId);
+                    const siteLabel = matchedSiteObj?.name || alert.siteId || "Unknown";
                     return (
                       <tr key={alert.itemId + "_" + alert.siteId + "_" + idx}
                         className="table-row-hover"
@@ -1876,10 +1884,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                           {alert.category}
                         </td>
                         <td style={{ padding: "0.9rem 1.25rem", color: "#475569" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
-                            <span>{siteLabel}</span>
-                            {siteFilter === "ALL" && getSiteBadge(alert.siteId)}
-                          </div>
+                          {siteLabel}
                         </td>
                         <td style={{ padding: "0.9rem 1.25rem", color: alert.quantity === 0 ? "#dc2626" : "#d97706", fontWeight: 700 }}>
                           {alert.quantity}
@@ -1919,10 +1924,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                         {po.supplier?.name || po.supplierName || "Default Supplier"}
                       </td>
                       <td style={{ padding: "0.9rem 1.25rem", color: "#475569" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
-                          <span>{po.site?.name || po.siteName || po.site || "Cebu IT Park"}</span>
-                          {siteFilter === "ALL" && getSiteBadge(po.siteId || po.site?.id || "site-1")}
-                        </div>
+                        {po.site?.name || po.siteName || po.site || "Cebu IT Park"}
                       </td>
                       <td style={{ padding: "0.9rem 1.25rem", color: "#0f172a", fontWeight: 600 }}>
                         ${Number(po.totalCost || 0).toFixed(2)}
@@ -1955,10 +1957,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                         {formatDate(log.createdAt)}
                       </td>
                       <td style={{ padding: "0.9rem 1.25rem", color: "#0f172a", fontWeight: 600 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
-                          <span>{log.user?.name || "System"}</span>
-                          {siteFilter === "ALL" && getSiteBadge(log.siteId || log.user?.siteId || "")}
-                        </div>
+                        {log.user?.name || "System"}
                       </td>
                       <td style={{ padding: "0.9rem 1.25rem" }}>
                         <span style={{
@@ -2012,7 +2011,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           Generate reports
         </h2>
         <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "1.25rem" }}>
-          <div 
+          <div
             className="metric-card stagger-card"
             style={{
               backgroundColor: "#ffffff",
@@ -2074,7 +2073,8 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           </div>
         </div>
       </div>
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
