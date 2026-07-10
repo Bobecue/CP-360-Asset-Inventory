@@ -52,7 +52,6 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   const [searchQuery, setSearchQuery] = useState("");
   const [actionFilter, setActionFilter] = useState("ALL");
   const [siteFilter, setSiteFilter] = useState("ALL");
-  const [tableSiteFilter, setTableSiteFilter] = useState("ALL");
   const [dateFilter, setDateFilter] = useState("");
   
   // Interactive Overview Panel states
@@ -220,24 +219,10 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   };
 
   // ── 1. Resolve Strict Local Scopes ─────────────────────────────────────
-  // Dashboard view logs (filtered by siteFilter)
+  // Context logs filtered by siteFilter + dateFilter
   const dashboardContextLogs = logs.filter((log) => {
     const logSiteId = log.siteId || log.user?.siteId;
     const matchesSite = siteFilter === "ALL" || logSiteId === siteFilter;
-
-    let matchesDate = true;
-    if (dateFilter) {
-      const logDatePart = new Date(log.createdAt).toISOString().split("T")[0];
-      matchesDate = logDatePart === dateFilter;
-    }
-
-    return matchesSite && matchesDate;
-  });
-
-  // Table view logs (filtered by tableSiteFilter)
-  const tableContextLogs = logs.filter((log) => {
-    const logSiteId = log.siteId || log.user?.siteId;
-    const matchesSite = tableSiteFilter === "ALL" || logSiteId === tableSiteFilter;
 
     let matchesDate = true;
     if (dateFilter) {
@@ -264,19 +249,9 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
       }))
   );
 
-  // Filtered Low Stock Alerts for dashboard (by siteFilter)
-  const dashboardFilteredLowStockAlerts = lowStockAlerts.filter(alert => {
+  // Filtered Low Stock Alerts (by siteFilter)
+  const filteredLowStockAlerts = lowStockAlerts.filter(alert => {
     const matchesSite = siteFilter === "ALL" || alert.siteId === siteFilter;
-    const matchesSearch = 
-      alert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      alert.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      alert.category.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSite && matchesSearch;
-  });
-
-  // Filtered Low Stock Alerts for table (by tableSiteFilter)
-  const tableFilteredLowStockAlerts = lowStockAlerts.filter(alert => {
-    const matchesSite = tableSiteFilter === "ALL" || alert.siteId === tableSiteFilter;
     const matchesSearch = 
       alert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       alert.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -289,7 +264,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     const siteLabel = alert.siteId === "site-1" ? "Cebu IT Park" : alert.siteId === "site-2" ? "Toronto HQ" : alert.siteId;
     return {
       id: `alert-${alert.itemId}-${alert.siteId}`,
-      createdAt: new Date().toISOString(), // real-time alert shows at the top of All Records
+      createdAt: new Date().toISOString(),
       user: { name: "System Monitor", email: "monitoring@company.com" },
       action: "LOW_STOCK_ALERT",
       itemName: alert.name,
@@ -300,20 +275,9 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     };
   });
 
-  // Filter virtual alerts for dashboard (by siteFilter)
-  const dashboardFilteredVirtualLowStockAlertLogs = virtualLowStockAlertLogs.filter(log => {
+  // Filter virtual alerts (by siteFilter)
+  const filteredVirtualLowStockAlertLogs = virtualLowStockAlertLogs.filter(log => {
     const matchesSite = siteFilter === "ALL" || log.siteId === siteFilter;
-    let matchesDate = true;
-    if (dateFilter) {
-      const logDatePart = new Date(log.createdAt).toISOString().split("T")[0];
-      matchesDate = logDatePart === dateFilter;
-    }
-    return matchesSite && matchesDate;
-  });
-
-  // Filter virtual alerts for table (by tableSiteFilter)
-  const tableFilteredVirtualLowStockAlertLogs = virtualLowStockAlertLogs.filter(log => {
-    const matchesSite = tableSiteFilter === "ALL" || log.siteId === tableSiteFilter;
     let matchesDate = true;
     if (dateFilter) {
       const logDatePart = new Date(log.createdAt).toISOString().split("T")[0];
@@ -354,8 +318,8 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     siteId: po.siteId || (po.site?.id) || "site-1"
   }));
 
-  // Filter virtual PO logs for dashboard (by siteFilter)
-  const dashboardFilteredVirtualPOLogs = virtualPOLogs.filter(log => {
+  // Filter virtual PO logs (by siteFilter)
+  const filteredVirtualPOLogs = virtualPOLogs.filter(log => {
     const matchesSite = siteFilter === "ALL" || log.siteId === siteFilter;
     let matchesDate = true;
     if (dateFilter) {
@@ -365,54 +329,26 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     return matchesSite && matchesDate;
   });
 
-  // Filter virtual PO logs for table (by tableSiteFilter)
-  const tableFilteredVirtualPOLogs = virtualPOLogs.filter(log => {
-    const matchesSite = tableSiteFilter === "ALL" || log.siteId === tableSiteFilter;
-    let matchesDate = true;
-    if (dateFilter) {
-      const logDatePart = new Date(log.createdAt).toISOString().split("T")[0];
-      matchesDate = logDatePart === dateFilter;
-    }
-    return matchesSite && matchesDate;
-  });
-
   // Master logs list depending on overview filter
-  const getDashboardActiveMetricFilteredLogs = () => {
+  const getActiveMetricFilteredLogs = () => {
     if (activeMetricFilter === "PO_ORDERS") {
-      return dashboardFilteredVirtualPOLogs;
+      return filteredVirtualPOLogs;
     }
     if (activeMetricFilter === "STOCK_ADJUSTMENTS") {
       return dashboardContextLogs.filter(l => l.action === "STOCK_ADJUSTED");
     }
     if (activeMetricFilter === "LOW_STOCK_ALERTS") {
-      return dashboardFilteredVirtualLowStockAlertLogs;
+      return filteredVirtualLowStockAlertLogs;
     }
-    return [...dashboardContextLogs, ...dashboardFilteredVirtualPOLogs, ...dashboardFilteredVirtualLowStockAlertLogs].sort(
+    return [...dashboardContextLogs, ...filteredVirtualPOLogs, ...filteredVirtualLowStockAlertLogs].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   };
 
-  const dashboardActiveMetricFilteredLogs = getDashboardActiveMetricFilteredLogs();
-
-  const getTableActiveMetricFilteredLogs = () => {
-    if (activeMetricFilter === "PO_ORDERS") {
-      return tableFilteredVirtualPOLogs;
-    }
-    if (activeMetricFilter === "STOCK_ADJUSTMENTS") {
-      return tableContextLogs.filter(l => l.action === "STOCK_ADJUSTED");
-    }
-    if (activeMetricFilter === "LOW_STOCK_ALERTS") {
-      return tableFilteredVirtualLowStockAlertLogs;
-    }
-    return [...tableContextLogs, ...tableFilteredVirtualPOLogs, ...tableFilteredVirtualLowStockAlertLogs].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  };
-
-  const tableActiveMetricFilteredLogs = getTableActiveMetricFilteredLogs();
+  const activeMetricFilteredLogs = getActiveMetricFilteredLogs();
 
   // Filter logs for the table list
-  const filteredLogs = tableActiveMetricFilteredLogs.filter((log) => {
+  const filteredLogs = activeMetricFilteredLogs.filter((log) => {
     const matchesSearch =
       (log.details || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (log.action || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -432,7 +368,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   // Filtered POs
   const filteredPOs = activePOsList.filter(po => {
     const poSiteId = po.siteId || (po.site?.id) || "site-1";
-    const matchesSite = tableSiteFilter === "ALL" || poSiteId === tableSiteFilter;
+    const matchesSite = siteFilter === "ALL" || poSiteId === siteFilter;
     const matchesSearch = 
       po.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (po.supplier?.name || po.supplierName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -484,34 +420,34 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     labelCard3 = "ACTIVE PERFORMERS";
     colorCard3 = "#f59e0b";
 
-    const lowStock = dashboardFilteredLowStockAlerts.length;
+    const lowStock = filteredLowStockAlerts.length;
     rawCard4 = lowStock;
     labelCard4 = "LOW STOCK ALERTS";
     colorCard4 = "#ef4444";
   } else if (activeMetricFilter === "LOW_STOCK_ALERTS") {
     // Low Stock Alert Metrics
-    rawCard1 = dashboardFilteredLowStockAlerts.length;
+    rawCard1 = filteredLowStockAlerts.length;
     labelCard1 = "TOTAL ALERTS";
     colorCard1 = "#ef4444";
 
-    const outOfStock = dashboardFilteredLowStockAlerts.filter(a => a.quantity === 0).length;
+    const outOfStock = filteredLowStockAlerts.filter(a => a.quantity === 0).length;
     rawCard2 = outOfStock;
     labelCard2 = "OUT OF STOCK";
     colorCard2 = "#dc2626";
     suffixCard2 = "";
 
-    const critical = dashboardFilteredLowStockAlerts.filter(a => a.quantity <= a.reorderPoint / 2).length;
+    const critical = filteredLowStockAlerts.filter(a => a.quantity <= a.reorderPoint / 2).length;
     rawCard3 = critical;
     labelCard3 = "CRITICAL ALERTS";
     colorCard3 = "#b91c1c";
 
-    const uniqueSites = new Set(dashboardFilteredLowStockAlerts.map(a => a.siteId)).size;
+    const uniqueSites = new Set(filteredLowStockAlerts.map(a => a.siteId)).size;
     rawCard4 = uniqueSites;
     labelCard4 = "AFFECTED SITES";
     colorCard4 = "#475569";
   } else {
     // General Metrics (ALL) - combines both
-    rawCard1 = dashboardContextLogs.length + dashboardFilteredVirtualPOLogs.length;
+    rawCard1 = dashboardContextLogs.length + filteredVirtualPOLogs.length;
     labelCard1 = "TOTAL ACTIONS";
     colorCard1 = "#0f172a";
 
@@ -526,7 +462,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     labelCard3 = "ACTIVE PERFORMERS";
     colorCard3 = "#f59e0b";
 
-    const lowStock = dashboardFilteredLowStockAlerts.length;
+    const lowStock = filteredLowStockAlerts.length;
     rawCard4 = lowStock;
     labelCard4 = "LOW STOCK ALERTS";
     colorCard4 = "#ef4444";
@@ -545,8 +481,8 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     const matchesSite = siteFilter === "ALL" || poSiteId === siteFilter;
     return (po.status === "ORDERED" || po.status === "PARTIALLY_RECEIVED") && matchesSite;
   }).length;
-  const rawAllRecordsTotal = dashboardContextLogs.length + dashboardFilteredVirtualPOLogs.length + dashboardFilteredVirtualLowStockAlertLogs.length;
-  const rawLowStockAlertsTotal = dashboardFilteredLowStockAlerts.length;
+  const rawAllRecordsTotal = dashboardContextLogs.length + filteredVirtualPOLogs.length + filteredVirtualLowStockAlertLogs.length;
+  const rawLowStockAlertsTotal = filteredLowStockAlerts.length;
 
   const stockAdjustmentsOverviewVal = useCountUp(rawStockAdjustmentsTotal);
   const activePOsOverviewVal = useCountUp(rawActivePOsTotal);
@@ -598,7 +534,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   const chartHeight = svgHeight - paddingTop - paddingBottom;
 
   const logsDayCounts = last7Days.map(day => dashboardContextLogs.filter(log => isSameDay(day, log.createdAt)).length);
-  const poDayCounts = last7Days.map(day => dashboardFilteredVirtualPOLogs.filter(po => isSameDay(day, po.createdAt)).length);
+  const poDayCounts = last7Days.map(day => filteredVirtualPOLogs.filter(po => isSameDay(day, po.createdAt)).length);
 
   let maxLimit = 5;
   if (activeMetricFilter === "PO_ORDERS") {
@@ -606,7 +542,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   } else if (activeMetricFilter === "STOCK_ADJUSTMENTS") {
     maxLimit = Math.max(...logsDayCounts, 5);
   } else if (activeMetricFilter === "LOW_STOCK_ALERTS") {
-    const topAlerts = dashboardFilteredLowStockAlerts.slice(0, 7);
+    const topAlerts = filteredLowStockAlerts.slice(0, 7);
     maxLimit = Math.max(...topAlerts.flatMap(a => [a.quantity, a.reorderPoint]), 5);
   } else {
     maxLimit = Math.max(...logsDayCounts, ...poDayCounts, 5);
@@ -716,8 +652,8 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
 
   } else if (activeMetricFilter === "LOW_STOCK_ALERTS") {
     // Doughnut Chart: Low Stock Status breakdown
-    const outOfStockCount = dashboardFilteredLowStockAlerts.filter(a => a.quantity === 0).length;
-    const lowStockCount = dashboardFilteredLowStockAlerts.filter(a => a.quantity > 0).length;
+    const outOfStockCount = filteredLowStockAlerts.filter(a => a.quantity === 0).length;
+    const lowStockCount = filteredLowStockAlerts.filter(a => a.quantity > 0).length;
     doughnutData = [
       { label: "Out of Stock", count: outOfStockCount, color: "#dc2626" },
       { label: "Low Stock Alert", count: lowStockCount, color: "#f59e0b" }
@@ -725,7 +661,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
 
     // Bar Chart: Low stock alerts by Category
     const alertCategoryCounts: { [key: string]: number } = {};
-    dashboardFilteredLowStockAlerts.forEach(alert => {
+    filteredLowStockAlerts.forEach(alert => {
       const catName = alert.category || "Uncategorized";
       alertCategoryCounts[catName] = (alertCategoryCounts[catName] || 0) + 1;
     });
@@ -748,13 +684,13 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
       { action: "LOW_STOCK_ALERT", label: "Low stock alerts", color: "#dc2626" }
     ];
     doughnutData = segmentCategoriesGeneral.map(cat => {
-      const count = dashboardActiveMetricFilteredLogs.filter(l => l.action === cat.action).length;
+      const count = activeMetricFilteredLogs.filter(l => l.action === cat.action).length;
       return { ...cat, count };
     }).filter(c => c.count > 0);
 
     // Bar Chart: Categories including PO Suppliers
     const categoryCounts: { [key: string]: number } = {};
-    dashboardActiveMetricFilteredLogs.forEach(log => {
+    activeMetricFilteredLogs.forEach(log => {
       if (log.action === "PO_ORDERS") {
         categoryCounts["PO Suppliers"] = (categoryCounts["PO Suppliers"] || 0) + 1;
       } else {
@@ -805,7 +741,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
       downloadCSV("purchase_orders_report.csv", headers, rows);
     } else if (activeMetricFilter === "LOW_STOCK_ALERTS") {
       const headers = ["SKU", "Item Name", "Category", "Site Location", "Current Stock", "Reorder Point", "Status"];
-      const rows = tableFilteredLowStockAlerts.map((alert: any) => [
+      const rows = filteredLowStockAlerts.map((alert: any) => [
         alert.sku,
         alert.name,
         alert.category,
@@ -971,9 +907,9 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                 fontWeight: 500,
               }}
             >
-              <option value="ALL">All sites (Overview)</option>
+              <option value="ALL">All sites</option>
               {sitesList.map((site: any) => (
-                <option key={site.id} value={site.id}>{site.name} (Overview)</option>
+                <option key={site.id} value={site.id}>{site.name}</option>
               ))}
             </select>
             <svg style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -1332,7 +1268,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
 
               {/* RENDER DUAL BAR CHART FOR LOW STOCK ALERTS */}
               {activeMetricFilter === "LOW_STOCK_ALERTS" ? (
-                dashboardFilteredLowStockAlerts.slice(0, 7).map((alert: any, idx: number) => {
+                filteredLowStockAlerts.slice(0, 7).map((alert: any, idx: number) => {
                   const sectionWidth = chartWidth / 7;
                   const x = paddingLeft + sectionWidth * (idx + 0.5);
 
@@ -1477,7 +1413,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
 
               {/* X Axis Labels */}
               {activeMetricFilter === "LOW_STOCK_ALERTS" ? (
-                dashboardFilteredLowStockAlerts.slice(0, 7).map((alert: any, idx: number) => {
+                filteredLowStockAlerts.slice(0, 7).map((alert: any, idx: number) => {
                   const sectionWidth = chartWidth / 7;
                   const x = paddingLeft + sectionWidth * (idx + 0.5);
                   return (
@@ -1784,37 +1720,6 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           </svg>
         </div>
 
-        {/* Site Filter (Table only) */}
-        <div style={{ position: "relative", flex: "1 1 150px" }}>
-          <select
-            value={tableSiteFilter}
-            onChange={(e) => setTableSiteFilter(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "0.55rem 2.25rem 0.55rem 0.75rem",
-              borderRadius: "8px",
-              border: "1px solid #cbd5e1",
-              fontSize: "0.85rem",
-              color: "#334155",
-              backgroundColor: "#ffffff",
-              outline: "none",
-              cursor: "pointer",
-              appearance: "none",
-            }}
-          >
-            <option value="ALL">All sites</option>
-            {sitesList.map((site: any) => (
-              <option key={site.id} value={site.id}>
-                {site.name}
-              </option>
-            ))}
-          </select>
-          <svg style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#64748b", pointerEvents: "none" }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </div>
-
-
         <div style={{ position: "relative", flex: "1 1 160px", display: "flex", gap: "0.25rem" }}>
           <input
             type="date"
@@ -1872,7 +1777,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
             }} />
             <span style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: 500 }}>Loading reports database...</span>
           </div>
-        ) : (activeMetricFilter === "LOW_STOCK_ALERTS" ? tableFilteredLowStockAlerts.length === 0 : activeMetricFilter === "PO_ORDERS" ? filteredPOs.length === 0 : filteredLogs.length === 0) ? (
+        ) : (activeMetricFilter === "LOW_STOCK_ALERTS" ? filteredLowStockAlerts.length === 0 : activeMetricFilter === "PO_ORDERS" ? filteredPOs.length === 0 : filteredLogs.length === 0) ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "4.5rem 1rem", textAlign: "center" }}>
             <span style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>📜</span>
             <span style={{ fontSize: "0.9rem", color: "#0f172a", fontWeight: 700, marginBottom: "0.25rem" }}>No records found</span>
@@ -1914,13 +1819,13 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
               </thead>
               <tbody>
                 {activeMetricFilter === "LOW_STOCK_ALERTS" ? (
-                  tableFilteredLowStockAlerts.map((alert: any, idx: number) => {
+                  filteredLowStockAlerts.map((alert: any, idx: number) => {
                     const siteLabel = alert.siteId === "site-1" ? "Cebu IT Park" : alert.siteId === "site-2" ? "Toronto HQ" : alert.siteId;
                     return (
                       <tr key={alert.itemId + "_" + alert.siteId + "_" + idx}
                         className="table-row-hover"
                         style={{
-                          borderBottom: idx < tableFilteredLowStockAlerts.length - 1 ? "1px solid #f1f5f9" : "none",
+                          borderBottom: idx < filteredLowStockAlerts.length - 1 ? "1px solid #f1f5f9" : "none",
                           backgroundColor: idx % 2 === 1 ? "#fcfdfe" : "#ffffff",
                         }}
                       >
