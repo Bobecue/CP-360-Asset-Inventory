@@ -218,6 +218,43 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     return action.replace(/_/g, " ");
   };
 
+  // Returns a colored site badge pill from a siteId or site name string
+  const getSiteBadge = (siteIdOrName: string) => {
+    if (!siteIdOrName) return null;
+    // Look up site name from sitesList first
+    const matched = sitesList.find((s: any) => s.id === siteIdOrName);
+    const label = matched ? matched.name : siteIdOrName;
+    const lc = label.toLowerCase();
+    let bg = "#f1f5f9", color = "#475569", border = "#e2e8f0";
+    if (lc.includes("skyrise") || lc.includes("4b")) {
+      bg = "#eff6ff"; color = "#2563eb"; border = "#bfdbfe";
+    } else if (lc.includes("alpha")) {
+      bg = "#f0fdf4"; color = "#16a34a"; border = "#bbf7d0";
+    } else if (lc.includes("beta")) {
+      bg = "#fdf4ff"; color = "#9333ea"; border = "#e9d5ff";
+    } else if (lc.includes("cebu") || lc.includes("it park")) {
+      bg = "#fff7ed"; color = "#ea580c"; border = "#fed7aa";
+    } else if (lc.includes("toronto") || lc.includes("hq")) {
+      bg = "#f0f9ff"; color = "#0284c7"; border = "#bae6fd";
+    }
+    return (
+      <span style={{
+        display: "inline-block",
+        padding: "0.15rem 0.45rem",
+        borderRadius: "6px",
+        fontSize: "0.68rem",
+        fontWeight: 700,
+        backgroundColor: bg,
+        color,
+        border: `1px solid ${border}`,
+        letterSpacing: "0.02em",
+        whiteSpace: "nowrap",
+      }}>
+        {label}
+      </span>
+    );
+  };
+
   // ── 1. Resolve Strict Local Scopes ─────────────────────────────────────
   // Context logs filtered by siteFilter + dateFilter
   const dashboardContextLogs = logs.filter((log) => {
@@ -1839,7 +1876,10 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                           {alert.category}
                         </td>
                         <td style={{ padding: "0.9rem 1.25rem", color: "#475569" }}>
-                          {siteLabel}
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
+                            <span>{siteLabel}</span>
+                            {siteFilter === "ALL" && getSiteBadge(alert.siteId)}
+                          </div>
                         </td>
                         <td style={{ padding: "0.9rem 1.25rem", color: alert.quantity === 0 ? "#dc2626" : "#d97706", fontWeight: 700 }}>
                           {alert.quantity}
@@ -1879,7 +1919,10 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                         {po.supplier?.name || po.supplierName || "Default Supplier"}
                       </td>
                       <td style={{ padding: "0.9rem 1.25rem", color: "#475569" }}>
-                        {po.site?.name || po.siteName || po.site || "Cebu IT Park"}
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
+                          <span>{po.site?.name || po.siteName || po.site || "Cebu IT Park"}</span>
+                          {siteFilter === "ALL" && getSiteBadge(po.siteId || po.site?.id || "site-1")}
+                        </div>
                       </td>
                       <td style={{ padding: "0.9rem 1.25rem", color: "#0f172a", fontWeight: 600 }}>
                         ${Number(po.totalCost || 0).toFixed(2)}
@@ -1912,7 +1955,10 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                         {formatDate(log.createdAt)}
                       </td>
                       <td style={{ padding: "0.9rem 1.25rem", color: "#0f172a", fontWeight: 600 }}>
-                        {log.user?.name || "System"}
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
+                          <span>{log.user?.name || "System"}</span>
+                          {siteFilter === "ALL" && getSiteBadge(log.siteId || log.user?.siteId || "")}
+                        </div>
                       </td>
                       <td style={{ padding: "0.9rem 1.25rem" }}>
                         <span style={{
