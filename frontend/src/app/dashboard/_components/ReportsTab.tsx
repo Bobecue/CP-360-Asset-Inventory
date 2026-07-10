@@ -52,11 +52,12 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   const [searchQuery, setSearchQuery] = useState("");
   const [actionFilter, setActionFilter] = useState("ALL");
   const [siteFilter, setSiteFilter] = useState("ALL");
+  const [tableSiteFilter, setTableSiteFilter] = useState("ALL");
   const [dateFilter, setDateFilter] = useState("");
   
   // Interactive Overview Panel states
   const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
-  const [activeMetricFilter, setActiveMetricFilter] = useState<"ALL" | "PO_ORDERS" | "STOCK_ADJUSTMENTS">("ALL");
+  const [activeMetricFilter, setActiveMetricFilter] = useState<"ALL" | "PO_ORDERS" | "STOCK_ADJUSTMENTS" | "LOW_STOCK_ALERTS">("ALL");
 
   // Floating chart interactive tooltip state
   const [hoveredPoint, setHoveredPoint] = useState<{
@@ -200,6 +201,8 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
         return { backgroundColor: "#e8f5e9", color: "#2e7d32", border: "1px solid #c8e6c9" };
       case "PO_ORDERS":
         return { backgroundColor: "#f5f3ff", color: "#7c3aed", border: "1px solid #ddd6fe" };
+      case "LOW_STOCK_ALERT":
+        return { backgroundColor: "#fee2e2", color: "#dc2626", border: "1px solid #fecaca" };
       default:
         return { backgroundColor: "#f1f5f9", color: "#475569", border: "1px solid #e2e8f0" };
     }
@@ -207,6 +210,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
 
   const formatActionName = (action: string) => {
     if (!action) return "Unknown";
+    if (action === "LOW_STOCK_ALERT") return "Low Stock Alert";
     if (action === "STOCK_ADJUSTED") return "Stock adjusted";
     if (action === "ITEM_CREATED") return "Item created";
     if (action === "ITEM_UPDATED") return "Item modified";
@@ -216,7 +220,8 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   };
 
   // ── 1. Resolve Strict Local Scopes ─────────────────────────────────────
-  const contextLogs = logs.filter((log) => {
+  // Dashboard view logs (filtered by siteFilter)
+  const dashboardContextLogs = logs.filter((log) => {
     const logSiteId = log.siteId || log.user?.siteId;
     const matchesSite = siteFilter === "ALL" || logSiteId === siteFilter;
 
@@ -226,6 +231,94 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
       matchesDate = logDatePart === dateFilter;
     }
 
+    return matchesSite && matchesDate;
+  });
+
+  // Table view logs (filtered by tableSiteFilter)
+  const tableContextLogs = logs.filter((log) => {
+    const logSiteId = log.siteId || log.user?.siteId;
+    const matchesSite = tableSiteFilter === "ALL" || logSiteId === tableSiteFilter;
+
+    let matchesDate = true;
+    if (dateFilter) {
+      const logDatePart = new Date(log.createdAt).toISOString().split("T")[0];
+      matchesDate = logDatePart === dateFilter;
+    }
+
+    return matchesSite && matchesDate;
+  });
+
+  // Calculate real-time Low Stock Alerts from itemsList
+  const lowStockAlerts = itemsList.flatMap(it => 
+    (it.stockLevels || [])
+      .filter((sl: any) => sl.quantity <= sl.reorderPoint)
+      .map((sl: any) => ({
+        itemId: it.id,
+        sku: it.sku || "",
+        name: it.name || "",
+        category: it.category?.name || "Uncategorized",
+        siteId: sl.siteId || "",
+        quantity: sl.quantity || 0,
+        reorderPoint: sl.reorderPoint || 0,
+        status: (sl.quantity || 0) === 0 ? "OUT_OF_STOCK" : "LOW_STOCK"
+      }))
+  );
+
+  // Filtered Low Stock Alerts for dashboard (by siteFilter)
+  const dashboardFilteredLowStockAlerts = lowStockAlerts.filter(alert => {
+    const matchesSite = siteFilter === "ALL" || alert.siteId === siteFilter;
+    const matchesSearch = 
+      alert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      alert.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      alert.category.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSite && matchesSearch;
+  });
+
+  // Filtered Low Stock Alerts for table (by tableSiteFilter)
+  const tableFilteredLowStockAlerts = lowStockAlerts.filter(alert => {
+    const matchesSite = tableSiteFilter === "ALL" || alert.siteId === tableSiteFilter;
+    const matchesSearch = 
+      alert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      alert.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      alert.category.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSite && matchesSearch;
+  });
+
+  // Map Low Stock Alerts to virtual logs for All Records feed
+  const virtualLowStockAlertLogs = lowStockAlerts.map(alert => {
+    const siteLabel = alert.siteId === "site-1" ? "Cebu IT Park" : alert.siteId === "site-2" ? "Toronto HQ" : alert.siteId;
+    return {
+      id: `alert-${alert.itemId}-${alert.siteId}`,
+      createdAt: new Date().toISOString(), // real-time alert shows at the top of All Records
+      user: { name: "System Monitor", email: "monitoring@company.com" },
+      action: "LOW_STOCK_ALERT",
+      itemName: alert.name,
+      itemSku: alert.sku,
+      itemCategory: alert.category,
+      details: `[ALERT] Stock level for "${alert.name}" (${alert.sku}) at site "${siteLabel}" has dropped to ${alert.quantity} (Reorder point: ${alert.reorderPoint}). Status: ${alert.status === "OUT_OF_STOCK" ? "OUT OF STOCK" : "LOW STOCK"}.`,
+      siteId: alert.siteId
+    };
+  });
+
+  // Filter virtual alerts for dashboard (by siteFilter)
+  const dashboardFilteredVirtualLowStockAlertLogs = virtualLowStockAlertLogs.filter(log => {
+    const matchesSite = siteFilter === "ALL" || log.siteId === siteFilter;
+    let matchesDate = true;
+    if (dateFilter) {
+      const logDatePart = new Date(log.createdAt).toISOString().split("T")[0];
+      matchesDate = logDatePart === dateFilter;
+    }
+    return matchesSite && matchesDate;
+  });
+
+  // Filter virtual alerts for table (by tableSiteFilter)
+  const tableFilteredVirtualLowStockAlertLogs = virtualLowStockAlertLogs.filter(log => {
+    const matchesSite = tableSiteFilter === "ALL" || log.siteId === tableSiteFilter;
+    let matchesDate = true;
+    if (dateFilter) {
+      const logDatePart = new Date(log.createdAt).toISOString().split("T")[0];
+      matchesDate = logDatePart === dateFilter;
+    }
     return matchesSite && matchesDate;
   });
 
@@ -261,8 +354,8 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     siteId: po.siteId || (po.site?.id) || "site-1"
   }));
 
-  // Filter virtual PO logs by site and date
-  const filteredVirtualPOLogs = virtualPOLogs.filter(log => {
+  // Filter virtual PO logs for dashboard (by siteFilter)
+  const dashboardFilteredVirtualPOLogs = virtualPOLogs.filter(log => {
     const matchesSite = siteFilter === "ALL" || log.siteId === siteFilter;
     let matchesDate = true;
     if (dateFilter) {
@@ -272,24 +365,54 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     return matchesSite && matchesDate;
   });
 
+  // Filter virtual PO logs for table (by tableSiteFilter)
+  const tableFilteredVirtualPOLogs = virtualPOLogs.filter(log => {
+    const matchesSite = tableSiteFilter === "ALL" || log.siteId === tableSiteFilter;
+    let matchesDate = true;
+    if (dateFilter) {
+      const logDatePart = new Date(log.createdAt).toISOString().split("T")[0];
+      matchesDate = logDatePart === dateFilter;
+    }
+    return matchesSite && matchesDate;
+  });
+
   // Master logs list depending on overview filter
-  const getActiveMetricFilteredLogs = () => {
+  const getDashboardActiveMetricFilteredLogs = () => {
     if (activeMetricFilter === "PO_ORDERS") {
-      return filteredVirtualPOLogs;
+      return dashboardFilteredVirtualPOLogs;
     }
     if (activeMetricFilter === "STOCK_ADJUSTMENTS") {
-      return contextLogs.filter(l => l.action === "STOCK_ADJUSTED");
+      return dashboardContextLogs.filter(l => l.action === "STOCK_ADJUSTED");
     }
-    // "ALL": Combine both datasets, sorted by timestamp desc
-    return [...contextLogs, ...filteredVirtualPOLogs].sort(
+    if (activeMetricFilter === "LOW_STOCK_ALERTS") {
+      return dashboardFilteredVirtualLowStockAlertLogs;
+    }
+    return [...dashboardContextLogs, ...dashboardFilteredVirtualPOLogs, ...dashboardFilteredVirtualLowStockAlertLogs].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   };
 
-  const activeMetricFilteredLogs = getActiveMetricFilteredLogs();
+  const dashboardActiveMetricFilteredLogs = getDashboardActiveMetricFilteredLogs();
+
+  const getTableActiveMetricFilteredLogs = () => {
+    if (activeMetricFilter === "PO_ORDERS") {
+      return tableFilteredVirtualPOLogs;
+    }
+    if (activeMetricFilter === "STOCK_ADJUSTMENTS") {
+      return tableContextLogs.filter(l => l.action === "STOCK_ADJUSTED");
+    }
+    if (activeMetricFilter === "LOW_STOCK_ALERTS") {
+      return tableFilteredVirtualLowStockAlertLogs;
+    }
+    return [...tableContextLogs, ...tableFilteredVirtualPOLogs, ...tableFilteredVirtualLowStockAlertLogs].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  };
+
+  const tableActiveMetricFilteredLogs = getTableActiveMetricFilteredLogs();
 
   // Filter logs for the table list
-  const filteredLogs = activeMetricFilteredLogs.filter((log) => {
+  const filteredLogs = tableActiveMetricFilteredLogs.filter((log) => {
     const matchesSearch =
       (log.details || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (log.action || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -304,6 +427,17 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
       (actionFilter === "STOCK_ADJUSTED" && log.action === "STOCK_ADJUSTED");
 
     return matchesSearch && matchesAction;
+  });
+
+  // Filtered POs
+  const filteredPOs = activePOsList.filter(po => {
+    const poSiteId = po.siteId || (po.site?.id) || "site-1";
+    const matchesSite = tableSiteFilter === "ALL" || poSiteId === tableSiteFilter;
+    const matchesSearch = 
+      po.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (po.supplier?.name || po.supplierName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (po.site?.name || po.siteName || "").toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSite && matchesSearch;
   });
 
   // ── 2. Dynamic Metric Cards (Morphed based on active filter button) ──
@@ -335,28 +469,49 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     colorCard4 = "#64748b";
   } else if (activeMetricFilter === "STOCK_ADJUSTMENTS") {
     // Adjustment Metrics
-    rawCard1 = contextLogs.filter(l => l.action === "STOCK_ADJUSTED").length;
+    rawCard1 = dashboardContextLogs.filter(l => l.action === "STOCK_ADJUSTED").length;
     labelCard1 = "TOTAL ADJUSTMENTS";
     colorCard1 = "#10b981";
 
-    const uniqueAdjusted = new Set(contextLogs.filter(l => l.action === "STOCK_ADJUSTED").map(l => l.itemId)).size;
+    const uniqueAdjusted = new Set(dashboardContextLogs.filter(l => l.action === "STOCK_ADJUSTED").map(l => l.itemId)).size;
     rawCard2 = uniqueAdjusted;
     labelCard2 = "UNIQUE ITEMS ADJUSTED";
     colorCard2 = "#3b82f6";
     suffixCard2 = "";
 
-    const performers = new Set(contextLogs.filter(l => l.action === "STOCK_ADJUSTED").map(l => l.user?.email || "System")).size;
+    const performers = new Set(dashboardContextLogs.filter(l => l.action === "STOCK_ADJUSTED").map(l => l.user?.email || "System")).size;
     rawCard3 = performers;
     labelCard3 = "ACTIVE PERFORMERS";
     colorCard3 = "#f59e0b";
 
-    const lowStock = itemsList.filter(it => it.stockLevels?.some((sl: any) => sl.quantity <= sl.reorderPoint)).length;
+    const lowStock = dashboardFilteredLowStockAlerts.length;
     rawCard4 = lowStock;
     labelCard4 = "LOW STOCK ALERTS";
     colorCard4 = "#ef4444";
+  } else if (activeMetricFilter === "LOW_STOCK_ALERTS") {
+    // Low Stock Alert Metrics
+    rawCard1 = dashboardFilteredLowStockAlerts.length;
+    labelCard1 = "TOTAL ALERTS";
+    colorCard1 = "#ef4444";
+
+    const outOfStock = dashboardFilteredLowStockAlerts.filter(a => a.quantity === 0).length;
+    rawCard2 = outOfStock;
+    labelCard2 = "OUT OF STOCK";
+    colorCard2 = "#dc2626";
+    suffixCard2 = "";
+
+    const critical = dashboardFilteredLowStockAlerts.filter(a => a.quantity <= a.reorderPoint / 2).length;
+    rawCard3 = critical;
+    labelCard3 = "CRITICAL ALERTS";
+    colorCard3 = "#b91c1c";
+
+    const uniqueSites = new Set(dashboardFilteredLowStockAlerts.map(a => a.siteId)).size;
+    rawCard4 = uniqueSites;
+    labelCard4 = "AFFECTED SITES";
+    colorCard4 = "#475569";
   } else {
     // General Metrics (ALL) - combines both
-    rawCard1 = contextLogs.length + filteredVirtualPOLogs.length;
+    rawCard1 = dashboardContextLogs.length + dashboardFilteredVirtualPOLogs.length;
     labelCard1 = "TOTAL ACTIONS";
     colorCard1 = "#0f172a";
 
@@ -366,12 +521,12 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     colorCard2 = "#6366f1";
     suffixCard2 = "%";
 
-    const performers = new Set([...contextLogs.map(l => l.user?.email || "System"), "procurement@company.com"]).size;
+    const performers = new Set([...dashboardContextLogs.map(l => l.user?.email || "System"), "procurement@company.com"]).size;
     rawCard3 = performers;
     labelCard3 = "ACTIVE PERFORMERS";
     colorCard3 = "#f59e0b";
 
-    const lowStock = itemsList.filter(it => it.stockLevels?.some((sl: any) => sl.quantity <= sl.reorderPoint)).length;
+    const lowStock = dashboardFilteredLowStockAlerts.length;
     rawCard4 = lowStock;
     labelCard4 = "LOW STOCK ALERTS";
     colorCard4 = "#ef4444";
@@ -384,13 +539,19 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   const valCard4 = useCountUp(rawCard4);
 
   // Overview Cards (Always fixed unfiltered counts)
-  const rawStockAdjustmentsTotal = contextLogs.filter(l => l.action === "STOCK_ADJUSTED").length;
-  const rawActivePOsTotal = activePOsList.filter((po: any) => po.status === "ORDERED" || po.status === "PARTIALLY_RECEIVED").length;
-  const rawAllRecordsTotal = contextLogs.length + filteredVirtualPOLogs.length;
+  const rawStockAdjustmentsTotal = dashboardContextLogs.filter(l => l.action === "STOCK_ADJUSTED").length;
+  const rawActivePOsTotal = activePOsList.filter((po: any) => {
+    const poSiteId = po.siteId || (po.site?.id) || "site-1";
+    const matchesSite = siteFilter === "ALL" || poSiteId === siteFilter;
+    return (po.status === "ORDERED" || po.status === "PARTIALLY_RECEIVED") && matchesSite;
+  }).length;
+  const rawAllRecordsTotal = dashboardContextLogs.length + dashboardFilteredVirtualPOLogs.length + dashboardFilteredVirtualLowStockAlertLogs.length;
+  const rawLowStockAlertsTotal = dashboardFilteredLowStockAlerts.length;
 
   const stockAdjustmentsOverviewVal = useCountUp(rawStockAdjustmentsTotal);
   const activePOsOverviewVal = useCountUp(rawActivePOsTotal);
   const allRecordsOverviewVal = useCountUp(rawAllRecordsTotal);
+  const lowStockAlertsOverviewVal = useCountUp(rawLowStockAlertsTotal);
 
   // Resolve Calendar limits
   const getEndDate = () => {
@@ -436,14 +597,17 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   const chartWidth = svgWidth - paddingLeft - paddingRight;
   const chartHeight = svgHeight - paddingTop - paddingBottom;
 
-  const logsDayCounts = last7Days.map(day => contextLogs.filter(log => isSameDay(day, log.createdAt)).length);
-  const poDayCounts = last7Days.map(day => filteredVirtualPOLogs.filter(po => isSameDay(day, po.createdAt)).length);
+  const logsDayCounts = last7Days.map(day => dashboardContextLogs.filter(log => isSameDay(day, log.createdAt)).length);
+  const poDayCounts = last7Days.map(day => dashboardFilteredVirtualPOLogs.filter(po => isSameDay(day, po.createdAt)).length);
 
   let maxLimit = 5;
   if (activeMetricFilter === "PO_ORDERS") {
     maxLimit = Math.max(...poDayCounts, 5);
   } else if (activeMetricFilter === "STOCK_ADJUSTMENTS") {
     maxLimit = Math.max(...logsDayCounts, 5);
+  } else if (activeMetricFilter === "LOW_STOCK_ALERTS") {
+    const topAlerts = dashboardFilteredLowStockAlerts.slice(0, 7);
+    maxLimit = Math.max(...topAlerts.flatMap(a => [a.quantity, a.reorderPoint]), 5);
   } else {
     maxLimit = Math.max(...logsDayCounts, ...poDayCounts, 5);
   }
@@ -495,15 +659,23 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
       { status: "DRAFT", label: "Draft", color: "#64748b" },
     ];
     doughnutData = poStatusCategories.map(cat => {
-      const count = activePOsList.filter(po => po.status === cat.status).length;
+      const count = activePOsList.filter(po => {
+        const poSiteId = po.siteId || (po.site?.id) || "site-1";
+        const matchesSite = siteFilter === "ALL" || poSiteId === siteFilter;
+        return po.status === cat.status && matchesSite;
+      }).length;
       return { ...cat, count };
     }).filter(c => c.count > 0);
 
     // Bar Chart: Active Suppliers
     const supplierCounts: { [key: string]: number } = {};
     activePOsList.forEach(po => {
-      const sName = po.supplier?.name || po.supplierName || "Default Supplier";
-      supplierCounts[sName] = (supplierCounts[sName] || 0) + 1;
+      const poSiteId = po.siteId || (po.site?.id) || "site-1";
+      const matchesSite = siteFilter === "ALL" || poSiteId === siteFilter;
+      if (matchesSite) {
+        const sName = po.supplier?.name || po.supplierName || "Default Supplier";
+        supplierCounts[sName] = (supplierCounts[sName] || 0) + 1;
+      }
     });
     activeCategories = Object.entries(supplierCounts)
       .map(([name, count]) => ({ name, count }))
@@ -525,7 +697,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
       if (d.includes("decrease")) return "decrease";
       return "correction";
     };
-    const adjustments = contextLogs.filter(l => l.action === "STOCK_ADJUSTED");
+    const adjustments = dashboardContextLogs.filter(l => l.action === "STOCK_ADJUSTED");
     doughnutData = adjReasonCategories.map(cat => {
       const count = adjustments.filter(l => getReasonKey(l.details || "") === cat.key).length;
       return { ...cat, count };
@@ -533,11 +705,31 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
 
     // Bar Chart: Adjusted Categories
     const categoryCounts: { [key: string]: number } = {};
-    contextLogs.filter(l => l.action === "STOCK_ADJUSTED").forEach(log => {
+    dashboardContextLogs.filter(l => l.action === "STOCK_ADJUSTED").forEach(log => {
       const catName = log.item?.category?.name || log.itemCategory || "Generic / Other";
       categoryCounts[catName] = (categoryCounts[catName] || 0) + 1;
     });
     activeCategories = Object.entries(categoryCounts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 4);
+
+  } else if (activeMetricFilter === "LOW_STOCK_ALERTS") {
+    // Doughnut Chart: Low Stock Status breakdown
+    const outOfStockCount = dashboardFilteredLowStockAlerts.filter(a => a.quantity === 0).length;
+    const lowStockCount = dashboardFilteredLowStockAlerts.filter(a => a.quantity > 0).length;
+    doughnutData = [
+      { label: "Out of Stock", count: outOfStockCount, color: "#dc2626" },
+      { label: "Low Stock Alert", count: lowStockCount, color: "#f59e0b" }
+    ].filter(c => c.count > 0);
+
+    // Bar Chart: Low stock alerts by Category
+    const alertCategoryCounts: { [key: string]: number } = {};
+    dashboardFilteredLowStockAlerts.forEach(alert => {
+      const catName = alert.category || "Uncategorized";
+      alertCategoryCounts[catName] = (alertCategoryCounts[catName] || 0) + 1;
+    });
+    activeCategories = Object.entries(alertCategoryCounts)
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 4);
@@ -552,16 +744,17 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
       { action: "ITEM_CREATED", label: "Item created", color: "#3b82f6" },
       { action: "ITEM_UPDATED", label: "Item modified", color: "#f59e0b" },
       { action: "ITEM_DELETED", label: "Item deleted", color: "#ef4444" },
-      { action: "PO_ORDERS", label: "Purchase orders", color: "#7c3aed" } // Violet segment for POs
+      { action: "PO_ORDERS", label: "Purchase orders", color: "#7c3aed" }, // Violet segment for POs
+      { action: "LOW_STOCK_ALERT", label: "Low stock alerts", color: "#dc2626" }
     ];
     doughnutData = segmentCategoriesGeneral.map(cat => {
-      const count = activeMetricFilteredLogs.filter(l => l.action === cat.action).length;
+      const count = dashboardActiveMetricFilteredLogs.filter(l => l.action === cat.action).length;
       return { ...cat, count };
     }).filter(c => c.count > 0);
 
     // Bar Chart: Categories including PO Suppliers
     const categoryCounts: { [key: string]: number } = {};
-    activeMetricFilteredLogs.forEach(log => {
+    dashboardActiveMetricFilteredLogs.forEach(log => {
       if (log.action === "PO_ORDERS") {
         categoryCounts["PO Suppliers"] = (categoryCounts["PO Suppliers"] || 0) + 1;
       } else {
@@ -602,14 +795,26 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   const handleExportFilteredLogs = () => {
     if (activeMetricFilter === "PO_ORDERS") {
       const headers = ["PO Number", "Supplier", "Site Location", "Total Cost", "Status"];
-      const rows = activePOsList.map(po => [
+      const rows = filteredPOs.map(po => [
         po.id,
         po.supplier?.name || po.supplierName || "Default Supplier",
-        po.site?.name || po.siteName || "Cebu IT Park",
+        po.site?.name || po.siteName || po.site || "Cebu IT Park",
         `$${Number(po.totalCost || 0).toFixed(2)}`,
         po.status
       ]);
       downloadCSV("purchase_orders_report.csv", headers, rows);
+    } else if (activeMetricFilter === "LOW_STOCK_ALERTS") {
+      const headers = ["SKU", "Item Name", "Category", "Site Location", "Current Stock", "Reorder Point", "Status"];
+      const rows = tableFilteredLowStockAlerts.map((alert: any) => [
+        alert.sku,
+        alert.name,
+        alert.category,
+        alert.siteId === "site-1" ? "Cebu IT Park" : alert.siteId === "site-2" ? "Toronto HQ" : alert.siteId,
+        alert.quantity,
+        alert.reorderPoint,
+        alert.status === "OUT_OF_STOCK" ? "OUT OF STOCK" : "LOW STOCK"
+      ]);
+      downloadCSV("low_stock_alerts_report.csv", headers, rows);
     } else {
       const headers = ["Timestamp", "Performed By", "Email", "Action", "Item", "SKU", "Details", "IP Address"];
       const rows = filteredLogs.map(log => [
@@ -745,7 +950,37 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
             Audit trail, activity trends, and exportable reports.
           </p>
         </div>
-        <div style={{ display: "flex", gap: "0.75rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+
+          {/* Site Filter — Overview & Charts */}
+          <div style={{ position: "relative", minWidth: "160px" }}>
+            <select
+              value={siteFilter}
+              onChange={(e) => setSiteFilter(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "0.45rem 2rem 0.45rem 0.65rem",
+                borderRadius: "8px",
+                border: "1px solid #cbd5e1",
+                fontSize: "0.8rem",
+                color: "#334155",
+                backgroundColor: "#f8fafc",
+                outline: "none",
+                cursor: "pointer",
+                appearance: "none",
+                fontWeight: 500,
+              }}
+            >
+              <option value="ALL">All sites (Overview)</option>
+              {sitesList.map((site: any) => (
+                <option key={site.id} value={site.id}>{site.name} (Overview)</option>
+              ))}
+            </select>
+            <svg style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </div>
+
           <button
             onClick={fetchLogs}
             className="btn-hover-effect"
@@ -827,21 +1062,21 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
               <span style={{
                 fontSize: '0.7rem',
                 fontWeight: 700,
-                color: activeMetricFilter === "PO_ORDERS" ? '#3b82f6' : activeMetricFilter === "STOCK_ADJUSTMENTS" ? '#10b981' : '#6366f1',
-                backgroundColor: activeMetricFilter === "PO_ORDERS" ? 'rgba(59, 130, 246, 0.05)' : activeMetricFilter === "STOCK_ADJUSTMENTS" ? 'rgba(16, 185, 129, 0.05)' : 'rgba(99, 102, 241, 0.05)',
+                color: activeMetricFilter === "PO_ORDERS" ? '#3b82f6' : activeMetricFilter === "STOCK_ADJUSTMENTS" ? '#10b981' : activeMetricFilter === "LOW_STOCK_ALERTS" ? '#ef4444' : '#6366f1',
+                backgroundColor: activeMetricFilter === "PO_ORDERS" ? 'rgba(59, 130, 246, 0.05)' : activeMetricFilter === "STOCK_ADJUSTMENTS" ? 'rgba(16, 185, 129, 0.05)' : activeMetricFilter === "LOW_STOCK_ALERTS" ? 'rgba(239, 68, 68, 0.05)' : 'rgba(99, 102, 241, 0.05)',
                 padding: '0.2rem 0.5rem',
                 borderRadius: 4
               }}>
-                {activeMetricFilter === "PO_ORDERS" ? "Active PO Orders" : activeMetricFilter === "STOCK_ADJUSTMENTS" ? "Stock Adjustments" : "All Records"}
+                {activeMetricFilter === "PO_ORDERS" ? "Active PO Orders" : activeMetricFilter === "STOCK_ADJUSTMENTS" ? "Stock Adjustments" : activeMetricFilter === "LOW_STOCK_ALERTS" ? "Low Stock Alerts" : "All Records"}
               </span>
             </div>
           )}
         </div>
         
-        {/* Expanded Content: The 3 clickable overview cards */}
+        {/* Expanded Content: The 4 clickable overview cards */}
         <div style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
           gap: '1.25rem',
           opacity: isOverviewExpanded ? 1 : 0,
           transform: isOverviewExpanded ? 'translateY(0)' : 'translateY(-10px)',
@@ -904,7 +1139,35 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
             </span>
           </div>
 
-          {/* Card 3: ALL RECORDS */}
+          {/* Card 3: LOW STOCK ALERTS */}
+          <div
+            onClick={() => setActiveMetricFilter(prev => prev === "LOW_STOCK_ALERTS" ? "ALL" : "LOW_STOCK_ALERTS")}
+            className="btn-hover-effect"
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: "12px",
+              padding: "1rem 1.25rem",
+              boxShadow: "0 1px 2px rgba(15,23,42,0.02), 0 0 0 1px rgba(226,232,240,0.8)",
+              border: activeMetricFilter === "LOW_STOCK_ALERTS" ? "2px solid #ef4444" : "2px solid transparent",
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.25rem",
+              cursor: "pointer",
+              userSelect: "none"
+            }}
+          >
+            <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b", letterSpacing: "0.05em" }}>
+              LOW STOCK ALERTS
+            </span>
+            <span style={{ fontSize: "1.75rem", fontWeight: 700, color: "#ef4444", lineHeight: 1 }}>
+              {lowStockAlertsOverviewVal}
+            </span>
+            <span style={{ fontSize: "0.68rem", color: "#94a3b8" }}>
+              {activeMetricFilter === "LOW_STOCK_ALERTS" ? "⚡ Filtering: showing low stock alerts" : "Click to filter table and graphs"}
+            </span>
+          </div>
+
+          {/* Card 4: ALL RECORDS */}
           <div
             onClick={() => setActiveMetricFilter("ALL")}
             className="btn-hover-effect"
@@ -990,20 +1253,38 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           {/* Chart Header & Legend pills */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap", marginBottom: "1.25rem" }}>
             <h2 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
-              Activity over last 7 days {dateFilter && `(ending ${dayLabels[6]})`}
+              {activeMetricFilter === "LOW_STOCK_ALERTS"
+                ? "Current Stock vs Reorder Points (Top 7 Alerts)"
+                : `Activity over last 7 days ${dateFilter ? `(ending ${dayLabels[6]})` : ""}`
+              }
             </h2>
             <div style={{ display: "flex", gap: "0.75rem", fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>
-              {activeMetricFilter !== "PO_ORDERS" && (
-                <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                  <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", backgroundColor: activeMetricFilter === "STOCK_ADJUSTMENTS" ? "#10b981" : "#3b82f6" }} />
-                  <span>{activeMetricFilter === "STOCK_ADJUSTMENTS" ? "Stock Adjustments" : "Stock Activity"}</span>
-                </div>
-              )}
-              {activeMetricFilter !== "STOCK_ADJUSTMENTS" && (
-                <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                  <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", backgroundColor: "#7c3aed" }} />
-                  <span>Purchase Orders</span>
-                </div>
+              {activeMetricFilter === "LOW_STOCK_ALERTS" ? (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                    <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "2px", backgroundColor: "#ef4444" }} />
+                    <span>Current Stock</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                    <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "2px", backgroundColor: "#64748b" }} />
+                    <span>Reorder Point</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {activeMetricFilter !== "PO_ORDERS" && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                      <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", backgroundColor: activeMetricFilter === "STOCK_ADJUSTMENTS" ? "#10b981" : "#3b82f6" }} />
+                      <span>{activeMetricFilter === "STOCK_ADJUSTMENTS" ? "Stock Adjustments" : "Stock Activity"}</span>
+                    </div>
+                  )}
+                  {activeMetricFilter !== "STOCK_ADJUSTMENTS" && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                      <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", backgroundColor: "#7c3aed" }} />
+                      <span>Purchase Orders</span>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -1049,104 +1330,185 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                 );
               })}
 
-              {/* RENDER LOGS LINE */}
-              {activeMetricFilter !== "PO_ORDERS" && (
-                <>
-                  {areaPathLogs && (
-                    <path d={areaPathLogs} fill="url(#chartAreaGradientLogs)" />
-                  )}
-                  {linePathLogs && (
-                    <path
-                      d={linePathLogs}
-                      fill="none"
-                      stroke={activeMetricFilter === "STOCK_ADJUSTMENTS" ? "#10b981" : "#3b82f6"}
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  )}
-                  {pointsLogs.map((p, idx) => (
-                    <g key={`log-${idx}`}>
-                      <circle
-                        cx={p.x}
-                        cy={p.y}
-                        r="4.5"
-                        fill={activeMetricFilter === "STOCK_ADJUSTMENTS" ? "#10b981" : "#3b82f6"}
-                        stroke="#ffffff"
-                        strokeWidth="2.5"
-                        className="chart-node"
-                        style={{ cursor: "pointer" }}
-                        onMouseEnter={() => setHoveredPoint({
-                          x: p.x,
-                          y: p.y,
-                          date: dayLabels[idx],
-                          count: p.count,
-                          label: p.label,
-                          color: p.color
-                        })}
-                        onMouseLeave={() => setHoveredPoint(null)}
-                      />
-                    </g>
-                  ))}
-                </>
-              )}
+              {/* RENDER DUAL BAR CHART FOR LOW STOCK ALERTS */}
+              {activeMetricFilter === "LOW_STOCK_ALERTS" ? (
+                dashboardFilteredLowStockAlerts.slice(0, 7).map((alert: any, idx: number) => {
+                  const sectionWidth = chartWidth / 7;
+                  const x = paddingLeft + sectionWidth * (idx + 0.5);
 
-              {/* RENDER PO LINE */}
-              {activeMetricFilter !== "STOCK_ADJUSTMENTS" && (
-                <>
-                  {areaPathPOs && (
-                    <path d={areaPathPOs} fill="url(#chartAreaGradientPOs)" />
-                  )}
-                  {linePathPOs && (
-                    <path
-                      d={linePathPOs}
-                      fill="none"
-                      stroke="#7c3aed"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  )}
-                  {pointsPOs.map((p, idx) => (
-                    <g key={`po-${idx}`}>
-                      <circle
-                        cx={p.x}
-                        cy={p.y}
-                        r="4.5"
-                        fill="#7c3aed"
-                        stroke="#ffffff"
-                        strokeWidth="2.5"
+                  const currentBarHeight = (alert.quantity / maxLimit) * chartHeight;
+                  const currentY = paddingTop + chartHeight - currentBarHeight;
+
+                  const reorderBarHeight = (alert.reorderPoint / maxLimit) * chartHeight;
+                  const reorderY = paddingTop + chartHeight - reorderBarHeight;
+
+                  return (
+                    <g key={`alert-bar-${idx}`}>
+                      {/* Current Stock Bar */}
+                      <rect
+                        x={x - 8}
+                        y={currentY}
+                        width="6"
+                        height={Math.max(currentBarHeight, 2)}
+                        fill={alert.quantity === 0 ? "#dc2626" : "#ef4444"}
+                        rx="1.5"
                         className="chart-node"
-                        style={{ cursor: "pointer" }}
+                        style={{ cursor: "pointer", transition: "all 0.15s ease" }}
                         onMouseEnter={() => setHoveredPoint({
-                          x: p.x,
-                          y: p.y,
-                          date: dayLabels[idx],
-                          count: p.count,
-                          label: p.label,
-                          color: p.color
+                          x: x - 5,
+                          y: currentY,
+                          date: alert.name,
+                          count: alert.quantity,
+                          label: `Current Stock (${alert.sku})`,
+                          color: "#ef4444"
+                        })}
+                        onMouseLeave={() => setHoveredPoint(null)}
+                      />
+                      {/* Reorder Threshold Bar */}
+                      <rect
+                        x={x + 2}
+                        y={reorderY}
+                        width="6"
+                        height={Math.max(reorderBarHeight, 2)}
+                        fill="#64748b"
+                        rx="1.5"
+                        className="chart-node"
+                        style={{ cursor: "pointer", transition: "all 0.15s ease" }}
+                        onMouseEnter={() => setHoveredPoint({
+                          x: x + 5,
+                          y: reorderY,
+                          date: alert.name,
+                          count: alert.reorderPoint,
+                          label: `Reorder Point (${alert.sku})`,
+                          color: "#64748b"
                         })}
                         onMouseLeave={() => setHoveredPoint(null)}
                       />
                     </g>
-                  ))}
+                  );
+                })
+              ) : (
+                <>
+                  {/* RENDER LOGS LINE */}
+                  {activeMetricFilter !== "PO_ORDERS" && (
+                    <>
+                      {areaPathLogs && (
+                        <path d={areaPathLogs} fill="url(#chartAreaGradientLogs)" />
+                      )}
+                      {linePathLogs && (
+                        <path
+                          d={linePathLogs}
+                          fill="none"
+                          stroke={activeMetricFilter === "STOCK_ADJUSTMENTS" ? "#10b981" : "#3b82f6"}
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      )}
+                      {pointsLogs.map((p, idx) => (
+                        <g key={`log-${idx}`}>
+                          <circle
+                            cx={p.x}
+                            cy={p.y}
+                            r="4.5"
+                            fill={activeMetricFilter === "STOCK_ADJUSTMENTS" ? "#10b981" : "#3b82f6"}
+                            stroke="#ffffff"
+                            strokeWidth="2.5"
+                            className="chart-node"
+                            style={{ cursor: "pointer" }}
+                            onMouseEnter={() => setHoveredPoint({
+                              x: p.x,
+                              y: p.y,
+                              date: dayLabels[idx],
+                              count: p.count,
+                              label: p.label,
+                              color: p.color
+                            })}
+                            onMouseLeave={() => setHoveredPoint(null)}
+                          />
+                        </g>
+                      ))}
+                    </>
+                  )}
+
+                  {/* RENDER PO LINE */}
+                  {activeMetricFilter !== "STOCK_ADJUSTMENTS" && (
+                    <>
+                      {areaPathPOs && (
+                        <path d={areaPathPOs} fill="url(#chartAreaGradientPOs)" />
+                      )}
+                      {linePathPOs && (
+                        <path
+                          d={linePathPOs}
+                          fill="none"
+                          stroke="#7c3aed"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      )}
+                      {pointsPOs.map((p, idx) => (
+                        <g key={`po-${idx}`}>
+                          <circle
+                            cx={p.x}
+                            cy={p.y}
+                            r="4.5"
+                            fill="#7c3aed"
+                            stroke="#ffffff"
+                            strokeWidth="2.5"
+                            className="chart-node"
+                            style={{ cursor: "pointer" }}
+                            onMouseEnter={() => setHoveredPoint({
+                              x: p.x,
+                              y: p.y,
+                              date: dayLabels[idx],
+                              count: p.count,
+                              label: p.label,
+                              color: p.color
+                            })}
+                            onMouseLeave={() => setHoveredPoint(null)}
+                          />
+                        </g>
+                      ))}
+                    </>
+                  )}
                 </>
               )}
 
               {/* X Axis Labels */}
-              {pointsLogs.map((p, idx) => (
-                <text
-                  key={idx}
-                  x={p.x}
-                  y={paddingTop + chartHeight + 16}
-                  textAnchor="middle"
-                  fontSize="9.5"
-                  fill="#94a3b8"
-                  style={{ fontWeight: 500 }}
-                >
-                  {dayLabels[idx]}
-                </text>
-              ))}
+              {activeMetricFilter === "LOW_STOCK_ALERTS" ? (
+                dashboardFilteredLowStockAlerts.slice(0, 7).map((alert: any, idx: number) => {
+                  const sectionWidth = chartWidth / 7;
+                  const x = paddingLeft + sectionWidth * (idx + 0.5);
+                  return (
+                    <text
+                      key={`sku-label-${idx}`}
+                      x={x}
+                      y={paddingTop + chartHeight + 16}
+                      textAnchor="middle"
+                      fontSize="8"
+                      fill="#94a3b8"
+                      style={{ fontWeight: 600 }}
+                    >
+                      {alert.sku}
+                    </text>
+                  );
+                })
+              ) : (
+                pointsLogs.map((p, idx) => (
+                  <text
+                    key={idx}
+                    x={p.x}
+                    y={paddingTop + chartHeight + 16}
+                    textAnchor="middle"
+                    fontSize="9.5"
+                    fill="#94a3b8"
+                    style={{ fontWeight: 500 }}
+                  >
+                    {dayLabels[idx]}
+                  </text>
+                ))
+              )}
             </svg>
 
             {/* Floating HTML Tooltip */}
@@ -1198,7 +1560,14 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           }}
         >
           <h2 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0f172a", margin: "0 0 1.25rem 0", width: "100%", textAlign: "left" }}>
-            {activeMetricFilter === "PO_ORDERS" ? "POs by status" : activeMetricFilter === "STOCK_ADJUSTMENTS" ? "Adjustments by type" : "Actions by type (incl. POs)"}
+            {activeMetricFilter === "PO_ORDERS" 
+              ? "POs by status" 
+              : activeMetricFilter === "STOCK_ADJUSTMENTS" 
+              ? "Adjustments by type" 
+              : activeMetricFilter === "LOW_STOCK_ALERTS"
+              ? "Alerts by status"
+              : "Actions by type (incl. POs)"
+            }
           </h2>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, gap: "1.5rem", width: "100%" }}>
             <div style={{ position: "relative", width: "110px", height: "110px" }}>
@@ -1230,7 +1599,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                     const strokeDasharray = `${pct * DOUGHNUT_CIRCUMFERENCE} ${DOUGHNUT_CIRCUMFERENCE}`;
                     const strokeDashoffset = -cumulativePercent * DOUGHNUT_CIRCUMFERENCE;
                     cumulativePercent += pct;
-
+ 
                     return (
                       <circle
                         key={idx}
@@ -1252,7 +1621,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                 })()}
               </svg>
             </div>
-
+ 
             {/* Legend */}
             <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", width: "100%" }}>
               {doughnutData.map((seg, idx) => (
@@ -1269,13 +1638,13 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
               ))}
               {doughnutData.length === 0 && (
                 <span style={{ fontSize: "0.75rem", color: "#94a3b8", fontStyle: "italic", textAlign: "center" }}>
-                  No actions logged
+                  {activeMetricFilter === "LOW_STOCK_ALERTS" ? "No active alerts" : "No actions logged"}
                 </span>
               )}
             </div>
           </div>
         </div>
-
+ 
         {/* Graph: Activity by Category */}
         <div 
           className="stagger-card"
@@ -1291,7 +1660,12 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           }}
         >
           <h2 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0f172a", margin: "0 0 1.25rem 0" }}>
-            {activeMetricFilter === "PO_ORDERS" ? "Orders by supplier" : "Activity by category"}
+            {activeMetricFilter === "PO_ORDERS" 
+              ? "Orders by supplier" 
+              : activeMetricFilter === "LOW_STOCK_ALERTS"
+              ? "Alerts by category"
+              : "Activity by category"
+            }
           </h2>
           <div style={{ display: "flex", flexDirection: "column", justifySelf: "center", flex: 1, gap: "1rem", width: "100%", justifyContent: "center" }}>
             {activeCategories.map((cat, idx) => {
@@ -1301,7 +1675,9 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                 <div key={idx} style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", color: "#475569" }}>
                     <span style={{ fontWeight: 600 }}>{cat.name}</span>
-                    <span style={{ fontWeight: 500 }}>{cat.count} {activeMetricFilter === "PO_ORDERS" ? "orders" : "actions"}</span>
+                    <span style={{ fontWeight: 500 }}>
+                      {cat.count} {activeMetricFilter === "PO_ORDERS" ? "orders" : activeMetricFilter === "LOW_STOCK_ALERTS" ? "alerts" : "actions"}
+                    </span>
                   </div>
                   <div style={{ width: "100%", height: "8px", backgroundColor: "#f1f5f9", borderRadius: "4px", overflow: "hidden" }}>
                     <div style={{
@@ -1317,7 +1693,12 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
             })}
             {activeCategories.length === 0 && (
               <span style={{ fontSize: "0.75rem", color: "#94a3b8", fontStyle: "italic", textAlign: "center" }}>
-                {activeMetricFilter === "PO_ORDERS" ? "No supplier data" : "No category data logged"}
+                {activeMetricFilter === "PO_ORDERS" 
+                  ? "No supplier data" 
+                  : activeMetricFilter === "LOW_STOCK_ALERTS"
+                  ? "No active alerts"
+                  : "No category data logged"
+                }
               </span>
             )}
           </div>
@@ -1344,7 +1725,13 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           </svg>
           <input
             type="text"
-            placeholder={activeMetricFilter === "PO_ORDERS" ? "Search supplier, site location..." : "Search action, details, user, SKU..."}
+            placeholder={
+              activeMetricFilter === "PO_ORDERS" 
+                ? "Search supplier, site location..." 
+                : activeMetricFilter === "LOW_STOCK_ALERTS"
+                ? "Search SKU, item name, category..."
+                : "Search action, details, user, SKU..."
+            }
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="search-glow"
@@ -1361,11 +1748,11 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           />
         </div>
 
-        {/* Action Filter (Disabled in PO Orders mode) */}
+        {/* Action Filter (Disabled in PO Orders or Low Stock Alerts mode) */}
         <div style={{ position: "relative", flex: "1 1 140px" }}>
           <select
             value={actionFilter}
-            disabled={activeMetricFilter === "PO_ORDERS"}
+            disabled={activeMetricFilter === "PO_ORDERS" || activeMetricFilter === "LOW_STOCK_ALERTS"}
             onChange={(e) => setActionFilter(e.target.value)}
             style={{
               width: "100%",
@@ -1373,10 +1760,10 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
               borderRadius: "8px",
               border: "1px solid #cbd5e1",
               fontSize: "0.85rem",
-              color: activeMetricFilter === "PO_ORDERS" ? "#94a3b8" : "#334155",
-              backgroundColor: activeMetricFilter === "PO_ORDERS" ? "#f8fafc" : "#ffffff",
+              color: (activeMetricFilter === "PO_ORDERS" || activeMetricFilter === "LOW_STOCK_ALERTS") ? "#94a3b8" : "#334155",
+              backgroundColor: (activeMetricFilter === "PO_ORDERS" || activeMetricFilter === "LOW_STOCK_ALERTS") ? "#f8fafc" : "#ffffff",
               outline: "none",
-              cursor: activeMetricFilter === "PO_ORDERS" ? "not-allowed" : "pointer",
+              cursor: (activeMetricFilter === "PO_ORDERS" || activeMetricFilter === "LOW_STOCK_ALERTS") ? "not-allowed" : "pointer",
               appearance: "none",
             }}
           >
@@ -1386,7 +1773,10 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
             <option value="ITEM_UPDATED">Item modified</option>
             <option value="ITEM_DELETED">Item deleted</option>
             {activeMetricFilter === "ALL" && (
-              <option value="PO_ORDERS">Purchase orders</option>
+              <>
+                <option value="PO_ORDERS">Purchase orders</option>
+                <option value="LOW_STOCK_ALERT">Low stock alerts</option>
+              </>
             )}
           </select>
           <svg style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#64748b", pointerEvents: "none" }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -1394,11 +1784,11 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           </svg>
         </div>
 
-        {/* Site Filter */}
-        <div style={{ position: "relative", flex: "1 1 140px" }}>
+        {/* Site Filter (Table only) */}
+        <div style={{ position: "relative", flex: "1 1 150px" }}>
           <select
-            value={siteFilter}
-            onChange={(e) => setSiteFilter(e.target.value)}
+            value={tableSiteFilter}
+            onChange={(e) => setTableSiteFilter(e.target.value)}
             style={{
               width: "100%",
               padding: "0.55rem 2.25rem 0.55rem 0.75rem",
@@ -1413,7 +1803,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
             }}
           >
             <option value="ALL">All sites</option>
-            {sitesList.map((site) => (
+            {sitesList.map((site: any) => (
               <option key={site.id} value={site.id}>
                 {site.name}
               </option>
@@ -1424,7 +1814,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           </svg>
         </div>
 
-        {/* Date Filter */}
+
         <div style={{ position: "relative", flex: "1 1 160px", display: "flex", gap: "0.25rem" }}>
           <input
             type="date"
@@ -1482,7 +1872,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
             }} />
             <span style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: 500 }}>Loading reports database...</span>
           </div>
-        ) : (activeMetricFilter === "PO_ORDERS" ? activePOsList.length === 0 : filteredLogs.length === 0) ? (
+        ) : (activeMetricFilter === "LOW_STOCK_ALERTS" ? tableFilteredLowStockAlerts.length === 0 : activeMetricFilter === "PO_ORDERS" ? filteredPOs.length === 0 : filteredLogs.length === 0) ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "4.5rem 1rem", textAlign: "center" }}>
             <span style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>📜</span>
             <span style={{ fontSize: "0.9rem", color: "#0f172a", fontWeight: 700, marginBottom: "0.25rem" }}>No records found</span>
@@ -1494,7 +1884,17 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           <div key={siteFilter + "_" + dateFilter + "_" + searchQuery + "_" + actionFilter + "_" + activeMetricFilter} className="table-container-fade" style={{ overflowX: "auto", maxHeight: "400px", overflowY: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem", textAlign: "left" }}>
               <thead style={{ position: "sticky", top: 0, backgroundColor: "#f8fafc", zIndex: 10, boxShadow: "0 1px 0 #e2e8f0" }}>
-                {activeMetricFilter === "PO_ORDERS" ? (
+                {activeMetricFilter === "LOW_STOCK_ALERTS" ? (
+                  <tr style={{ backgroundColor: "#f8fafc" }}>
+                    <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>SKU</th>
+                    <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Item Name</th>
+                    <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Category</th>
+                    <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Site Location</th>
+                    <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Current Stock</th>
+                    <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Reorder Point</th>
+                    <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Status</th>
+                  </tr>
+                ) : activeMetricFilter === "PO_ORDERS" ? (
                   <tr style={{ backgroundColor: "#f8fafc" }}>
                     <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>PO Number</th>
                     <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Supplier</th>
@@ -1513,38 +1913,34 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                 )}
               </thead>
               <tbody>
-                {activeMetricFilter === "PO_ORDERS" ? (
-                  activePOsList
-                    .filter(po => {
-                      const poSiteId = po.siteId || (po.site?.id) || "site-1";
-                      const matchesSite = siteFilter === "ALL" || poSiteId === siteFilter;
-                      
-                      const matchesSearch = 
-                        po.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        (po.supplier?.name || po.supplierName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        (po.site?.name || po.siteName || "").toLowerCase().includes(searchQuery.toLowerCase());
-
-                      return matchesSite && matchesSearch;
-                    })
-                    .map((po, idx) => (
-                      <tr key={po.id || idx}
+                {activeMetricFilter === "LOW_STOCK_ALERTS" ? (
+                  tableFilteredLowStockAlerts.map((alert: any, idx: number) => {
+                    const siteLabel = alert.siteId === "site-1" ? "Cebu IT Park" : alert.siteId === "site-2" ? "Toronto HQ" : alert.siteId;
+                    return (
+                      <tr key={alert.itemId + "_" + alert.siteId + "_" + idx}
                         className="table-row-hover"
                         style={{
-                          borderBottom: idx < activePOsList.length - 1 ? "1px solid #f1f5f9" : "none",
+                          borderBottom: idx < tableFilteredLowStockAlerts.length - 1 ? "1px solid #f1f5f9" : "none",
                           backgroundColor: idx % 2 === 1 ? "#fcfdfe" : "#ffffff",
                         }}
                       >
                         <td style={{ padding: "0.9rem 1.25rem", color: "#2563eb", fontWeight: 600 }}>
-                          {po.id}
+                          {alert.sku}
                         </td>
                         <td style={{ padding: "0.9rem 1.25rem", color: "#0f172a", fontWeight: 500 }}>
-                          {po.supplier?.name || po.supplierName || "Default Supplier"}
+                          {alert.name}
                         </td>
                         <td style={{ padding: "0.9rem 1.25rem", color: "#475569" }}>
-                          {po.site?.name || po.siteName || po.site || "Cebu IT Park"}
+                          {alert.category}
                         </td>
-                        <td style={{ padding: "0.9rem 1.25rem", color: "#0f172a", fontWeight: 600 }}>
-                          ${Number(po.totalCost || 0).toFixed(2)}
+                        <td style={{ padding: "0.9rem 1.25rem", color: "#475569" }}>
+                          {siteLabel}
+                        </td>
+                        <td style={{ padding: "0.9rem 1.25rem", color: alert.quantity === 0 ? "#dc2626" : "#d97706", fontWeight: 700 }}>
+                          {alert.quantity}
+                        </td>
+                        <td style={{ padding: "0.9rem 1.25rem", color: "#475569", fontWeight: 500 }}>
+                          {alert.reorderPoint}
                         </td>
                         <td style={{ padding: "0.9rem 1.25rem" }}>
                           <span style={{
@@ -1553,14 +1949,51 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                             borderRadius: "8px",
                             fontSize: "0.72rem",
                             fontWeight: 700,
-                            backgroundColor: po.status === "RECEIVED" ? "#d1fae5" : po.status === "ORDERED" ? "#eff6ff" : po.status === "PARTIALLY_RECEIVED" ? "#fffbeb" : po.status === "DRAFT" ? "#f1f5f9" : "#eff6ff",
-                            color: po.status === "RECEIVED" ? "#10b981" : po.status === "ORDERED" ? "#3b82f6" : po.status === "PARTIALLY_RECEIVED" ? "#f59e0b" : po.status === "DRAFT" ? "#64748b" : "#3b82f6",
+                            backgroundColor: alert.status === "OUT_OF_STOCK" ? "#fee2e2" : "#fffbeb",
+                            color: alert.status === "OUT_OF_STOCK" ? "#dc2626" : "#d97706",
                           }}>
-                            {po.status}
+                            {alert.status === "OUT_OF_STOCK" ? "OUT OF STOCK" : "LOW STOCK"}
                           </span>
                         </td>
                       </tr>
-                    ))
+                    );
+                  })
+                ) : activeMetricFilter === "PO_ORDERS" ? (
+                  filteredPOs.map((po, idx) => (
+                    <tr key={po.id || idx}
+                      className="table-row-hover"
+                      style={{
+                        borderBottom: idx < filteredPOs.length - 1 ? "1px solid #f1f5f9" : "none",
+                        backgroundColor: idx % 2 === 1 ? "#fcfdfe" : "#ffffff",
+                      }}
+                    >
+                      <td style={{ padding: "0.9rem 1.25rem", color: "#2563eb", fontWeight: 600 }}>
+                        {po.id}
+                      </td>
+                      <td style={{ padding: "0.9rem 1.25rem", color: "#0f172a", fontWeight: 500 }}>
+                        {po.supplier?.name || po.supplierName || "Default Supplier"}
+                      </td>
+                      <td style={{ padding: "0.9rem 1.25rem", color: "#475569" }}>
+                        {po.site?.name || po.siteName || po.site || "Cebu IT Park"}
+                      </td>
+                      <td style={{ padding: "0.9rem 1.25rem", color: "#0f172a", fontWeight: 600 }}>
+                        ${Number(po.totalCost || 0).toFixed(2)}
+                      </td>
+                      <td style={{ padding: "0.9rem 1.25rem" }}>
+                        <span style={{
+                          display: "inline-block",
+                          padding: "0.2rem 0.5rem",
+                          borderRadius: "8px",
+                          fontSize: "0.72rem",
+                          fontWeight: 700,
+                          backgroundColor: po.status === "RECEIVED" ? "#d1fae5" : po.status === "ORDERED" ? "#eff6ff" : po.status === "PARTIALLY_RECEIVED" ? "#fffbeb" : po.status === "DRAFT" ? "#f1f5f9" : "#eff6ff",
+                          color: po.status === "RECEIVED" ? "#10b981" : po.status === "ORDERED" ? "#3b82f6" : po.status === "PARTIALLY_RECEIVED" ? "#f59e0b" : po.status === "DRAFT" ? "#64748b" : "#3b82f6",
+                        }}>
+                          {po.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
                 ) : (
                   filteredLogs.map((log, idx) => (
                     <tr key={log.id || idx}
