@@ -219,9 +219,41 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   };
 
   // ── 1. Resolve Strict Local Scopes ─────────────────────────────────────
-  // Context logs filtered by siteFilter + dateFilter
+  // Helper to resolve a log's siteId from multiple possible locations
+  const resolveLogSiteId = (log: any): string =>
+    log.siteId || log.user?.siteId || log.user?.site?.id || log.site?.id || "";
+
+  // 7-day window for chart data (computed here so chartContextLogs can use it)
+  const getChartEndDate = () => {
+    if (!dateFilter) return new Date();
+    const [year, month, day] = dateFilter.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  };
+  const chartLast7Days = Array.from({ length: 7 }, (_, i) => {
+    const d = getChartEndDate();
+    d.setDate(d.getDate() - (6 - i));
+    return d;
+  });
+  const chartWindowStart = chartLast7Days[0];
+  const chartWindowEnd = chartLast7Days[6];
+
+  // Chart logs: filtered by site ONLY (date = full 7-day window, not exact day)
+  const chartContextLogs = logs.filter((log) => {
+    const logSiteId = resolveLogSiteId(log);
+    const matchesSite = siteFilter === "ALL" || logSiteId === siteFilter;
+    const logDate = new Date(log.createdAt);
+    logDate.setHours(0, 0, 0, 0);
+    const windowStart = new Date(chartWindowStart);
+    windowStart.setHours(0, 0, 0, 0);
+    const windowEnd = new Date(chartWindowEnd);
+    windowEnd.setHours(23, 59, 59, 999);
+    const inWindow = logDate >= windowStart && logDate <= windowEnd;
+    return matchesSite && inWindow;
+  });
+
+  // Table/overview logs: filtered by site + exact date (for table and overview cards)
   const dashboardContextLogs = logs.filter((log) => {
-    const logSiteId = log.siteId || log.user?.siteId;
+    const logSiteId = resolveLogSiteId(log);
     const matchesSite = siteFilter === "ALL" || logSiteId === siteFilter;
 
     let matchesDate = true;
@@ -502,7 +534,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     return d;
   });
 
-  const dayLabels = last7Days.map(d =>
+  const dayLabels = chartLast7Days.map(d =>
     d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
   );
 
@@ -545,8 +577,8 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     return "#6366f1";
   };
 
-  const logsDayCounts = last7Days.map(day => dashboardContextLogs.filter(log => isSameDay(day, log.createdAt)).length);
-  const poDayCounts = last7Days.map(day => filteredVirtualPOLogs.filter(po => isSameDay(day, po.createdAt)).length);
+  const logsDayCounts = chartLast7Days.map(day => chartContextLogs.filter(log => isSameDay(day, log.createdAt)).length);
+  const poDayCounts = chartLast7Days.map(day => filteredVirtualPOLogs.filter(po => isSameDay(day, po.createdAt)).length);
 
   // Per-site line series (when siteFilter=ALL and not LOW_STOCK_ALERTS/PO_ORDERS)
   const perSiteLines: Array<{
@@ -558,17 +590,17 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
 
   if (showPerSiteLines) {
     const allSiteIds = Array.from(new Set(
-      dashboardContextLogs.map((l: any) => l.siteId || l.user?.siteId || "").filter(Boolean)
+      chartContextLogs.map((l: any) => resolveLogSiteId(l)).filter(Boolean)
     )) as string[];
     allSiteIds.forEach(sid => {
       const site = sitesList.find((s: any) => s.id === sid);
       const siteName = site?.name || sid;
       const color = getSiteLineColor(siteName);
-      const siteLogs = dashboardContextLogs.filter((l: any) =>
-        (l.siteId || l.user?.siteId) === sid &&
+      const siteLogs = chartContextLogs.filter((l: any) =>
+        resolveLogSiteId(l) === sid &&
         (activeMetricFilter !== "STOCK_ADJUSTMENTS" || l.action === "STOCK_ADJUSTED")
       );
-      const siteDayCounts = last7Days.map(day => siteLogs.filter((log: any) => isSameDay(day, log.createdAt)).length);
+      const siteDayCounts = chartLast7Days.map(day => siteLogs.filter((log: any) => isSameDay(day, log.createdAt)).length);
       perSiteLines.push({ siteId: sid, siteName, color, dayCounts: siteDayCounts, points: [], linePath: "" });
     });
   }
