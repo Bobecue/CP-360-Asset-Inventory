@@ -1197,14 +1197,45 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
             <div style={{ display: "flex", gap: "0.75rem", fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>
               {activeMetricFilter === "LOW_STOCK_ALERTS" ? (
                 <>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                    <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "2px", backgroundColor: "#ef4444" }} />
-                    <span>Current Stock</span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                    <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "2px", backgroundColor: "#64748b" }} />
-                    <span>Reorder Point</span>
-                  </div>
+                  {siteFilter === "ALL" ? (
+                    // Per-site legend when All Sites selected
+                    <>
+                      {Array.from(new Set(filteredLowStockAlerts.slice(0, 7).map((a: any) => a.siteId))).map((sid: any) => {
+                        const site = sitesList.find((s: any) => s.id === sid);
+                        const label = site?.name || (sid || "");
+                        const lc = label.toLowerCase();
+                        const color =
+                          lc.includes("skyrise") || lc.includes("4b") ? "#2563eb" :
+                          lc.includes("alpha") ? "#16a34a" :
+                          lc.includes("beta") ? "#9333ea" :
+                          lc.includes("cebu") || lc.includes("it park") ? "#ea580c" :
+                          lc.includes("toronto") || lc.includes("hq") ? "#0284c7" :
+                          "#ef4444";
+                        return (
+                          <div key={sid} style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                            <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "2px", backgroundColor: color }} />
+                            <span>{label}</span>
+                          </div>
+                        );
+                      })}
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                        <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "2px", backgroundColor: "#64748b" }} />
+                        <span>Reorder Point</span>
+                      </div>
+                    </>
+                  ) : (
+                    // Single site: keep original red / gray
+                    <>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                        <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "2px", backgroundColor: "#ef4444" }} />
+                        <span>Current Stock</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                        <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "2px", backgroundColor: "#64748b" }} />
+                        <span>Reorder Point</span>
+                      </div>
+                    </>
+                  )}
                 </>
               ) : (
                 <>
