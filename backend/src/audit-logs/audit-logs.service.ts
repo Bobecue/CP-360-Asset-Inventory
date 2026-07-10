@@ -47,6 +47,7 @@ export class AuditLogsService {
             email: true,
             name: true,
             role: true,
+            siteId: true,
           },
         },
         item: {

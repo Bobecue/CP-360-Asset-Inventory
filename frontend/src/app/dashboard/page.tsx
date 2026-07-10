@@ -156,58 +156,210 @@ export default function DashboardPage() {
   const [isScanModalOpen, setIsScanModalOpen] = useState(false);
   const [isBulkRequestOpen, setIsBulkRequestOpen] = useState(false);
 
-  const [mockAuditLogs, setMockAuditLogs] = useState<any[]>([
-    {
-      id: "mock-log-1",
-      action: "ITEM_CREATED",
-      details: 'Item "MacBook Pro 14\" M3" (SKU: IT-MBP-14) was created.',
-      userId: "user-1",
-      user: mockUsers[0],
-      itemId: "item-1",
-      ipAddress: "127.0.0.1",
-      createdAt: "2026-06-25T19:06:36.952Z"
-    },
-    {
-      id: "mock-log-2",
-      action: "STOCK_ADJUSTED",
-      details: 'Stock levels adjusted at site "Cebu IT Park" (CEB). Changes: Quantity: 0 -> 15',
-      userId: "user-1",
-      user: mockUsers[0],
-      itemId: "item-1",
-      ipAddress: "127.0.0.1",
-      createdAt: "2026-06-25T19:06:36.952Z"
-    },
-    {
-      id: "mock-log-3",
-      action: "ITEM_CREATED",
-      details: 'Item "Dell UltraSharp 27\\" Monitor" (SKU: IT-DEL-U27) was created.',
-      userId: "user-1",
-      user: mockUsers[0],
-      itemId: "item-2",
-      ipAddress: "127.0.0.1",
-      createdAt: "2026-06-25T19:10:00.000Z"
-    },
-    {
-      id: "mock-log-4",
-      action: "ITEM_CREATED",
-      details: 'Item "Logitech MX Master 3S" (SKU: IT-LOG-MX3S) was created.',
-      userId: "user-1",
-      user: mockUsers[0],
-      itemId: "item-3",
-      ipAddress: "127.0.0.1",
-      createdAt: "2026-06-25T19:12:00.000Z"
-    },
-    {
-      id: "mock-log-5",
-      action: "ITEM_CREATED",
-      details: 'Item "AA Alkaline Batteries (4-Pack)" (SKU: CON-BATT-AA) was created.',
-      userId: "user-1",
-      user: mockUsers[0],
-      itemId: "item-4",
-      ipAddress: "127.0.0.1",
-      createdAt: "2026-06-25T19:15:00.000Z"
-    }
-  ]);
+  const [mockAuditLogs, setMockAuditLogs] = useState<any[]>(() => {
+    const getPastDateStr = (daysAgo: number, timeStr: string) => {
+      const d = new Date();
+      d.setDate(d.getDate() - daysAgo);
+      const datePart = d.toISOString().split('T')[0];
+      return `${datePart}T${timeStr}`;
+    };
+
+    return [
+      {
+        id: "mock-log-1",
+        action: "STOCK_ADJUSTED",
+        details: "Qty 0 -> 3 at Skyrise 4B, STOCK_INCREASE",
+        userId: "user-christian",
+        user: {
+          id: "user-christian",
+          name: "Christian Mangas",
+          email: "christian.mangas@contactpoint360.com",
+          role: "ADMIN",
+          siteId: "site-1"
+        },
+        siteId: "site-1",
+        itemId: "item-1",
+        itemName: "Laptop",
+        itemSku: "AST-LAP-0012",
+        ipAddress: "192.168.1.102",
+        createdAt: getPastDateStr(1, "01:23:00.000Z") // Jul 9, 01:23 AM (1 day ago)
+      },
+      {
+        id: "mock-log-2",
+        action: "ITEM_CREATED",
+        details: "SKU AST-CON-0001 added to catalog",
+        userId: "user-christian",
+        user: {
+          id: "user-christian",
+          name: "Christian Mangas",
+          email: "christian.mangas@contactpoint360.com",
+          role: "ADMIN",
+          siteId: "site-1"
+        },
+        siteId: "site-1",
+        itemId: "item-4",
+        itemName: "AA batteries",
+        itemSku: "AST-CON-0001",
+        ipAddress: "192.168.1.102",
+        createdAt: getPastDateStr(2, "23:56:00.000Z") // Jul 8, 11:56 PM (2 days ago)
+      },
+      {
+        id: "mock-log-3",
+        action: "STOCK_ADJUSTED",
+        details: "Qty 6 -> 2 at Skyrise Alpha, correction",
+        userId: "user-christian",
+        user: {
+          id: "user-christian",
+          name: "Christian Mangas",
+          email: "christian.mangas@contactpoint360.com",
+          role: "ADMIN",
+          siteId: "site-1"
+        },
+        siteId: "site-1",
+        itemId: "item-1",
+        itemName: "Laptop",
+        itemSku: "AST-LAP-0012",
+        ipAddress: "192.168.1.102",
+        createdAt: getPastDateStr(2, "23:34:00.000Z") // Jul 8, 11:34 PM (2 days ago)
+      },
+      {
+        id: "mock-log-4",
+        action: "STOCK_ADJUSTED",
+        details: "Qty 0 -> 6 at Skyrise Alpha, increase",
+        userId: "user-1",
+        user: { ...mockUsers[0], siteId: "site-1" }, // Super Admin (acting at site-1)
+        siteId: "site-1",
+        itemId: "item-1",
+        itemName: "Laptop",
+        itemSku: "AST-LAP-0012",
+        ipAddress: "127.0.0.1",
+        createdAt: getPastDateStr(2, "22:34:00.000Z") // Jul 8, 10:34 PM (2 days ago)
+      },
+      {
+        id: "mock-log-5",
+        action: "STOCK_ADJUSTED",
+        details: "Qty 10 -> 12 at Cebu IT Park, increase",
+        userId: "user-3",
+        user: { ...mockUsers[2], siteId: "site-1" }, // Jane Smith
+        siteId: "site-1",
+        itemId: "item-2",
+        itemName: "Dell UltraSharp 27\" Monitor",
+        itemSku: "IT-DEL-U27",
+        ipAddress: "192.168.2.40",
+        createdAt: getPastDateStr(6, "10:15:00.000Z") // Jul 4 (6 days ago)
+      },
+      {
+        id: "mock-log-6",
+        action: "STOCK_ADJUSTED",
+        details: "Qty 5 -> 8 at Toronto HQ, correction",
+        userId: "user-2",
+        user: { ...mockUsers[1], siteId: "site-2" }, // John Doe
+        siteId: "site-2",
+        itemId: "item-3",
+        itemName: "Logitech MX Master 3S",
+        itemSku: "IT-LOG-MX3S",
+        ipAddress: "192.168.3.15",
+        createdAt: getPastDateStr(6, "14:30:00.000Z") // Jul 4 (6 days ago)
+      },
+      {
+        id: "mock-log-7",
+        action: "STOCK_ADJUSTED",
+        details: "Qty 20 -> 18 at Skyrise Alpha, allocation",
+        userId: "user-4",
+        user: { ...mockUsers[3], siteId: "site-1" }, // Elena Rostova
+        siteId: "site-1",
+        itemId: "item-1",
+        itemName: "Laptop",
+        itemSku: "AST-LAP-0012",
+        ipAddress: "192.168.1.55",
+        createdAt: getPastDateStr(5, "09:20:00.000Z") // Jul 5 (5 days ago)
+      },
+      {
+        id: "mock-log-8",
+        action: "STOCK_ADJUSTED",
+        details: "Qty 2 -> 5 at Skyrise 4B, restock",
+        userId: "user-christian",
+        user: {
+          id: "user-christian",
+          name: "Christian Mangas",
+          email: "christian.mangas@contactpoint360.com",
+          role: "ADMIN",
+          siteId: "site-1"
+        },
+        siteId: "site-1",
+        itemId: "item-1",
+        itemName: "Laptop",
+        itemSku: "AST-LAP-0012",
+        ipAddress: "192.168.1.102",
+        createdAt: getPastDateStr(4, "11:00:00.000Z") // Jul 6 (4 days ago)
+      },
+      {
+        id: "mock-log-9",
+        action: "STOCK_ADJUSTED",
+        details: "Qty 15 -> 12 at Toronto HQ, audit adjustment",
+        userId: "user-2",
+        user: { ...mockUsers[1], siteId: "site-2" }, // John Doe
+        siteId: "site-2",
+        itemId: "item-2",
+        itemName: "Dell UltraSharp 27\" Monitor",
+        itemSku: "IT-DEL-U27",
+        ipAddress: "192.168.3.15",
+        createdAt: getPastDateStr(4, "13:45:00.000Z") // Jul 6 (4 days ago)
+      },
+      {
+        id: "mock-log-10",
+        action: "STOCK_ADJUSTED",
+        details: "Qty 8 -> 10 at Cebu IT Park, stock in",
+        userId: "user-3",
+        user: { ...mockUsers[2], siteId: "site-1" }, // Jane Smith
+        siteId: "site-1",
+        itemId: "item-3",
+        itemName: "Logitech MX Master 3S",
+        itemSku: "IT-LOG-MX3S",
+        ipAddress: "192.168.2.40",
+        createdAt: getPastDateStr(4, "16:10:00.000Z") // Jul 6 (4 days ago)
+      },
+      {
+        id: "mock-log-11",
+        action: "STOCK_ADJUSTED",
+        details: "Qty 4 -> 10 at Skyrise Alpha, increase",
+        userId: "user-3",
+        user: { ...mockUsers[2], siteId: "site-1" }, // Jane Smith
+        siteId: "site-1",
+        itemId: "item-1",
+        itemName: "Laptop",
+        itemSku: "AST-LAP-0012",
+        ipAddress: "192.168.1.55",
+        createdAt: getPastDateStr(2, "08:12:00.000Z") // Jul 8 (2 days ago)
+      },
+      {
+        id: "mock-log-12",
+        action: "STOCK_ADJUSTED",
+        details: "Qty 30 -> 35 at Cebu IT Park, restock",
+        userId: "user-2",
+        user: { ...mockUsers[1], siteId: "site-1" }, // John Doe
+        siteId: "site-1",
+        itemId: "item-4",
+        itemName: "AA batteries",
+        itemSku: "AST-CON-0001",
+        ipAddress: "192.168.3.15",
+        createdAt: getPastDateStr(2, "14:25:00.000Z") // Jul 8 (2 days ago)
+      },
+      {
+        id: "mock-log-13",
+        action: "STOCK_ADJUSTED",
+        details: "Qty 12 -> 15 at Skyrise Alpha, check-in adjustment",
+        userId: "user-4",
+        user: { ...mockUsers[3], siteId: "site-1" }, // Elena Rostova
+        siteId: "site-1",
+        itemId: "item-1",
+        itemName: "Laptop",
+        itemSku: "AST-LAP-0012",
+        ipAddress: "192.168.1.55",
+        createdAt: getPastDateStr(0, "11:42:00.000Z") // Jul 10 (0 days ago / today)
+      }
+    ];
+  });
   const [isLoadingItems, setIsLoadingItems] = useState(true);
   const [itemsError, setItemsError] = useState<string | null>(null);
   const [selectedSiteId, setSelectedSiteId] = useState("");
