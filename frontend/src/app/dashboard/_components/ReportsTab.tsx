@@ -1205,9 +1205,10 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                         const label = site?.name || (sid || "");
                         const lc = label.toLowerCase();
                         const color =
-                          lc.includes("skyrise") || lc.includes("4b") ? "#2563eb" :
                           lc.includes("alpha") ? "#16a34a" :
                           lc.includes("beta") ? "#9333ea" :
+                          lc.includes("4b") ? "#2563eb" :
+                          lc.includes("skyrise") ? "#3b82f6" :
                           lc.includes("cebu") || lc.includes("it park") ? "#ea580c" :
                           lc.includes("toronto") || lc.includes("hq") ? "#0284c7" :
                           "#ef4444";
@@ -1311,9 +1312,10 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                   const matchedSite = sitesList.find((s: any) => s.id === alert.siteId);
                   const siteNameLc = (matchedSite?.name || alert.siteId || "").toLowerCase();
                   const siteColor =
-                    siteNameLc.includes("skyrise") || siteNameLc.includes("4b") ? "#2563eb" :
                     siteNameLc.includes("alpha") ? "#16a34a" :
                     siteNameLc.includes("beta") ? "#9333ea" :
+                    siteNameLc.includes("4b") ? "#2563eb" :
+                    siteNameLc.includes("skyrise") ? "#3b82f6" :
                     siteNameLc.includes("cebu") || siteNameLc.includes("it park") ? "#ea580c" :
                     siteNameLc.includes("toronto") || siteNameLc.includes("hq") ? "#0284c7" :
                     "#ef4444";
@@ -1469,9 +1471,10 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                   const matchedSite = sitesList.find((s: any) => s.id === alert.siteId);
                   const siteNameLc = (matchedSite?.name || alert.siteId || "").toLowerCase();
                   const siteColor =
-                    siteNameLc.includes("skyrise") || siteNameLc.includes("4b") ? "#2563eb" :
                     siteNameLc.includes("alpha") ? "#16a34a" :
                     siteNameLc.includes("beta") ? "#9333ea" :
+                    siteNameLc.includes("4b") ? "#2563eb" :
+                    siteNameLc.includes("skyrise") ? "#3b82f6" :
                     siteNameLc.includes("cebu") || siteNameLc.includes("it park") ? "#ea580c" :
                     siteNameLc.includes("toronto") || siteNameLc.includes("hq") ? "#0284c7" :
                     "#94a3b8";
@@ -2178,3 +2181,4 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     </div>
   );
 };
+
