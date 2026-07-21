@@ -361,7 +361,7 @@ export const CatalogTab = ({
       )}
 
       {catalogSubTab === "inventory" ? (
-        <>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       {/* Items Summary Cards */}
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
         {[
@@ -1796,7 +1796,7 @@ export const CatalogTab = ({
             </div>
           </div>
         )}
-      </>
+        </div>
       ) : (
         /* Asset Deployments Sub-Module View */
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
