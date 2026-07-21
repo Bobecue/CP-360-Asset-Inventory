@@ -163,13 +163,14 @@ export const CatalogTab = ({
           },
           {
             title: "Low Stock / Out of Stock",
+            filterStock: "LOW_STOCK",
             value: catalogItems.filter(it => {
               const stock = it.stockLevels?.find(sl => sl.siteId === selectedSiteId);
               const qty = stock ? stock.quantity : 0;
               const min = stock ? stock.reorderPoint : 5;
               return qty <= min;
             }).length,
-            desc: "At selected site",
+            desc: catalogStockFilter === "LOW_STOCK" ? "⚡ Filtering by Low Stock" : "Click to filter list",
             icon: (
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" fill="rgba(239, 68, 68, 0.1)" />
@@ -178,17 +179,24 @@ export const CatalogTab = ({
               </svg>
             )
           },
-        ].map((item, idx) => (
+        ].map((item: any, idx) => (
           <div key={idx}
             className="metric-card card-shine-effect"
+            onClick={() => {
+              if (item.filterStock) {
+                setCatalogStockFilter(prev => prev === item.filterStock ? "ALL" : item.filterStock);
+              }
+            }}
             style={{
               backgroundColor: "#ffffff",
               borderRadius: 12,
               padding: "1rem 1.25rem",
               boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(226,232,240,0.6)",
+              border: item.filterStock && catalogStockFilter === item.filterStock ? "2px solid #ef4444" : "1px solid rgba(226,232,240,0.6)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
+              cursor: item.filterStock ? "pointer" : "default",
             }}
           >
             <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>

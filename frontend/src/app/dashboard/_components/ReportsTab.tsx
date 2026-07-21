@@ -287,9 +287,9 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
       }))
   );
 
-  // Filtered Low Stock Alerts (by siteFilter)
+  // Filtered Low Stock Alerts (by siteFilter, tableSiteFilter, and searchQuery)
   const filteredLowStockAlerts = lowStockAlerts.filter(alert => {
-    const matchesSite = siteFilter === "ALL" || alert.siteId === siteFilter;
+    const matchesSite = (siteFilter === "ALL" || alert.siteId === siteFilter) && (tableSiteFilter === "ALL" || alert.siteId === tableSiteFilter);
     const matchesSearch =
       alert.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       alert.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -440,12 +440,17 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   // Filtered POs
   const filteredPOs = activePOsList.filter(po => {
     const poSiteId = po.siteId || (po.site?.id) || "site-1";
-    const matchesSite = siteFilter === "ALL" || poSiteId === siteFilter;
+    const matchesSite = (siteFilter === "ALL" || poSiteId === siteFilter) && (tableSiteFilter === "ALL" || poSiteId === tableSiteFilter);
+    let matchesDate = true;
+    if (dateFilter) {
+      const poDatePart = new Date(po.createdAt || "").toISOString().split("T")[0];
+      matchesDate = poDatePart === dateFilter;
+    }
     const matchesSearch =
       po.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (po.supplier?.name || po.supplierName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (po.site?.name || po.siteName || "").toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSite && matchesSearch;
+    return matchesSite && matchesDate && matchesSearch;
   });
 
   // ── 2. Dynamic Metric Cards (Morphed based on active filter button) ──

@@ -441,7 +441,7 @@ export default function DashboardPage() {
 
     let matchesStock = true;
     if (catalogStockFilter === "LOW_STOCK") {
-      matchesStock = quantity > 0 && quantity <= reorderPoint;
+      matchesStock = quantity <= reorderPoint;
     } else if (catalogStockFilter === "OUT_OF_STOCK") {
       matchesStock = quantity === 0;
     }
