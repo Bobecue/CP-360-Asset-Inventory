@@ -2035,6 +2035,7 @@ export default function DashboardPage() {
           <CatalogTab
             isUsingMockData={isUsingMockData}
             catalogItems={catalogItems}
+            setCatalogItems={setCatalogItems}
             sites={sites}
             categories={categories}
             selectedSiteId={selectedSiteId}

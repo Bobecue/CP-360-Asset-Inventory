@@ -37,11 +37,13 @@ interface CatalogTabProps {
   onOpenScanModal?: () => void;
   currentUser: any;
   onOpenBulkRequestModal: (mode: 'deploy' | 'request') => void;
+  setCatalogItems?: React.Dispatch<React.SetStateAction<CatalogItem[]>>;
 }
 
 export const CatalogTab = ({
   isUsingMockData,
   catalogItems,
+  setCatalogItems,
   sites,
   categories,
   selectedSiteId,
@@ -141,6 +143,13 @@ export const CatalogTab = ({
 
   useEffect(() => {
     const fetchDeployments = async () => {
+      let savedReturns: Record<string, any> = {};
+      try {
+        savedReturns = JSON.parse(localStorage.getItem("cp_returned_deployments") || "{}");
+      } catch (e) {
+        console.error("Error reading saved returns from localStorage:", e);
+      }
+
       try {
         const res = await fetch("http://localhost:3001/requests");
         if (res.ok) {
@@ -148,21 +157,29 @@ export const CatalogTab = ({
           const raw = envelope.data || envelope;
           if (Array.isArray(raw) && raw.length > 0) {
             const filtered = raw.filter((req: any) =>
-              (req.reason && req.reason.includes("[ASSET DEPLOYMENT]")) || req.status === "RELEASED" || req.status === "ITEM_RECEIVED" || req.status === "APPROVED"
-            ).map((req: any) => ({
-              id: req.id,
-              createdAt: req.createdAt || new Date().toISOString(),
-              requestedByName: req.requestedByName || "Inventory Staff",
-              itemName: req.itemName || "Assigned Asset",
-              assetTag: req.assetTag || req.sku || "AST-DEP",
-              siteId: req.siteId || req.requestedBySiteId || "site-1",
-              siteName: req.siteName || "Cebu IT Park",
-              reason: req.reason || `Deployed ${req.quantity || 1} x ${req.itemName || 'Asset'} to employee`,
-              employeeName: req.reason ? (req.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
-              employeeAccount: req.reason ? (req.reason.match(/Account:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
-              employeeEid: req.reason ? (req.reason.match(/EID:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
-              rawRequest: req
-            }));
+              (req.reason && req.reason.includes("[ASSET DEPLOYMENT]")) || req.status === "RELEASED" || req.status === "ITEM_RECEIVED" || req.status === "APPROVED" || req.status === "RETURNED"
+            ).map((req: any) => {
+              const saved = savedReturns[req.id];
+              return {
+                id: req.id,
+                createdAt: req.createdAt || new Date().toISOString(),
+                requestedByName: req.requestedByName || "Inventory Staff",
+                itemName: req.itemName || "Assigned Asset",
+                assetTag: req.assetTag || req.sku || "AST-DEP",
+                siteId: req.siteId || req.requestedBySiteId || "site-1",
+                siteName: req.siteName || "Cebu IT Park",
+                reason: req.reason || `Deployed ${req.quantity || 1} x ${req.itemName || 'Asset'} to employee`,
+                employeeName: req.reason ? (req.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
+                employeeAccount: req.reason ? (req.reason.match(/Account:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
+                employeeEid: req.reason ? (req.reason.match(/EID:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
+                status: saved?.status || req.status || "ACTIVE",
+                returnCondition: saved?.returnCondition || req.condition || "GOOD",
+                missingCount: saved?.missingCount || req.missingCount || 0,
+                returnNotes: saved?.returnNotes || req.comment,
+                returnedAt: saved?.returnedAt || req.returnedAt,
+                rawRequest: req
+              };
+            });
             if (filtered.length > 0) {
               setDeploymentsList(filtered);
               return;
@@ -172,8 +189,15 @@ export const CatalogTab = ({
       } catch (err) {
         console.error("Error fetching deployments for CatalogTab:", err);
       }
-      setDeploymentsList(mockDeployments);
+
+      // Fallback merge for mockDeployments
+      const mergedMocks = mockDeployments.map(dep => {
+        const saved = savedReturns[dep.id];
+        return saved ? { ...dep, ...saved } : dep;
+      });
+      setDeploymentsList(mergedMocks);
     };
+
     fetchDeployments();
   }, []);
 
@@ -323,6 +347,8 @@ export const CatalogTab = ({
       ? `[DAMAGED] ${returnNotes}` 
       : `[GOOD] ${returnNotes}`;
 
+    const returnedAtStr = new Date().toISOString();
+
     try {
       if (!isUsingMockData && dep.id) {
         await fetch(`http://localhost:3001/requests/${dep.id}/status`, {
@@ -333,7 +359,7 @@ export const CatalogTab = ({
             condition: returnCondition,
             missingCount: returnCondition === "MISSING" ? missingCount : 0,
             comment: finalComment,
-            returnedAt: new Date().toISOString()
+            returnedAt: returnedAtStr
           })
         });
       }
@@ -347,13 +373,66 @@ export const CatalogTab = ({
       returnCondition,
       missingCount: returnCondition === "MISSING" ? missingCount : 0,
       returnNotes: finalComment,
-      returnedAt: new Date().toISOString()
+      returnedAt: returnedAtStr
     };
+
+    // 1. Save returned state into localStorage so it persists across module switches
+    try {
+      const savedReturns = JSON.parse(localStorage.getItem("cp_returned_deployments") || "{}");
+      savedReturns[dep.id] = updatedDep;
+      localStorage.setItem("cp_returned_deployments", JSON.stringify(savedReturns));
+    } catch (e) {
+      console.error("Failed to save return state to localStorage:", e);
+    }
 
     setDeploymentsList((prev: any[]) => prev.map((d: any) => d.id === dep.id ? updatedDep : d));
 
     if (selectedDeployment?.id === dep.id) {
       setSelectedDeployment(updatedDep);
+    }
+
+    // 2. Add returned items back into stock count in catalogItems & localStorage
+    const totalQtyDeployed = dep.rawRequest?.quantity || 1;
+    const itemsMissing = returnCondition === "MISSING" ? missingCount : 0;
+    const qtyReturnedToStock = Math.max(0, totalQtyDeployed - itemsMissing);
+
+    if (qtyReturnedToStock > 0 && setCatalogItems) {
+      setCatalogItems((prevItems: CatalogItem[]) => {
+        const updatedItems = prevItems.map((item) => {
+          const isTargetItem = 
+            item.id === dep.rawRequest?.itemId || 
+            item.name.toLowerCase() === dep.itemName.toLowerCase() || 
+            item.sku.toUpperCase() === (dep.assetTag || "").toUpperCase();
+
+          if (isTargetItem) {
+            const currentQty = item.quantity ?? 0;
+            const newQty = currentQty + qtyReturnedToStock;
+
+            const updatedStockLevels = item.stockLevels?.map((sl) => {
+              if (sl.siteId === dep.siteId || sl.siteId === selectedSiteId) {
+                return { ...sl, quantity: sl.quantity + qtyReturnedToStock };
+              }
+              return sl;
+            });
+
+            return {
+              ...item,
+              quantity: newQty,
+              stockLevels: updatedStockLevels || item.stockLevels
+            };
+          }
+          return item;
+        });
+
+        // Persist updated catalog items into localStorage cache
+        try {
+          localStorage.setItem("cp_inventory_catalog", JSON.stringify(updatedItems));
+        } catch (e) {
+          console.error("Failed to persist updated catalog items to localStorage:", e);
+        }
+
+        return updatedItems;
+      });
     }
 
     setIsSubmittingReturn(false);

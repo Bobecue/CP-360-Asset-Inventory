@@ -50,6 +50,7 @@ export interface CatalogItem {
   category?: { id: string; name: string; prefix: string; type: "CONSUMABLE" | "NON_CONSUMABLE" } | null;
   stockLevels?: SiteStock[] | null;
   assets?: any[] | null;
+  quantity?: number;
 }
 
 export interface DbNotification {
