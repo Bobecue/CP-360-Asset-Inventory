@@ -1390,7 +1390,9 @@ export function RequestsTab({
 
                 {/* Timeline / History Log */}
                 <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: '0.85rem' }}>Request Timeline</label>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: '0.85rem' }}>
+                    {selectedRequest.reason && selectedRequest.reason.includes('[ASSET DEPLOYMENT]') ? 'Deployment Timeline' : 'Request Timeline'}
+                  </label>
                   <RequestTimeline
                     requestId={selectedRequest.id}
                     status={selectedRequest.status}
