@@ -367,19 +367,61 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
         }}
       >
         {/* Header */}
-        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{isDeployMode ? "Asset Deployment" : "Asset Request"}</h2>
-            <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
-              {isDeployMode ? `Deploy ${selectedItems.length} selected asset${selectedItems.length === 1 ? '' : 's'} to employee` : `Submit request for ${selectedItems.length} selected item${selectedItems.length === 1 ? '' : 's'}`}
-            </p>
+        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{isDeployMode ? "Asset Deployment" : "Asset Request"}</h2>
+              <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                {isDeployMode ? `Deploy ${selectedItems.length} selected asset${selectedItems.length === 1 ? '' : 's'} to employee` : `Submit request for ${selectedItems.length} selected item${selectedItems.length === 1 ? '' : 's'}`}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '1.5rem', padding: '4px' }}
+            >
+              ×
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '1.5rem', padding: '4px' }}
-          >
-            ×
-          </button>
+
+          {/* Mode Switcher Tab — shown when selecting 1 asset for privileged users */}
+          {canDeploy && selectedItems.length === 1 && (
+            <div style={{
+              display: 'flex',
+              backgroundColor: '#f1f5f9',
+              borderRadius: 10,
+              padding: '0.2rem',
+              gap: '0.2rem',
+              border: '1px solid #e2e8f0'
+            }}>
+              {[
+                { id: 'deploy' as const, label: '🚀 Asset Deployment' },
+                { id: 'request' as const, label: '📋 Asset Request' }
+              ].map((tab) => {
+                const isActive = mode === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setMode(tab.id)}
+                    style={{
+                      flex: 1,
+                      padding: '0.45rem 0.75rem',
+                      borderRadius: 8,
+                      border: 'none',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      backgroundColor: isActive ? (tab.id === 'deploy' ? '#210cae' : '#7c3aed') : 'transparent',
+                      color: isActive ? '#ffffff' : '#64748b',
+                      boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Form Body */}
