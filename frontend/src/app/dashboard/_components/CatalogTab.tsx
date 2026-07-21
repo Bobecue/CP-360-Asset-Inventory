@@ -2026,7 +2026,6 @@ export const CatalogTab = ({
             )}
           </div>
         </div>
-      )}
 
       {/* Deployment Details Slide-Over Drawer */}
       {isDeploymentDrawerOpen && selectedDeployment && (
