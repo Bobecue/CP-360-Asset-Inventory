@@ -2025,30 +2025,36 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           />
         </div>
 
-        {/* Site Location Filter */}
-        <div style={{ position: "relative", flex: "1 1 160px" }}>
+        {/* Action Filter (Disabled in PO Orders or Low Stock Alerts mode) */}
+        <div style={{ position: "relative", flex: "1 1 140px" }}>
           <select
-            value={siteFilter}
-            onChange={(e) => setSiteFilter(e.target.value)}
+            value={actionFilter}
+            disabled={activeMetricFilter === "PO_ORDERS" || activeMetricFilter === "LOW_STOCK_ALERTS"}
+            onChange={(e) => setActionFilter(e.target.value)}
             style={{
               width: "100%",
               padding: "0.55rem 2.25rem 0.55rem 0.75rem",
               borderRadius: "8px",
               border: "1px solid #cbd5e1",
               fontSize: "0.85rem",
-              color: "#334155",
-              backgroundColor: "#ffffff",
+              color: (activeMetricFilter === "PO_ORDERS" || activeMetricFilter === "LOW_STOCK_ALERTS") ? "#94a3b8" : "#334155",
+              backgroundColor: (activeMetricFilter === "PO_ORDERS" || activeMetricFilter === "LOW_STOCK_ALERTS") ? "#f8fafc" : "#ffffff",
               outline: "none",
-              cursor: "pointer",
+              cursor: (activeMetricFilter === "PO_ORDERS" || activeMetricFilter === "LOW_STOCK_ALERTS") ? "not-allowed" : "pointer",
               appearance: "none",
             }}
           >
-            <option value="ALL">All sites</option>
-            {sitesList.map((site) => (
-              <option key={site.id} value={site.id}>
-                {site.name}
-              </option>
-            ))}
+            <option value="ALL">All actions</option>
+            <option value="ITEM_CREATED">Item created</option>
+            <option value="STOCK_ADJUSTED">Stock adjusted</option>
+            <option value="ITEM_UPDATED">Item modified</option>
+            <option value="ITEM_DELETED">Item deleted</option>
+            {activeMetricFilter === "ALL" && (
+              <>
+                <option value="PO_ORDERS">Purchase orders</option>
+                <option value="LOW_STOCK_ALERT">Low stock alerts</option>
+              </>
+            )}
           </select>
           <svg style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#64748b", pointerEvents: "none" }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="6 9 12 15 18 9" />
