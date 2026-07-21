@@ -2552,7 +2552,11 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                     senderName={selectedDeployment.requestedByName || 'Inventory Staff'}
                     senderSiteName={sitesList.find((s: any) => s.id === currentUser?.siteId || s.name === currentUser?.site?.name)?.name || 'Skyrise 4B'}
                     senderSiteAddress={sitesList.find((s: any) => s.id === currentUser?.siteId || s.name === currentUser?.site?.name)?.address || undefined}
-                    receiverName={selectedDeployment.employeeName || selectedDeployment.requestedByName || "Employee"}
+                    receiverName={
+                      selectedDeployment.reason && selectedDeployment.reason.includes("[ASSET DEPLOYMENT]")
+                        ? (selectedDeployment.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || selectedDeployment.employeeName)
+                        : (selectedDeployment.employeeName || selectedDeployment.requestedByName || "Employee")
+                    }
                     receiverSiteName={selectedDeployment.siteName || selectedDeployment.receiverSiteName || 'Skyrise Alpha'}
                     receiverSiteAddress={sitesList.find((s: any) => s.name === selectedDeployment.siteName || s.id === selectedDeployment.siteId)?.address}
                   />
