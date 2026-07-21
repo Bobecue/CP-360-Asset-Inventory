@@ -88,6 +88,10 @@ export const CatalogTab = ({
   const canEditAddRemove = currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "ADMIN" || currentUser?.role === "INVENTORY_STAFF";
   const canAdjustStock = canEditAddRemove;
 
+  const [returnModalDeployment, setReturnModalDeployment] = useState<any | null>(null);
+  const [returnNotes, setReturnNotes] = useState<string>("");
+  const [isSubmittingReturn, setIsSubmittingReturn] = useState<boolean>(false);
+
   // Show selection circles ONLY when explicit multi-select mode is active
   const showCircles = isMultiSelectMode;
 
@@ -232,9 +236,15 @@ export const CatalogTab = ({
     doc.save(`Deployment_Receipt_${dep.employeeEid || dep.id}.pdf`);
   };
 
-  const handleReturnDeploymentAsset = async (dep: any) => {
-    const confirmMsg = `Are you sure you want to mark ${dep.itemName} (${dep.assetTag}) as RETURNED to inventory by ${dep.employeeName}?`;
-    if (!window.confirm(confirmMsg)) return;
+  const handleOpenReturnModal = (dep: any) => {
+    setReturnModalDeployment(dep);
+    setReturnNotes("Returned in good working condition");
+  };
+
+  const handleConfirmReturnAsset = async () => {
+    if (!returnModalDeployment) return;
+    setIsSubmittingReturn(true);
+    const dep = returnModalDeployment;
 
     try {
       if (!isUsingMockData && dep.id) {
@@ -243,7 +253,7 @@ export const CatalogTab = ({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             status: "RETURNED",
-            comment: `Returned by ${dep.employeeName} to site inventory`,
+            comment: returnNotes || `Returned by ${dep.employeeName} to site inventory`,
             returnedAt: new Date().toISOString()
           })
         });
@@ -257,6 +267,9 @@ export const CatalogTab = ({
     if (selectedDeployment?.id === dep.id) {
       setSelectedDeployment({ ...selectedDeployment, status: "RETURNED", returnedAt: new Date().toISOString() });
     }
+
+    setIsSubmittingReturn(false);
+    setReturnModalDeployment(null);
   };
 
   const toggleMultiSelectMode = () => {
@@ -2020,7 +2033,7 @@ export const CatalogTab = ({
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleReturnDeploymentAsset(dep);
+                                  handleOpenReturnModal(dep);
                                 }}
                                 title="Return Asset to Inventory"
                                 style={{
@@ -2148,7 +2161,7 @@ export const CatalogTab = ({
                   </span>
                   {selectedDeployment.status !== 'RETURNED' && (
                     <button
-                      onClick={() => handleReturnDeploymentAsset(selectedDeployment)}
+                      onClick={() => handleOpenReturnModal(selectedDeployment)}
                       style={{
                         padding: '0.35rem 0.65rem',
                         borderRadius: '6px',
@@ -2261,6 +2274,187 @@ export const CatalogTab = ({
                 </div>
               </div>
 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Return Asset Confirmation Modal */}
+      {returnModalDeployment && (
+        <div
+          onClick={() => setReturnModalDeployment(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(5px)',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '16px',
+              maxWidth: '480px',
+              width: '100%',
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
+              overflow: 'hidden',
+              border: '1px solid #e2e8f0',
+              animation: 'scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid #f1f5f9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              backgroundColor: '#f8fafc'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: '10px',
+                  backgroundColor: '#d1fae5',
+                  color: '#059669',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.2rem'
+                }}>
+                  ↩️
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>
+                    Confirm Asset Return
+                  </h3>
+                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                    Return hardware back to site inventory
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setReturnModalDeployment(null)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '1.5rem', padding: '4px' }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{
+                backgroundColor: '#f8fafc',
+                borderRadius: '12px',
+                padding: '1rem',
+                border: '1px solid #e2e8f0',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.65rem'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Employee Custodian</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>{returnModalDeployment.employeeName}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Employee ID</span>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#210cae', fontFamily: 'monospace' }}>{returnModalDeployment.employeeEid}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Deployed Hardware</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>{returnModalDeployment.itemName}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Asset Tag</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#210cae', fontFamily: 'monospace', backgroundColor: '#eef2ff', padding: '0.15rem 0.45rem', borderRadius: '4px', border: '1px solid #c7d2fe' }}>
+                    🏷️ {returnModalDeployment.assetTag}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Return Location</span>
+                  <span style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 600 }}>{returnModalDeployment.siteName || 'Site Inventory'}</span>
+                </div>
+              </div>
+
+              {/* Notes Input */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155' }}>
+                  Return Notes & Condition (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={returnNotes}
+                  onChange={(e) => setReturnNotes(e.target.value)}
+                  placeholder="e.g. Returned in good working condition..."
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem 0.85rem',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.82rem',
+                    color: '#0f172a',
+                    outline: 'none',
+                    resize: 'none',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '1rem 1.5rem',
+              borderTop: '1px solid #f1f5f9',
+              backgroundColor: '#f8fafc',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '0.75rem'
+            }}>
+              <button
+                type="button"
+                onClick={() => setReturnModalDeployment(null)}
+                style={{
+                  padding: '0.55rem 1.15rem',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  color: '#475569',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSubmittingReturn}
+                onClick={handleConfirmReturnAsset}
+                style={{
+                  padding: '0.55rem 1.25rem',
+                  borderRadius: '8px',
+                  border: 'none',
+                  backgroundColor: '#10b981',
+                  color: '#ffffff',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  cursor: isSubmittingReturn ? 'wait' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  boxShadow: '0 2px 6px rgba(16,185,129,0.3)'
+                }}
+              >
+                {isSubmittingReturn ? 'Processing...' : 'Confirm Return to Inventory'}
+              </button>
             </div>
           </div>
         </div>
