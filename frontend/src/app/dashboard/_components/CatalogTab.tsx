@@ -90,6 +90,13 @@ export const CatalogTab = ({
   const allSelected = filteredIds.length > 0 && filteredIds.every((id) => selectedItemIds.includes(id));
   const canEditAddRemove = currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "ADMIN" || currentUser?.role === "INVENTORY_STAFF";
   const canAdjustStock = canEditAddRemove;
+  const canAccessDeployments = currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "ADMIN" || currentUser?.role === "INVENTORY_STAFF";
+
+  useEffect(() => {
+    if (!canAccessDeployments && catalogSubTab === "deployments") {
+      setCatalogSubTab("inventory");
+    }
+  }, [canAccessDeployments, catalogSubTab]);
 
   const [returnModalDeployment, setReturnModalDeployment] = useState<any | null>(null);
   const [returnCondition, setReturnCondition] = useState<"GOOD" | "DAMAGED" | "MISSING">("GOOD");
@@ -496,36 +503,39 @@ export const CatalogTab = ({
           >
             📦 Catalog Inventory ({catalogItems.length})
           </button>
-          <button
-            onClick={() => setCatalogSubTab("deployments")}
-            style={{
-              padding: "0.55rem 1.25rem",
-              borderRadius: "8px",
-              fontSize: "0.85rem",
-              fontWeight: 700,
-              border: "none",
-              cursor: "pointer",
-              backgroundColor: catalogSubTab === "deployments" ? "#ffffff" : "transparent",
-              color: catalogSubTab === "deployments" ? "#210cae" : "#64748b",
-              boxShadow: catalogSubTab === "deployments" ? "0 1px 3px rgba(15,23,42,0.08)" : "none",
-              transition: "all 0.15s ease",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.45rem"
-            }}
-          >
-            <span>🚀 Asset Deployments</span>
-            <span style={{
-              fontSize: "0.72rem",
-              fontWeight: 800,
-              padding: "0.15rem 0.5rem",
-              borderRadius: "10px",
-              backgroundColor: catalogSubTab === "deployments" ? "#eef2ff" : "#e2e8f0",
-              color: catalogSubTab === "deployments" ? "#210cae" : "#475569"
-            }}>
-              {deploymentsList.length}
-            </span>
-          </button>
+
+          {canAccessDeployments && (
+            <button
+              onClick={() => setCatalogSubTab("deployments")}
+              style={{
+                padding: "0.55rem 1.25rem",
+                borderRadius: "8px",
+                fontSize: "0.85rem",
+                fontWeight: 700,
+                border: "none",
+                cursor: "pointer",
+                backgroundColor: catalogSubTab === "deployments" ? "#ffffff" : "transparent",
+                color: catalogSubTab === "deployments" ? "#210cae" : "#64748b",
+                boxShadow: catalogSubTab === "deployments" ? "0 1px 3px rgba(15,23,42,0.08)" : "none",
+                transition: "all 0.15s ease",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.45rem"
+              }}
+            >
+              <span>🚀 Asset Deployments</span>
+              <span style={{
+                fontSize: "0.72rem",
+                fontWeight: 800,
+                padding: "0.15rem 0.5rem",
+                borderRadius: "10px",
+                backgroundColor: catalogSubTab === "deployments" ? "#eef2ff" : "#e2e8f0",
+                color: catalogSubTab === "deployments" ? "#210cae" : "#475569"
+              }}>
+                {deploymentsList.length}
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -1992,7 +2002,7 @@ export const CatalogTab = ({
         </div>
       )}
 
-      {catalogSubTab === "deployments" && (
+      {catalogSubTab === "deployments" && canAccessDeployments && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           {/* Asset Deployments Sub-Module View */}
           {/* Summary Cards */}
