@@ -918,7 +918,9 @@ export default function DashboardPage() {
             urgency: urgency,
             status: reason && reason.includes("[ASSET DEPLOYMENT]") ? "RELEASED" : "PENDING",
             siteId: siteId || undefined,
-            siteName: sites.find((s: any) => s.id === siteId)?.name || siteId || undefined,
+            siteName: sites.find((s: any) => s.id === siteId || (s.name && siteId && s.name.trim().toLowerCase() === siteId.trim().toLowerCase()))?.name || siteId || undefined,
+            receiverSiteName: sites.find((s: any) => s.id === siteId || (s.name && siteId && s.name.trim().toLowerCase() === siteId.trim().toLowerCase()))?.name || siteId || undefined,
+            receiverSiteAddress: sites.find((s: any) => s.id === siteId || (s.name && siteId && s.name.trim().toLowerCase() === siteId.trim().toLowerCase()))?.address || undefined,
             createdAt: new Date().toISOString(),
           };
           successCount++;
