@@ -360,7 +360,7 @@ export const CatalogTab = ({
         </div>
       )}
 
-      {catalogSubTab === "inventory" ? (
+      {catalogSubTab === "inventory" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       {/* Items Summary Cards */}
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
@@ -424,7 +424,7 @@ export const CatalogTab = ({
             className="metric-card card-shine-effect"
             onClick={() => {
               if (item.filterStock) {
-                setCatalogStockFilter(prev => prev === item.filterStock ? "ALL" : item.filterStock);
+                setCatalogStockFilter(catalogStockFilter === item.filterStock ? "ALL" : item.filterStock);
               }
             }}
             style={{
@@ -1797,9 +1797,12 @@ export const CatalogTab = ({
           </div>
         )}
         </div>
-      ) : (
-        /* Asset Deployments Sub-Module View */
+        </div>
+      )}
+
+      {catalogSubTab === "deployments" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          {/* Asset Deployments Sub-Module View */}
           {/* Summary Cards */}
           <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
             <div style={{
@@ -2026,6 +2029,7 @@ export const CatalogTab = ({
             )}
           </div>
         </div>
+      )}
 
       {/* Deployment Details Slide-Over Drawer */}
       {isDeploymentDrawerOpen && selectedDeployment && (

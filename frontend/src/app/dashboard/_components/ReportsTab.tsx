@@ -486,7 +486,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     colorCard4 = "#475569";
   } else {
     // General Metrics (ALL) - combines both
-    rawCard1 = dashboardContextLogs.length + filteredVirtualPOLogs.length + filteredDeploymentLogs.length;
+    rawCard1 = dashboardContextLogs.length + filteredVirtualPOLogs.length;
     labelCard1 = "TOTAL ACTIONS";
     colorCard1 = "#0f172a";
 
@@ -520,7 +520,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     const matchesSite = siteFilter === "ALL" || poSiteId === siteFilter;
     return (po.status === "ORDERED" || po.status === "PARTIALLY_RECEIVED") && matchesSite;
   }).length;
-  const rawAllRecordsTotal = dashboardContextLogs.length + filteredVirtualPOLogs.length + filteredVirtualLowStockAlertLogs.length + filteredDeploymentLogs.length;
+  const rawAllRecordsTotal = dashboardContextLogs.length + filteredVirtualPOLogs.length + filteredVirtualLowStockAlertLogs.length;
   const rawLowStockAlertsTotal = filteredLowStockAlerts.length;
 
   const stockAdjustmentsOverviewVal = useCountUp(rawStockAdjustmentsTotal);
@@ -758,31 +758,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
       .sort((a, b) => b.count - a.count)
       .slice(0, 4);
 
-  } else if (activeMetricFilter === "ASSET_DEPLOYMENTS") {
-    dayCounts = chartLast7Days.map(day => filteredDeploymentLogs.filter(dep => isSameDay(day, dep.createdAt)).length);
 
-    // Doughnut Chart: Deployed Sites breakdown
-    const siteDepCounts: { [key: string]: number } = {};
-    filteredDeploymentLogs.forEach(dep => {
-      const sName = dep.siteName || "Cebu IT Park";
-      siteDepCounts[sName] = (siteDepCounts[sName] || 0) + 1;
-    });
-    doughnutData = Object.entries(siteDepCounts).map(([siteName, count], idx) => ({
-      label: siteName,
-      count,
-      color: idx === 0 ? "#210cae" : idx === 1 ? "#3b82f6" : idx === 2 ? "#10b981" : "#f59e0b"
-    }));
-
-    // Bar Chart: Deployed Asset Items
-    const itemDepCounts: { [key: string]: number } = {};
-    filteredDeploymentLogs.forEach(dep => {
-      const iName = dep.itemName || "Assigned Asset";
-      itemDepCounts[iName] = (itemDepCounts[iName] || 0) + 1;
-    });
-    activeCategories = Object.entries(itemDepCounts)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 4);
 
   } else {
     // General Metrics (ALL) - combines both
@@ -1947,78 +1923,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
         </div>
 
         {/* Contextual Filters per Active Functionality Button */}
-        {activeMetricFilter === "ASSET_DEPLOYMENTS" ? (
-          <>
-            {/* Asset Deployments: Independent Site Filter */}
-            <div style={{ position: "relative", flex: "1 1 160px" }}>
-              <select
-                value={tableSiteFilter}
-                onChange={(e) => setTableSiteFilter(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "0.55rem 2.25rem 0.55rem 0.75rem",
-                  borderRadius: "8px",
-                  border: "1px solid #cbd5e1",
-                  fontSize: "0.85rem",
-                  color: "#334155",
-                  backgroundColor: "#ffffff",
-                  outline: "none",
-                  cursor: "pointer",
-                  appearance: "none",
-                }}
-              >
-                <option value="ALL">All deployment sites</option>
-                {sitesList.map((site) => (
-                  <option key={site.id} value={site.id}>
-                    {site.name}
-                  </option>
-                ))}
-              </select>
-              <svg style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", color: "#64748b", pointerEvents: "none" }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </div>
-
-            {/* Date Filter */}
-            <div style={{ position: "relative", flex: "1 1 160px", display: "flex", gap: "0.25rem" }}>
-              <input
-                type="date"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "0.55rem",
-                  borderRadius: "8px",
-                  border: "1px solid #cbd5e1",
-                  fontSize: "0.85rem",
-                  color: "#334155",
-                  backgroundColor: "#ffffff",
-                  outline: "none",
-                  cursor: "pointer",
-                }}
-              />
-              {dateFilter && (
-                <button
-                  onClick={() => setDateFilter("")}
-                  className="btn-hover-effect"
-                  style={{
-                    padding: "0.55rem 0.75rem",
-                    borderRadius: "8px",
-                    border: "1px solid #cbd5e1",
-                    backgroundColor: "#f1f5f9",
-                    color: "#475569",
-                    fontSize: "0.85rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                  title="Clear date filter"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          </>
-        ) : activeMetricFilter === "PO_ORDERS" ? (
+        {activeMetricFilter === "PO_ORDERS" ? (
           <>
             {/* Purchase Orders: Site Filter & Date Filter */}
             <div style={{ position: "relative", flex: "1 1 160px" }}>
