@@ -402,17 +402,28 @@ export class RequestsService implements OnModuleInit {
       siteName: siteName
     });
 
+    const isDeployment = dto.reason && dto.reason.includes('[ASSET DEPLOYMENT]');
+    const initialStatus = isDeployment ? 'RELEASED' : 'PENDING_APPROVAL';
+
+    let releasedByUserId = undefined;
+    if (isDeployment) {
+      releasedByUserId = requester.id;
+    }
+
     const r = await this.prisma.request.create({
       data: {
         id: `req-${uuidv4().substring(0, 8)}`,
-        status: 'PENDING_APPROVAL',
+        status: initialStatus,
         purpose: purposeJson,
         itemId: item.id,
         requesterId: requester.id,
+        releasedById: releasedByUserId,
+        releasedAt: isDeployment ? new Date() : undefined,
         events: {
           create: {
-            status: 'PENDING_APPROVAL',
-            userId: requester.id
+            status: initialStatus,
+            userId: requester.id,
+            comment: isDeployment ? '[ASSET DEPLOYMENT] Deployed directly by staff/admin' : undefined
           }
         }
       },
@@ -1167,7 +1178,8 @@ export class RequestsService implements OnModuleInit {
     });
     if (!r) return null;
 
-    if (r.status !== 'RELEASED' && r.status !== 'AWAITING_CONFIRMATION' && r.status !== 'ITEM_RECEIVED') {
+    const isDeployment = r.purpose && r.purpose.includes('[ASSET DEPLOYMENT]');
+    if (r.status !== 'RELEASED' && r.status !== 'AWAITING_CONFIRMATION' && r.status !== 'ITEM_RECEIVED' && !isDeployment) {
       throw new BadRequestException(`Cannot return a request that is currently ${r.status}.`);
     }
 

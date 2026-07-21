@@ -1144,7 +1144,7 @@ export function RequestsTable({
                           </button>
                         </div>
                       )
-                    ) : (req.status === 'RELEASED' || req.status === 'ITEM_RECEIVED') && (currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === 'INVENTORY_STAFF') ? (
+                    ) : (req.status === 'RELEASED' || req.status === 'ITEM_RECEIVED' || (req.reason && req.reason.includes('[ASSET DEPLOYMENT]'))) && (currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === 'INVENTORY_STAFF') ? (
                         <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center' }}>
                           <button
                             onClick={() => onReturn && onReturn(req)}

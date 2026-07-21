@@ -1490,7 +1490,7 @@ export function RequestsTab({
 
 
             {/* Return Asset Form & Button for Inventory Staff, Admin, and Super Admin */}
-            {showDrawerReturnForm && (selectedRequest.status === 'RELEASED' || selectedRequest.status === 'ITEM_RECEIVED') && ['SUPER_ADMIN', 'ADMIN', 'INVENTORY_STAFF'].includes(currentUser.role) && (
+            {showDrawerReturnForm && (selectedRequest.status === 'RELEASED' || selectedRequest.status === 'ITEM_RECEIVED' || (selectedRequest.reason && selectedRequest.reason.includes('[ASSET DEPLOYMENT]'))) && ['SUPER_ADMIN', 'ADMIN', 'INVENTORY_STAFF'].includes(currentUser.role) && (
               <div style={{ padding: '1.25rem 1.5rem', borderTop: '2px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
