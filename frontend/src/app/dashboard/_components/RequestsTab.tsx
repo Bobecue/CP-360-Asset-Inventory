@@ -1243,7 +1243,9 @@ export function RequestsTab({
             <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <span style={{ fontSize: '0.72rem', color: '#64748b', fontFamily: 'monospace' }}>{selectedRequest.id}</span>
-                <h3 style={{ margin: '0.15rem 0 0 0', fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>Request Details</h3>
+                <h3 style={{ margin: '0.15rem 0 0 0', fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>
+                  {selectedRequest.reason && selectedRequest.reason.includes('[ASSET DEPLOYMENT]') ? 'Deployment Details' : 'Request Details'}
+                </h3>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 {isStaff && (
@@ -1332,7 +1334,9 @@ export function RequestsTab({
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Requested By</label>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>
+                      {selectedRequest.reason && selectedRequest.reason.includes('[ASSET DEPLOYMENT]') ? 'Deployed By' : 'Requested By'}
+                    </label>
                     <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginTop: '0.15rem', display: 'flex', alignItems: 'center' }}>
                       {sites.find(s => s.id === selectedRequest.requestedBySiteId)?.prefix && (
                         <span style={{ fontSize: '0.6rem', padding: '0.15rem 0.35rem', backgroundColor: '#f5f3ff', color: '#3730a3', borderRadius: '4px', fontWeight: 700, letterSpacing: '0.02em', marginRight: '0.35rem' }}>
@@ -1343,13 +1347,17 @@ export function RequestsTab({
                     </div>
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Site</label>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>
+                      {selectedRequest.reason && selectedRequest.reason.includes('[ASSET DEPLOYMENT]') ? 'Deployment Site' : 'Site'}
+                    </label>
                     <div style={{ fontSize: '0.85rem', color: '#334155', marginTop: '0.15rem' }}>{selectedRequest.siteName || 'No specific site'}</div>
                   </div>
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Reason for Request</label>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>
+                    {selectedRequest.reason && selectedRequest.reason.includes('[ASSET DEPLOYMENT]') ? 'Deployment Notes' : 'Reason for Request'}
+                  </label>
                   <div style={{ fontSize: '0.82rem', color: '#475569', lineHeight: 1.5, marginTop: '0.25rem', padding: '0.75rem', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
                     {selectedRequest.reason}
                   </div>

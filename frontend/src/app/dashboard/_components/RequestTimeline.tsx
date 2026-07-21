@@ -75,6 +75,7 @@ export function RequestTimeline({
   const [error, setError] = useState<string | null>(null);
 
   const isRequester = currentUserId === requestedById;
+  const isDeployment = status === 'RELEASED' || history.some(e => e.comment && e.comment.includes('[ASSET DEPLOYMENT]'));
 
   const handleConfirm = async () => {
     setIsActioning(true);
@@ -662,7 +663,7 @@ export function RequestTimeline({
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-          Request Timeline
+          {isDeployment ? 'Deployment Timeline' : 'Request Timeline'}
         </label>
 
         {isFinalComplete && (
