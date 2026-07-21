@@ -168,7 +168,18 @@ export function RequestsTab({
     return req.itemName;
   };
 
-  const renderStatusBadge = (status: RequestStatus) => {
+  const renderStatusBadge = (status: RequestStatus, reason?: string) => {
+    if (reason && reason.includes("[ASSET DEPLOYMENT]")) {
+      return (
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', padding: '0.25rem 0.65rem',
+          borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 600,
+          backgroundColor: '#e0e7ff', color: '#4338ca', border: '1px solid #c7d2fe'
+        }}>
+          Deployed
+        </span>
+      );
+    }
     const conf: Record<RequestStatus, { bg: string; color: string; border: string; label: string }> = {
       PENDING: { bg: '#fef9c3', color: '#a16207', border: '#fef08a', label: 'Pending Staff Approval' },
       PENDING_OPS_APPROVAL: { bg: '#ffedd5', color: '#c2410c', border: '#fed7aa', label: 'Pending Ops Approval' },
@@ -220,6 +231,9 @@ export function RequestsTab({
           const merged = [...apiData, ...localOnly]
             .filter(r => !!r.itemId && r.quantity >= 1)
             .map(r => {
+              if (r.reason && r.reason.includes("[ASSET DEPLOYMENT]")) {
+                return { ...r, status: 'RELEASED' as RequestStatus };
+              }
               if (r.status === ('REJECTED' as any) && r.reviewComment === 'Cancelled by requester.') {
                 return { ...r, status: 'CANCELLED' as RequestStatus };
               }
@@ -252,7 +266,9 @@ export function RequestsTab({
             .filter(r => !!r.itemId && r.quantity >= 1)
             .map(r => {
               let status = r.status;
-              if (status === ('REJECTED' as any) && r.reviewComment === 'Cancelled by requester.') {
+              if (r.reason && r.reason.includes("[ASSET DEPLOYMENT]")) {
+                status = "RELEASED";
+              } else if (status === ('REJECTED' as any) && r.reviewComment === 'Cancelled by requester.') {
                 status = 'CANCELLED';
               }
               return { ...r, status };
@@ -1261,7 +1277,7 @@ export function RequestsTab({
               {/* Status Bar */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', padding: '0.85rem 1rem', borderRadius: 8, border: '1px solid #e2e8f0' }}>
                 <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#475569' }}>Current Status</span>
-                {renderStatusBadge(selectedRequest.status)}
+                {renderStatusBadge(selectedRequest.status, selectedRequest.reason)}
               </div>
 
               {/* Info Details */}
@@ -1275,6 +1291,28 @@ export function RequestsTab({
                   <div>
                     <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Quantity</label>
                     <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#0f172a', marginTop: '0.15rem' }}>{selectedRequest.quantity} units</div>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Asset Tag</label>
+                    <div style={{ marginTop: '0.15rem' }}>
+                      <span style={{
+                        fontSize: '0.78rem',
+                        fontFamily: 'monospace',
+                        fontWeight: 700,
+                        color: '#210cae',
+                        backgroundColor: '#eef2ff',
+                        border: '1px solid #c7d2fe',
+                        borderRadius: '4px',
+                        padding: '0.15rem 0.45rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}>
+                        🏷️ {selectedRequest.assetTag || selectedRequest.assetId || (
+                          selectedRequest.id ? `AST-${selectedRequest.id.slice(-4).toUpperCase()}` : 'AST-1001'
+                        )}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -1353,12 +1391,20 @@ export function RequestsTab({
                     assetTag={selectedRequest.assetTag || selectedRequest.assetId}
                     itemName={selectedRequest.itemName}
                     itemCategory={selectedRequest.itemCategory}
-                    senderName={selectedRequest.senderName || undefined}
+                    senderName={
+                      selectedRequest.reason && selectedRequest.reason.includes("[ASSET DEPLOYMENT]")
+                        ? (selectedRequest.requestedByName || "Inventory Staff")
+                        : (selectedRequest.senderName || undefined)
+                    }
                     senderSiteName={selectedRequest.senderSiteName || undefined}
                     senderSiteAddress={selectedRequest.senderSiteAddress || undefined}
                     assetSiteName={selectedRequest.assetSiteName || undefined}
                     assetSiteAddress={selectedRequest.assetSiteAddress || undefined}
-                    receiverName={selectedRequest.receiverName || selectedRequest.requestedByName}
+                    receiverName={
+                      selectedRequest.reason && selectedRequest.reason.includes("[ASSET DEPLOYMENT]")
+                        ? (selectedRequest.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || selectedRequest.requestedByName)
+                        : (selectedRequest.receiverName || selectedRequest.requestedByName)
+                    }
                     receiverSiteName={selectedRequest.receiverSiteName || selectedRequest.siteName || undefined}
                     receiverSiteAddress={selectedRequest.receiverSiteAddress || sites.find(s => s.name === selectedRequest.siteName)?.address || undefined}
                     receivedAt={selectedRequest.returnedAt || selectedRequest.updatedAt}

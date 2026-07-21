@@ -337,6 +337,25 @@ export function RequestTimeline({
       </svg>
     );
 
+    // Check if this is an Asset Deployment transaction
+    const isDeployment = status === 'RELEASED' || ascHistory.some(e => e.comment && e.comment.includes('[ASSET DEPLOYMENT]'));
+
+    if (isDeployment) {
+      const deployTimestamp = ascHistory.length > 0 ? ascHistory[ascHistory.length - 1].timestamp : new Date().toISOString();
+      const targetEmployee = receiverName || requestedByName;
+      nodes.push({
+        type: 'released',
+        title: 'DEPLOYED',
+        titleColor: '#2563eb',
+        iconColor: '#2563eb',
+        iconSvg: getReleasedIcon(),
+        timestamp: deployTimestamp,
+        boxText: `Asset deployed directly to ${targetEmployee}`,
+        bottomHtml: <span>Deployed by: <strong>{senderName || requestedByName || 'Inventory Staff'}</strong> <Badge type="inv">Inv. Staff</Badge></span>
+      });
+      return nodes;
+    }
+
     const hasInitialPending = ascHistory.some(evt => mapStatus(evt.status) === 'PENDING_APPROVAL');
     if (!hasInitialPending) {
       const firstTimestamp = ascHistory.length > 0 ? ascHistory[0].timestamp : new Date().toISOString();

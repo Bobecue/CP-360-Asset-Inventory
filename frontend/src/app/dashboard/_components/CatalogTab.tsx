@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { CatalogItem } from "@/types/dashboard";
 import { getCategoryIcon } from "@/types/dashboard";
 
@@ -23,8 +24,9 @@ interface CatalogTabProps {
   selectedItemIds: string[];
   filteredItems: CatalogItem[];
   isLoadingItems: boolean;
-  onToggleSelectItem: (id: string) => void;
+  onToggleSelectItem: (id: string, isMultiSelectMode?: boolean) => void;
   onToggleSelectAll: () => void;
+  onClearSelection?: () => void;
   onExportCSV: () => void;
   onOpenAddModal: () => void;
   onOpenEditModal: (item: CatalogItem) => void;
@@ -59,6 +61,7 @@ export const CatalogTab = ({
   isLoadingItems,
   onToggleSelectItem,
   onToggleSelectAll,
+  onClearSelection,
   onExportCSV,
   onOpenAddModal,
   onOpenEditModal,
@@ -70,10 +73,29 @@ export const CatalogTab = ({
   currentUser,
   onOpenBulkRequestModal,
 }: CatalogTabProps) => {
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const filteredIds = filteredItems.map((it) => it.id);
   const allSelected = filteredIds.length > 0 && filteredIds.every((id) => selectedItemIds.includes(id));
   const canEditAddRemove = currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "ADMIN" || currentUser?.role === "INVENTORY_STAFF";
   const canAdjustStock = canEditAddRemove;
+
+  // Show selection circles ONLY when explicit multi-select mode is active
+  const showCircles = isMultiSelectMode;
+
+  const toggleMultiSelectMode = () => {
+    if (isMultiSelectMode) {
+      // Exit multi select mode and clear selections if active
+      setIsMultiSelectMode(false);
+      if (onClearSelection) {
+        onClearSelection();
+      } else if (allSelected) {
+        onToggleSelectAll();
+      }
+    } else {
+      // Enter multi select mode
+      setIsMultiSelectMode(true);
+    }
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -139,22 +161,22 @@ export const CatalogTab = ({
               </svg>
             )
           },
-          { 
-            title: "Low Stock / Out of Stock", 
+          {
+            title: "Low Stock / Out of Stock",
             value: catalogItems.filter(it => {
               const stock = it.stockLevels?.find(sl => sl.siteId === selectedSiteId);
               const qty = stock ? stock.quantity : 0;
               const min = stock ? stock.reorderPoint : 5;
               return qty <= min;
-            }).length, 
-            desc: "At selected site", 
+            }).length,
+            desc: "At selected site",
             icon: (
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" fill="rgba(239, 68, 68, 0.1)" />
                 <line x1="12" y1="9" x2="12" y2="13" />
                 <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
-            ) 
+            )
           },
         ].map((item, idx) => (
           <div key={idx}
@@ -263,7 +285,7 @@ export const CatalogTab = ({
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f1f5f9"}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
                 </button>
               )}
             </div>
@@ -371,7 +393,7 @@ export const CatalogTab = ({
                 transition: "all 0.15s ease",
               }}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>
               List
             </button>
             <button
@@ -392,7 +414,7 @@ export const CatalogTab = ({
                 transition: "all 0.15s ease",
               }}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>
               Grid
             </button>
           </div>
@@ -416,7 +438,7 @@ export const CatalogTab = ({
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f8fafc"}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#ffffff"}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
             Export CSV
           </button>
 
@@ -459,9 +481,73 @@ export const CatalogTab = ({
         backgroundColor: "#ffffff",
         borderRadius: 12,
         boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(226,232,240,0.6)",
-        padding: "1.5rem",
+        padding: "1.25rem 1.5rem 1.5rem",
         overflow: "hidden"
       }}>
+        {/* Upper Left Multi-Select Trigger Button Header (Exact Red Dot Position) */}
+        {!isLoadingItems && filteredItems.length > 0 && (
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "1rem",
+          }}>
+            <button
+              type="button"
+              onClick={toggleMultiSelectMode}
+              title={showCircles ? "Exit Multi-Select Mode" : "Enable Multi-Select Mode"}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                padding: "0.45rem 0.85rem",
+                borderRadius: 8,
+                border: showCircles ? "2px solid #210cae" : "1px solid #cbd5e1",
+                backgroundColor: showCircles ? "#f0f4fe" : "#ffffff",
+                color: showCircles ? "#210cae" : "#475569",
+                fontSize: "0.8rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                boxShadow: showCircles ? "0 2px 6px rgba(33,12,174,0.12)" : "0 1px 3px rgba(0,0,0,0.04)",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                if (!showCircles) {
+                  e.currentTarget.style.borderColor = "#210cae";
+                  e.currentTarget.style.backgroundColor = "#f8fafc";
+                  e.currentTarget.style.color = "#210cae";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!showCircles) {
+                  e.currentTarget.style.borderColor = "#cbd5e1";
+                  e.currentTarget.style.backgroundColor = "#ffffff";
+                  e.currentTarget.style.color = "#475569";
+                }
+              }}
+            >
+              <div style={{
+                width: 18,
+                height: 18,
+                borderRadius: "50%",
+                border: showCircles ? "2px solid #210cae" : "2px solid #94a3b8",
+                backgroundColor: showCircles ? "#210cae" : "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.2s ease",
+              }}>
+                {showCircles && (
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </div>
+              <span>{showCircles ? `Multi-Select Active (${selectedItemIds.length})` : "Select Multiple"}</span>
+            </button>
+          </div>
+        )}
+
         {isLoadingItems ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "3rem 0", gap: "1rem" }}>
             <div style={{
@@ -476,7 +562,7 @@ export const CatalogTab = ({
         ) : filteredItems.length === 0 ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "4rem 1rem", textAlign: "center" }}>
             <div style={{ width: 48, height: 48, borderRadius: "50%", backgroundColor: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8", marginBottom: "0.75rem" }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="9" /><rect x="14" y="3" width="7" height="5" /><rect x="14" y="12" width="7" height="9" /><rect x="3" y="16" width="7" height="5" /></svg>
             </div>
             <h4 style={{ fontSize: "0.9rem", fontWeight: 600, color: "#3f3f46", margin: "0 0 0.25rem 0" }}>No Assets Found</h4>
             <p style={{ fontSize: "0.78rem", color: "#71717a", maxWidth: 280, margin: 0 }}>
@@ -486,61 +572,186 @@ export const CatalogTab = ({
         ) : catalogViewMode === "list" ? (
           /* List table layout */
           <div style={{ overflowX: "auto" }}>
-            {/* Bulk select action banner */}
-            {selectedItemIds.length > 0 && (
+            {/* Bulk select action banner bar - Enabled ONLY when explicit multi-select mode is active */}
+            {isMultiSelectMode && selectedItemIds.length > 0 && (
               <div style={{
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                backgroundColor: "#f8fafc",
-                borderRadius: "8px",
-                padding: "0.6rem 0.85rem",
-                marginBottom: "1rem",
-                border: "1px solid #e2e8f0",
+                backgroundColor: "#f0f4fe",
+                borderRadius: "10px",
+                padding: "0.75rem 1rem",
+                marginBottom: "1.25rem",
+                border: "1px solid #c7d2fe",
+                boxShadow: "0 2px 8px rgba(33, 12, 174, 0.06)",
+                animation: "fadeIn 0.2s ease-in-out",
               }}>
-                <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#475569" }}>
-                  Selected <strong>{selectedItemIds.length}</strong> {selectedItemIds.length === 1 ? "item" : "items"}
-                </span>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                  <div style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    backgroundColor: "#210cae",
+                    color: "#ffffff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 700,
+                    fontSize: "0.8rem",
+                  }}>
+                    {selectedItemIds.length}
+                  </div>
+                  <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e1b4b" }}>
+                    {selectedItemIds.length} {selectedItemIds.length === 1 ? "Asset" : "Assets"} Selected
+                  </span>
+                  {selectedItemIds.length < filteredItems.length && (
+                    <button
+                      onClick={onToggleSelectAll}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.35rem",
+                        backgroundColor: "#ffffff",
+                        border: "1px solid #c7d2fe",
+                        borderRadius: "7px",
+                        color: "#210cae",
+                        fontSize: "0.78rem",
+                        fontWeight: 600,
+                        padding: "0.35rem 0.65rem",
+                        cursor: "pointer",
+                        boxShadow: "0 1px 2px rgba(33,12,174,0.05)",
+                        transition: "all 0.15s ease",
+                        marginLeft: "0.5rem",
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#e0e7ff"; e.currentTarget.style.borderColor = "#818cf8"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#ffffff"; e.currentTarget.style.borderColor = "#c7d2fe"; }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 11 12 14 22 4" />
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                      </svg>
+                      Select All Visible ({filteredItems.length})
+                    </button>
+                  )}
                   <button
-                    onClick={onOpenBulkRequestModal}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.3rem",
-                      backgroundColor: "#e85d00",
-                      border: "none",
-                      borderRadius: "6px",
-                      color: "#ffffff",
-                      fontSize: "0.75rem",
-                      fontWeight: 600,
-                      padding: "0.35rem 0.75rem",
-                      cursor: "pointer",
-                      boxShadow: "0 1px 3px rgba(232,93,0,0.15)"
+                    onClick={() => {
+                      if (onClearSelection) {
+                        onClearSelection();
+                      } else if (allSelected) {
+                        onToggleSelectAll();
+                      }
                     }}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.35rem",
+                      backgroundColor: "#ffffff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "7px",
+                      color: "#64748b",
+                      fontSize: "0.78rem",
+                      fontWeight: 600,
+                      padding: "0.35rem 0.65rem",
+                      cursor: "pointer",
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                      transition: "all 0.15s ease",
+                      marginLeft: "0.35rem",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#f1f5f9"; e.currentTarget.style.color = "#0f172a"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#ffffff"; e.currentTarget.style.color = "#64748b"; }}
                   >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                    Request Selected ({selectedItemIds.length})
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                    Clear Selection
                   </button>
+                </div>
+
+                <div style={{ display: "flex", gap: "0.65rem", alignItems: "center" }}>
+                  {(() => {
+                    const canDeploy = currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "INVENTORY_STAFF" || currentUser?.role === "OPS_MANAGER";
+                    return (
+                      <button
+                        onClick={onOpenBulkRequestModal}
+                        className="btn-hover-effect"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "0.45rem",
+                          background: canDeploy ? "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)" : "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)",
+                          border: "none",
+                          borderRadius: "8px",
+                          color: "#ffffff",
+                          fontSize: "0.82rem",
+                          fontWeight: 600,
+                          padding: "0.45rem 1rem",
+                          cursor: "pointer",
+                          boxShadow: canDeploy ? "0 2px 6px rgba(37, 99, 235, 0.25)" : "0 2px 6px rgba(124, 58, 237, 0.25)",
+                          transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = "translateY(-1px)";
+                          e.currentTarget.style.boxShadow = canDeploy ? "0 4px 12px rgba(37, 99, 235, 0.35)" : "0 4px 12px rgba(124, 58, 237, 0.35)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = "translateY(0)";
+                          e.currentTarget.style.boxShadow = canDeploy ? "0 2px 6px rgba(37, 99, 235, 0.25)" : "0 2px 6px rgba(124, 58, 237, 0.25)";
+                        }}
+                      >
+                        {canDeploy ? (
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="8.5" cy="7" r="4"></circle>
+                            <line x1="20" y1="8" x2="20" y2="14"></line>
+                            <line x1="23" y1="11" x2="17" y2="11"></line>
+                          </svg>
+                        ) : (
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <path d="M16 10a4 4 0 0 1-8 0"></path>
+                          </svg>
+                        )}
+                        {canDeploy ? `Deploy Asset (${selectedItemIds.length})` : `Request Selected (${selectedItemIds.length})`}
+                      </button>
+                    );
+                  })()}
 
                   {canEditAddRemove && (
                     <button
                       onClick={() => onDeleteTarget("bulk_items", "bulk", "Selected Items")}
+                      className="btn-hover-effect"
                       style={{
-                        display: "flex",
+                        display: "inline-flex",
                         alignItems: "center",
-                        gap: "0.3rem",
-                        backgroundColor: "#fef2f2",
-                        border: "1px solid #fee2e2",
-                        borderRadius: "6px",
+                        gap: "0.45rem",
+                        backgroundColor: "#ffffff",
+                        border: "1px solid #fecaca",
+                        borderRadius: "8px",
                         color: "#dc2626",
-                        fontSize: "0.75rem",
+                        fontSize: "0.82rem",
                         fontWeight: 600,
-                        padding: "0.35rem 0.75rem",
+                        padding: "0.45rem 1rem",
                         cursor: "pointer",
+                        boxShadow: "0 1px 3px rgba(220, 38, 38, 0.08)",
+                        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = "#fef2f2";
+                        e.currentTarget.style.borderColor = "#f87171";
+                        e.currentTarget.style.transform = "translateY(-1px)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "#ffffff";
+                        e.currentTarget.style.borderColor = "#fecaca";
+                        e.currentTarget.style.transform = "translateY(0)";
                       }}
                     >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
                       Delete Selected ({selectedItemIds.length})
                     </button>
                   )}
@@ -551,13 +762,33 @@ export const CatalogTab = ({
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.82rem" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
-                  <th style={{ padding: "0.6rem 0.5rem", width: "40px" }}>
-                    <input
-                      type="checkbox"
-                      checked={allSelected}
-                      onChange={onToggleSelectAll}
-                      style={{ cursor: "pointer", width: 14, height: 14 }}
-                    />
+                  <th style={{ padding: "0.6rem 0.5rem", width: "44px", textAlign: "center" }}>
+                    <button
+                      type="button"
+                      onClick={onToggleSelectAll}
+                      title={allSelected ? "Deselect All" : "Select All"}
+                      aria-label="Select All Items"
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: "50%",
+                        border: allSelected ? "2px solid #210cae" : "2px solid #94a3b8",
+                        backgroundColor: allSelected ? "#210cae" : "transparent",
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: 0,
+                        transition: "all 0.2s ease",
+                        outline: "none",
+                      }}
+                    >
+                      {allSelected && (
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </button>
                   </th>
                   <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Asset / SKU</th>
                   <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Category</th>
@@ -585,24 +816,59 @@ export const CatalogTab = ({
                   const isConsumable = it.category?.type === "CONSUMABLE";
 
                   return (
-                    <tr key={it.id} 
+                    <tr key={it.id}
                       className="animated-row"
                       style={{
                         borderBottom: "1px solid #f8fafc",
                         transition: "background-color 0.15s",
-                        backgroundColor: isSelected ? "rgba(33, 12, 174, 0.02)" : "transparent",
+                        backgroundColor: isSelected ? "rgba(33, 12, 174, 0.04)" : "transparent",
                         animationDelay: `${index * 0.04}s`,
                       }}
                       onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = "#fafafa"; }}
                       onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = "transparent"; }}
                     >
-                      <td style={{ padding: "0.75rem 0.5rem" }}>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => onToggleSelectItem(it.id)}
-                          style={{ cursor: "pointer", width: 14, height: 14 }}
-                        />
+                      <td style={{ padding: "0.75rem 0.5rem", textAlign: "center" }}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleSelectItem(it.id, showCircles);
+                          }}
+                          aria-label={`Select ${it.name}`}
+                          style={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: "50%",
+                            border: isSelected ? "2px solid #210cae" : "2px solid #cbd5e1",
+                            backgroundColor: isSelected ? "#210cae" : "#ffffff",
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: 0,
+                            transition: "all 0.2s ease",
+                            boxShadow: isSelected ? "0 2px 5px rgba(33,12,174,0.3)" : "none",
+                            outline: "none",
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isSelected) {
+                              e.currentTarget.style.borderColor = "#210cae";
+                              e.currentTarget.style.backgroundColor = "#f0f4fe";
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isSelected) {
+                              e.currentTarget.style.borderColor = "#cbd5e1";
+                              e.currentTarget.style.backgroundColor = "#ffffff";
+                            }
+                          }}
+                        >
+                          {isSelected && (
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          )}
+                        </button>
                       </td>
                       <td style={{ padding: "0.75rem 0.5rem", color: "#1e293b" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
@@ -649,7 +915,7 @@ export const CatalogTab = ({
                           {[
                             {
                               title: "Adjust stock levels",
-                              icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+                              icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>,
                               onClick: () => onOpenStockModal(it),
                               color: "#475569",
                               hoverBg: "#f1f5f9",
@@ -657,7 +923,7 @@ export const CatalogTab = ({
                             },
                             {
                               title: "View Asset Tags",
-                              icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1"/></svg>,
+                              icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1" /></svg>,
                               onClick: () => onOpenViewTags(it),
                               color: "#210cae",
                               hoverBg: "rgba(33,12,174,0.06)",
@@ -665,7 +931,7 @@ export const CatalogTab = ({
                             },
                             {
                               title: "Edit Item Info",
-                              icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>,
+                              icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>,
                               onClick: () => onOpenEditModal(it),
                               color: "#475569",
                               hoverBg: "#f1f5f9",
@@ -673,7 +939,7 @@ export const CatalogTab = ({
                             },
                             {
                               title: "View Change History",
-                              icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+                              icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>,
                               onClick: () => onOpenHistoryModal(it),
                               color: "#475569",
                               hoverBg: "#f1f5f9",
@@ -681,7 +947,7 @@ export const CatalogTab = ({
                             },
                             {
                               title: "Delete Item",
-                              icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>,
+                              icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>,
                               onClick: () => onDeleteTarget("item", it.id, it.name),
                               color: "#dc2626",
                               hoverBg: "#fee2e2",
@@ -721,41 +987,134 @@ export const CatalogTab = ({
         ) : (
           /* Grid view layout */
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            {/* Bulk select action banner */}
-            {selectedItemIds.length > 0 && (
+            {/* Bulk select action banner bar - Enabled ONLY when explicit multi-select mode is active */}
+            {isMultiSelectMode && selectedItemIds.length > 0 && (
               <div style={{
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                backgroundColor: "#f8fafc",
-                borderRadius: "8px",
-                padding: "0.6rem 0.85rem",
-                border: "1px solid #e2e8f0",
+                backgroundColor: "#f0f4fe",
+                borderRadius: "10px",
+                padding: "0.75rem 1rem",
+                border: "1px solid #c7d2fe",
+                boxShadow: "0 2px 8px rgba(33, 12, 174, 0.06)",
+                animation: "fadeIn 0.2s ease-in-out",
               }}>
-                <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#475569" }}>
-                  Selected <strong>{selectedItemIds.length}</strong> {selectedItemIds.length === 1 ? "item" : "items"}
-                </span>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                  <div style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    backgroundColor: "#210cae",
+                    color: "#ffffff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 700,
+                    fontSize: "0.8rem",
+                  }}>
+                    {selectedItemIds.length}
+                  </div>
+                  <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1e1b4b" }}>
+                    {selectedItemIds.length} {selectedItemIds.length === 1 ? "Asset" : "Assets"} Selected
+                  </span>
+                  {selectedItemIds.length < filteredItems.length && (
+                    <button
+                      onClick={onToggleSelectAll}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.35rem",
+                        backgroundColor: "#ffffff",
+                        border: "1px solid #c7d2fe",
+                        borderRadius: "7px",
+                        color: "#210cae",
+                        fontSize: "0.78rem",
+                        fontWeight: 600,
+                        padding: "0.35rem 0.65rem",
+                        cursor: "pointer",
+                        boxShadow: "0 1px 2px rgba(33,12,174,0.05)",
+                        transition: "all 0.15s ease",
+                        marginLeft: "0.5rem",
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#e0e7ff"; e.currentTarget.style.borderColor = "#818cf8"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#ffffff"; e.currentTarget.style.borderColor = "#c7d2fe"; }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 11 12 14 22 4" />
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                      </svg>
+                      Select All Visible ({filteredItems.length})
+                    </button>
+                  )}
                   <button
-                    onClick={onOpenBulkRequestModal}
+                    onClick={() => {
+                      if (onClearSelection) {
+                        onClearSelection();
+                      } else if (allSelected) {
+                        onToggleSelectAll();
+                      }
+                    }}
                     style={{
-                      display: "flex",
+                      display: "inline-flex",
                       alignItems: "center",
                       gap: "0.35rem",
-                      backgroundColor: "#e85d00",
-                      border: "none",
-                      borderRadius: "6px",
-                      color: "#ffffff",
-                      fontSize: "0.75rem",
+                      backgroundColor: "#ffffff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "7px",
+                      color: "#64748b",
+                      fontSize: "0.78rem",
                       fontWeight: 600,
-                      padding: "0.35rem 0.75rem",
+                      padding: "0.35rem 0.65rem",
                       cursor: "pointer",
-                      boxShadow: "0 1px 3px rgba(232,93,0,0.15)"
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                      transition: "all 0.15s ease",
+                      marginLeft: "0.35rem",
                     }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#f1f5f9"; e.currentTarget.style.color = "#0f172a"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#ffffff"; e.currentTarget.style.color = "#64748b"; }}
                   >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                    Request Selected ({selectedItemIds.length})
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                    Clear Selection
                   </button>
+                </div>
+
+                <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
+                  {(() => {
+                    const canDeploy = currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "INVENTORY_STAFF" || currentUser?.role === "OPS_MANAGER";
+                    return (
+                      <button
+                        onClick={onOpenBulkRequestModal}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.4rem",
+                          backgroundColor: canDeploy ? "#210cae" : "#7c3aed",
+                          border: "none",
+                          borderRadius: "7px",
+                          color: "#ffffff",
+                          fontSize: "0.78rem",
+                          fontWeight: 600,
+                          padding: "0.45rem 0.9rem",
+                          cursor: "pointer",
+                          boxShadow: canDeploy ? "0 2px 5px rgba(33,12,174,0.2)" : "0 2px 5px rgba(124,58,237,0.2)",
+                          transition: "all 0.15s ease",
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = canDeploy ? "#1a098c" : "#6d28d9"}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = canDeploy ? "#210cae" : "#7c3aed"}
+                      >
+                        {canDeploy ? (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                        ) : (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                        )}
+                        {canDeploy ? "Deploy Asset" : "Request Selected"}
+                      </button>
+                    );
+                  })()}
 
                   {canEditAddRemove && (
                     <button
@@ -763,21 +1122,21 @@ export const CatalogTab = ({
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "0.35rem",
+                        gap: "0.4rem",
                         backgroundColor: "#fef2f2",
                         border: "1px solid #fca5a5",
-                        borderRadius: "6px",
-                        color: "#b91c1c",
-                        fontSize: "0.75rem",
+                        borderRadius: "7px",
+                        color: "#dc2626",
+                        fontSize: "0.78rem",
                         fontWeight: 600,
-                        padding: "0.35rem 0.75rem",
+                        padding: "0.45rem 0.9rem",
                         cursor: "pointer",
                         transition: "all 0.15s ease",
                       }}
                       onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#fee2e2"; e.currentTarget.style.borderColor = "#f87171"; }}
                       onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#fef2f2"; e.currentTarget.style.borderColor = "#fca5a5"; }}
                     >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
                       Delete Selected ({selectedItemIds.length})
                     </button>
                   )}
@@ -823,7 +1182,7 @@ export const CatalogTab = ({
                 return (
                   <div
                     key={it.id}
-                    onClick={() => onToggleSelectItem(it.id)}
+                    onClick={() => onToggleSelectItem(it.id, showCircles)}
                     style={{
                       backgroundColor: "#ffffff",
                       borderRadius: 14,
@@ -851,28 +1210,62 @@ export const CatalogTab = ({
                       }
                     }}
                   >
-                    {/* Selected overlay checkmark */}
-                    {isSelected && (
-                      <div style={{
-                        position: "absolute", top: 10, right: 10, zIndex: 10,
-                        width: 22, height: 22, borderRadius: "50%",
-                        backgroundColor: "#210cae",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        boxShadow: "0 2px 6px rgba(33,12,174,0.4)",
-                      }}>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                      </div>
-                    )}
-
-                    {/* Card Header with icon + badges */}
+                    {/* Card Header with circular selection button + icon + badges */}
                     <div style={{
                       background: isSelected ? "linear-gradient(135deg, rgba(33,12,174,0.07) 0%, rgba(77,201,230,0.05) 100%)" : headerGradient,
                       padding: "1rem 1.1rem 0.85rem",
                       display: "flex",
                       alignItems: "flex-start",
-                      gap: "0.85rem",
+                      gap: "0.75rem",
                       borderBottom: "1px solid rgba(0,0,0,0.04)",
                     }}>
+                      {/* Circular selection button to left of card - displayed ONLY when showCircles (multi-select mode) is true */}
+                      {showCircles && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleSelectItem(it.id, showCircles);
+                          }}
+                          aria-label={`Select ${it.name}`}
+                          style={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: "50%",
+                            border: isSelected ? "2px solid #210cae" : "2px solid #94a3b8",
+                            backgroundColor: isSelected ? "#210cae" : "#ffffff",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                            marginTop: "2px",
+                            padding: 0,
+                            transition: "all 0.2s ease",
+                            boxShadow: isSelected ? "0 2px 5px rgba(33,12,174,0.3)" : "none",
+                            outline: "none",
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isSelected) {
+                              e.currentTarget.style.borderColor = "#210cae";
+                              e.currentTarget.style.backgroundColor = "#f0f4fe";
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isSelected) {
+                              e.currentTarget.style.borderColor = "#94a3b8";
+                              e.currentTarget.style.backgroundColor = "#ffffff";
+                            }
+                          }}
+                        >
+                          {isSelected && (
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          )}
+                        </button>
+                      )}
+
                       {/* Category icon avatar */}
                       <div style={{
                         width: 40, height: 40, borderRadius: 10,
@@ -924,7 +1317,7 @@ export const CatalogTab = ({
                     >
                       {/* SKU */}
                       <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1"/></svg>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1" /></svg>
                         <code style={{
                           fontSize: "0.7rem", color: "#475569", fontFamily: "monospace",
                           backgroundColor: "#f1f5f9", padding: "0.1rem 0.35rem",
@@ -1007,7 +1400,10 @@ export const CatalogTab = ({
                       {/* Adjust Stock */}
                       {canAdjustStock && (
                         <button
-                          onClick={() => onOpenStockModal(it)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenStockModal(it);
+                          }}
                           style={{
                             display: "flex", alignItems: "center", gap: "0.3rem",
                             background: "none", border: "none", cursor: "pointer",
@@ -1017,7 +1413,7 @@ export const CatalogTab = ({
                           onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#f1f5f9"; e.currentTarget.style.color = "#0f172a"; }}
                           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#475569"; }}
                         >
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                           Adjust Stock
                         </button>
                       )}
@@ -1026,7 +1422,10 @@ export const CatalogTab = ({
                       <div style={{ display: "flex", gap: "0.3rem", marginLeft: "auto" }}>
                         {it.category?.type === "NON_CONSUMABLE" && (
                           <button
-                            onClick={() => onOpenViewTags(it)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenViewTags(it);
+                            }}
                             title="View Asset Tags"
                             style={{
                               background: "#ffffff", border: "1px solid #e2e8f0", cursor: "pointer",
@@ -1037,12 +1436,15 @@ export const CatalogTab = ({
                             onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(33,12,174,0.05)"; e.currentTarget.style.borderColor = "#210cae"; }}
                             onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#ffffff"; e.currentTarget.style.borderColor = "#e2e8f0"; }}
                           >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1"/></svg>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1" /></svg>
                           </button>
                         )}
                         {canEditAddRemove && (
                           <button
-                            onClick={() => onOpenEditModal(it)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenEditModal(it);
+                            }}
                             title="Edit Item"
                             style={{
                               background: "#ffffff", border: "1px solid #e2e8f0", cursor: "pointer",
@@ -1053,12 +1455,15 @@ export const CatalogTab = ({
                             onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#f1f5f9"; e.currentTarget.style.borderColor = "#94a3b8"; e.currentTarget.style.color = "#0f172a"; }}
                             onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#ffffff"; e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.color = "#475569"; }}
                           >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                           </button>
                         )}
 
                         <button
-                          onClick={() => onOpenHistoryModal(it)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenHistoryModal(it);
+                          }}
                           title="View Change History"
                           style={{
                             background: "#ffffff", border: "1px solid #e2e8f0", cursor: "pointer",
@@ -1069,11 +1474,14 @@ export const CatalogTab = ({
                           onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#f1f5f9"; e.currentTarget.style.borderColor = "#94a3b8"; e.currentTarget.style.color = "#210cae"; }}
                           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#ffffff"; e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.color = "#475569"; }}
                         >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
                         </button>
                         {canEditAddRemove && (
                           <button
-                            onClick={() => onDeleteTarget("item", it.id, it.name)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteTarget("item", it.id, it.name);
+                            }}
                             title="Delete Item"
                             style={{
                               background: "#ffffff", border: "1px solid #e2e8f0", cursor: "pointer",
@@ -1084,7 +1492,7 @@ export const CatalogTab = ({
                             onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#fee2e2"; e.currentTarget.style.borderColor = "#fca5a5"; e.currentTarget.style.color = "#b91c1c"; }}
                             onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#ffffff"; e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.color = "#dc2626"; }}
                           >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
                           </button>
                         )}
                       </div>

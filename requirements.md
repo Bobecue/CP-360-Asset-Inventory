@@ -26,8 +26,8 @@ Data scoping and system permissions are strictly governed by the following roles
 | Role | System Name | Scoping | Key Permissions |
 | :--- | :--- | :--- | :--- |
 | **Super Admin** | `SUPER_ADMIN` | Global (All Sites) | Full system control. Can create/modify sites, manage users across all locations, customize settings, view global audit logs. |
-| **Ops Manager (Admin)**| `ADMIN` | Site-scoped | Full control over the inventory, suppliers, categories, POs, and requests within their assigned site. Cannot manage other sites' data. |
-| **Inventory Staff** | `INVENTORY_STAFF` | Site-scoped | Can manage physical stock levels, assign/release items, scan/process barcodes, log conditions, and process returns. |
+| **Ops Manager (Admin)**| `ADMIN` | Site-scoped | Full control over the inventory, suppliers, categories, POs, requests, and access to Reports & Logs within their assigned site. Cannot manage other sites' data. |
+| **Inventory Staff** | `INVENTORY_STAFF` | Site-scoped | Can manage physical stock levels, assign/release items, scan/process barcodes, log conditions, process returns, and access Reports & Logs. |
 | **Team Leader** | `TEAM_LEADER` | Site-scoped | Can request assets on behalf of team members, approve employee-level requests, and track team-assigned items. |
 | **Employee** | `EMPLOYEE` | Site-scoped | Standard request access. Can view their assigned assets, request new items, and cancel their own pending requests. |
 

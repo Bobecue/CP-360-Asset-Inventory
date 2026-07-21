@@ -597,10 +597,16 @@ export default function DashboardPage() {
     setSelectedItemIds([]);
   }, [activeTab, catalogSearch, catalogCategoryFilter, catalogStockFilter, selectedSiteId]);
 
-  const handleToggleSelectItem = (id: string) => {
-    setSelectedItemIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
+  const handleToggleSelectItem = (id: string, isMultiSelectMode: boolean = false) => {
+    setSelectedItemIds((prev) => {
+      const isSelected = prev.includes(id);
+      const nextSelection = isSelected ? prev.filter((x) => x !== id) : [...prev, id];
+      // In single mode (not multi-select mode), automatically open Asset Deployment modal on click
+      if (!isMultiSelectMode && nextSelection.length > 0) {
+        setIsBulkRequestOpen(true);
+      }
+      return nextSelection;
+    });
   };
 
   const handleToggleSelectAll = () => {
@@ -819,9 +825,9 @@ export default function DashboardPage() {
       case "SUPER_ADMIN":
         return true;
       case "ADMIN":
-        return ["dashboard", "catalog", "requests", "procurement", "alerts", "scan-ops"].includes(tab);
+        return ["dashboard", "catalog", "requests", "procurement", "alerts", "scan-ops", "reports"].includes(tab);
       case "INVENTORY_STAFF":
-        return ["catalog", "requests", "procurement", "alerts", "scan-ops"].includes(tab);
+        return ["catalog", "requests", "procurement", "alerts", "scan-ops", "reports"].includes(tab);
       case "TEAM_LEADER":
         return ["catalog", "requests", "alerts"].includes(tab);
       case "EMPLOYEE":
@@ -907,13 +913,34 @@ export default function DashboardPage() {
             quantity: req.quantity,
             reason: reason,
             urgency: urgency,
-            status: "PENDING",
+            status: reason && reason.includes("[ASSET DEPLOYMENT]") ? "RELEASED" : "PENDING",
             siteId: siteId || undefined,
             siteName: sites.find((s: any) => s.id === siteId)?.name || siteId || undefined,
             createdAt: new Date().toISOString(),
           };
           successCount++;
         }
+
+        if (reason && reason.includes("[ASSET DEPLOYMENT]")) {
+          created.status = "RELEASED";
+        }
+
+        // Deduct inventory stock level automatically for asset deployment
+        if (reason && reason.includes("[ASSET DEPLOYMENT]")) {
+          setCatalogItems(prevItems => prevItems.map(item => {
+            if (item.id === req.itemId) {
+              const updatedLevels = (item.stockLevels || []).map(sl => {
+                if (sl.siteId === (siteId || selectedSiteId)) {
+                  return { ...sl, quantity: Math.max(0, sl.quantity - req.quantity) };
+                }
+                return sl;
+              });
+              return { ...item, stockLevels: updatedLevels };
+            }
+            return item;
+          }));
+        }
+
         createdRequests.push(created);
       } catch (err) {
         console.error("Bulk request item submission error:", err);
@@ -924,9 +951,16 @@ export default function DashboardPage() {
       // Merge into local storage cache so RequestsTab loads them too
       try {
         const cached = localStorage.getItem("salivio_requests");
-        let currentList = [];
+        let currentList: any[] = [];
         if (cached) {
           currentList = JSON.parse(cached);
+          // Normalize existing deployment requests in cache
+          currentList = currentList.map((r: any) => {
+            if (r.reason && r.reason.includes("[ASSET DEPLOYMENT]")) {
+              return { ...r, status: "RELEASED" };
+            }
+            return r;
+          });
         }
         const merged = [...createdRequests, ...currentList];
         localStorage.setItem("salivio_requests", JSON.stringify(merged));
@@ -2007,6 +2041,7 @@ export default function DashboardPage() {
             isLoadingItems={isLoadingItems}
             onToggleSelectItem={handleToggleSelectItem}
             onToggleSelectAll={handleToggleSelectAll}
+            onClearSelection={() => setSelectedItemIds([])}
             onExportCSV={handleExportCSV}
             onOpenAddModal={() => {
               setEditingItem(null);
@@ -2464,17 +2499,25 @@ export default function DashboardPage() {
       {isBulkRequestOpen && (
         <BulkRequestModal
           open={isBulkRequestOpen}
-          onClose={() => setIsBulkRequestOpen(false)}
+          currentUser={currentUser}
+          onClose={() => {
+            setIsBulkRequestOpen(false);
+            if (selectedItemIds.length === 1) {
+              setSelectedItemIds([]);
+            }
+          }}
           selectedItems={catalogItems
             .filter((it) => selectedItemIds.includes(it.id))
             .map((it) => {
               const stock = it.stockLevels?.find(sl => sl.siteId === selectedSiteId) || { quantity: 0 };
+              const tags = (it.assets || []).map((a: any) => a.assetTag || a.serialNumber).filter(Boolean);
               return {
                 id: it.id,
                 name: it.name,
                 sku: it.sku,
                 stock: stock.quantity,
                 category: it.category?.name,
+                assetTags: tags,
               };
             })}
           sites={sites}
