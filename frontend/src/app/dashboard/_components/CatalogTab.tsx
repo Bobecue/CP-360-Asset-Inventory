@@ -84,6 +84,7 @@ export const CatalogTab = ({
   const [isDeploymentDrawerOpen, setIsDeploymentDrawerOpen] = useState(false);
   const [deploymentSearch, setDeploymentSearch] = useState("");
   const [deploymentSiteFilter, setDeploymentSiteFilter] = useState("ALL");
+  const [deploymentStatusFilter, setDeploymentStatusFilter] = useState("ALL");
 
   const filteredIds = filteredItems.map((it) => it.id);
   const allSelected = filteredIds.length > 0 && filteredIds.every((id) => selectedItemIds.includes(id));
@@ -203,15 +204,22 @@ export const CatalogTab = ({
 
   const filteredDeployments = deploymentsList.filter(dep => {
     const matchesSite = deploymentSiteFilter === "ALL" || dep.siteId === deploymentSiteFilter;
+    const isReturned = dep.status === "RETURNED";
+    const matchesStatus = 
+      deploymentStatusFilter === "ALL" ? true :
+      deploymentStatusFilter === "ACTIVE" ? !isReturned :
+      deploymentStatusFilter === "RETURNED" ? isReturned : true;
+
     const q = deploymentSearch.toLowerCase();
     const matchesSearch =
+      !q ||
       (dep.employeeName || "").toLowerCase().includes(q) ||
       (dep.employeeEid || "").toLowerCase().includes(q) ||
       (dep.employeeAccount || "").toLowerCase().includes(q) ||
       (dep.itemName || "").toLowerCase().includes(q) ||
       (dep.assetTag || "").toLowerCase().includes(q) ||
       (dep.id || "").toLowerCase().includes(q);
-    return matchesSite && matchesSearch;
+    return matchesSite && matchesStatus && matchesSearch;
   });
 
   const handleDownloadDeploymentReceipt = (dep: any) => {
@@ -2070,6 +2078,28 @@ export const CatalogTab = ({
                       {s.name} ({s.prefix})
                     </option>
                   ))}
+                </select>
+              </div>
+
+              {/* Status Selector */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "160px" }}>
+                <label style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Filter Status</label>
+                <select
+                  value={deploymentStatusFilter}
+                  onChange={(e) => setDeploymentStatusFilter(e.target.value)}
+                  style={{
+                    padding: "0.45rem 0.65rem",
+                    borderRadius: 6,
+                    border: "1px solid #e2e8f0",
+                    fontSize: "0.8rem",
+                    color: "#475569",
+                    backgroundColor: "#ffffff",
+                    outline: "none",
+                  }}
+                >
+                  <option value="ALL">All Statuses (Active & Returned)</option>
+                  <option value="ACTIVE">⚡ Active Deployments</option>
+                  <option value="RETURNED">↩️ Returned Assets</option>
                 </select>
               </div>
 
