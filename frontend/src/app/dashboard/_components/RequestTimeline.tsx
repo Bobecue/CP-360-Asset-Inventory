@@ -494,8 +494,20 @@ export function RequestTimeline({
         });
       }
       if (s === 'RETURNED') {
-        const fullReceivedLocation = [senderSiteName, senderSiteAddress].filter(Boolean).join(' - ');
-        const fullReturnedLocation = [receiverSiteName, receiverSiteAddress].filter(Boolean).join(' - ');
+        const buildLocationStr = (name?: string, addr?: string) => {
+          if (!name && !addr) return '';
+          const cleanAddr = addr ? cleanAddress(addr) : '';
+          if (name && cleanAddr) {
+            if (name.includes(cleanAddr)) return name;
+            if (cleanAddr.includes(name)) return cleanAddr;
+            return `${name}, ${cleanAddr}`;
+          }
+          return name || cleanAddr;
+        };
+
+        const fullReceivedLocation = buildLocationStr(senderSiteName, senderSiteAddress);
+        const fullReturnedLocation = buildLocationStr(receiverSiteName, receiverSiteAddress);
+
         nodes.push({
           type: 'returned',
           title: 'RETURNED',
