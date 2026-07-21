@@ -155,6 +155,7 @@ export default function DashboardPage() {
   // Scan Modal state
   const [isScanModalOpen, setIsScanModalOpen] = useState(false);
   const [isBulkRequestOpen, setIsBulkRequestOpen] = useState(false);
+  const [bulkRequestInitialMode, setBulkRequestInitialMode] = useState<'deploy' | 'request'>('deploy');
 
   const [mockAuditLogs, setMockAuditLogs] = useState<any[]>(() => {
     const getPastDateStr = (daysAgo: number, timeStr: string) => {
@@ -2116,7 +2117,7 @@ export default function DashboardPage() {
             onOpenHistoryModal={handleOpenHistoryModal}
             onOpenScanModal={() => setIsScanModalOpen(true)}
             currentUser={currentUser}
-            onOpenBulkRequestModal={() => setIsBulkRequestOpen(true)}
+            onOpenBulkRequestModal={(mode: 'deploy' | 'request') => { setBulkRequestInitialMode(mode); setIsBulkRequestOpen(true); }}
           />
         );
       case "settings":
@@ -2521,6 +2522,7 @@ export default function DashboardPage() {
               };
             })}
           sites={sites}
+          initialMode={bulkRequestInitialMode}
           onSubmit={handleBulkRequestSubmit}
         />
       )}

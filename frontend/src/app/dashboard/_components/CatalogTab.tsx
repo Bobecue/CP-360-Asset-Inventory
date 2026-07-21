@@ -36,7 +36,7 @@ interface CatalogTabProps {
   onOpenHistoryModal: (item: CatalogItem) => void;
   onOpenScanModal?: () => void;
   currentUser: any;
-  onOpenBulkRequestModal: () => void;
+  onOpenBulkRequestModal: (mode: 'deploy' | 'request') => void;
 }
 
 export const CatalogTab = ({
@@ -669,54 +669,80 @@ export const CatalogTab = ({
                 </div>
 
                 <div style={{ display: "flex", gap: "0.65rem", alignItems: "center" }}>
-                  {(() => {
-                    const canDeploy = currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "INVENTORY_STAFF" || currentUser?.role === "OPS_MANAGER" || currentUser?.role === "ADMIN";
-                    return (
-                      <button
-                        onClick={onOpenBulkRequestModal}
-                        className="btn-hover-effect"
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "0.45rem",
-                          background: canDeploy ? "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)" : "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)",
-                          border: "none",
-                          borderRadius: "8px",
-                          color: "#ffffff",
-                          fontSize: "0.82rem",
-                          fontWeight: 600,
-                          padding: "0.45rem 1rem",
-                          cursor: "pointer",
-                          boxShadow: canDeploy ? "0 2px 6px rgba(37, 99, 235, 0.25)" : "0 2px 6px rgba(124, 58, 237, 0.25)",
-                          transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = "translateY(-1px)";
-                          e.currentTarget.style.boxShadow = canDeploy ? "0 4px 12px rgba(37, 99, 235, 0.35)" : "0 4px 12px rgba(124, 58, 237, 0.35)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = "translateY(0)";
-                          e.currentTarget.style.boxShadow = canDeploy ? "0 2px 6px rgba(37, 99, 235, 0.25)" : "0 2px 6px rgba(124, 58, 237, 0.25)";
-                        }}
-                      >
-                        {canDeploy ? (
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="8.5" cy="7" r="4"></circle>
-                            <line x1="20" y1="8" x2="20" y2="14"></line>
-                            <line x1="23" y1="11" x2="17" y2="11"></line>
-                          </svg>
-                        ) : (
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-                            <line x1="3" y1="6" x2="21" y2="6"></line>
-                            <path d="M16 10a4 4 0 0 1-8 0"></path>
-                          </svg>
-                        )}
-                        {canDeploy ? `Deploy Asset (${selectedItemIds.length})` : `Request Selected (${selectedItemIds.length})`}
-                      </button>
-                    );
-                  })()}
+                  {/* Request Asset button — always visible */}
+                  <button
+                    onClick={() => onOpenBulkRequestModal('request')}
+                    className="btn-hover-effect"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.45rem",
+                      background: "linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)",
+                      border: "none",
+                      borderRadius: "8px",
+                      color: "#ffffff",
+                      fontSize: "0.82rem",
+                      fontWeight: 600,
+                      padding: "0.45rem 1rem",
+                      cursor: "pointer",
+                      boxShadow: "0 2px 6px rgba(124, 58, 237, 0.25)",
+                      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(124, 58, 237, 0.35)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "0 2px 6px rgba(124, 58, 237, 0.25)";
+                    }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                      <line x1="3" y1="6" x2="21" y2="6"></line>
+                      <path d="M16 10a4 4 0 0 1-8 0"></path>
+                    </svg>
+                    Request Asset
+                  </button>
+
+                  {/* Deploy Asset button — only for privileged roles */}
+                  {(currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "INVENTORY_STAFF" || currentUser?.role === "OPS_MANAGER" || currentUser?.role === "ADMIN") && (
+                    <button
+                      onClick={() => onOpenBulkRequestModal('deploy')}
+                      className="btn-hover-effect"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.45rem",
+                        background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+                        border: "none",
+                        borderRadius: "8px",
+                        color: "#ffffff",
+                        fontSize: "0.82rem",
+                        fontWeight: 600,
+                        padding: "0.45rem 1rem",
+                        cursor: "pointer",
+                        boxShadow: "0 2px 6px rgba(37, 99, 235, 0.25)",
+                        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = "translateY(-1px)";
+                        e.currentTarget.style.boxShadow = "0 4px 12px rgba(37, 99, 235, 0.35)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow = "0 2px 6px rgba(37, 99, 235, 0.25)";
+                      }}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="8.5" cy="7" r="4"></circle>
+                        <line x1="20" y1="8" x2="20" y2="14"></line>
+                        <line x1="23" y1="11" x2="17" y2="11"></line>
+                      </svg>
+                      Deploy Asset
+                    </button>
+                  )}
 
                   {canEditAddRemove && (
                     <button
@@ -1083,38 +1109,57 @@ export const CatalogTab = ({
                 </div>
 
                 <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
-                  {(() => {
-                    const canDeploy = currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "INVENTORY_STAFF" || currentUser?.role === "OPS_MANAGER" || currentUser?.role === "ADMIN";
-                    return (
-                      <button
-                        onClick={onOpenBulkRequestModal}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.4rem",
-                          backgroundColor: canDeploy ? "#210cae" : "#7c3aed",
-                          border: "none",
-                          borderRadius: "7px",
-                          color: "#ffffff",
-                          fontSize: "0.78rem",
-                          fontWeight: 600,
-                          padding: "0.45rem 0.9rem",
-                          cursor: "pointer",
-                          boxShadow: canDeploy ? "0 2px 5px rgba(33,12,174,0.2)" : "0 2px 5px rgba(124,58,237,0.2)",
-                          transition: "all 0.15s ease",
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = canDeploy ? "#1a098c" : "#6d28d9"}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = canDeploy ? "#210cae" : "#7c3aed"}
-                      >
-                        {canDeploy ? (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
-                        ) : (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
-                        )}
-                        {canDeploy ? "Deploy Asset" : "Request Selected"}
-                      </button>
-                    );
-                  })()}
+                  {/* Request Asset button — always visible */}
+                  <button
+                    onClick={() => onOpenBulkRequestModal('request')}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.4rem",
+                      backgroundColor: "#7c3aed",
+                      border: "none",
+                      borderRadius: "7px",
+                      color: "#ffffff",
+                      fontSize: "0.78rem",
+                      fontWeight: 600,
+                      padding: "0.45rem 0.9rem",
+                      cursor: "pointer",
+                      boxShadow: "0 2px 5px rgba(124,58,237,0.2)",
+                      transition: "all 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#6d28d9"}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#7c3aed"}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                    Request Asset
+                  </button>
+
+                  {/* Deploy Asset button — only for privileged roles */}
+                  {(currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "INVENTORY_STAFF" || currentUser?.role === "OPS_MANAGER" || currentUser?.role === "ADMIN") && (
+                    <button
+                      onClick={() => onOpenBulkRequestModal('deploy')}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.4rem",
+                        backgroundColor: "#210cae",
+                        border: "none",
+                        borderRadius: "7px",
+                        color: "#ffffff",
+                        fontSize: "0.78rem",
+                        fontWeight: 600,
+                        padding: "0.45rem 0.9rem",
+                        cursor: "pointer",
+                        boxShadow: "0 2px 5px rgba(33,12,174,0.2)",
+                        transition: "all 0.15s ease",
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#1a098c"}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#210cae"}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                      Deploy Asset
+                    </button>
+                  )}
 
                   {canEditAddRemove && (
                     <button
