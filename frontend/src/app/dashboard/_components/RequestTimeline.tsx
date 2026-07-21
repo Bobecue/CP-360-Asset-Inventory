@@ -341,7 +341,7 @@ export function RequestTimeline({
     const isDeployment = status === 'RELEASED' || ascHistory.some(e => e.comment && e.comment.includes('[ASSET DEPLOYMENT]'));
 
     if (isDeployment) {
-      const deployTimestamp = ascHistory.length > 0 ? ascHistory[ascHistory.length - 1].timestamp : new Date().toISOString();
+      const deployTimestamp = ascHistory.length > 0 ? ascHistory[0].timestamp : new Date().toISOString();
       const targetEmployee = receiverName || requestedByName;
       nodes.push({
         type: 'released',
@@ -353,6 +353,45 @@ export function RequestTimeline({
         boxText: `Asset deployed directly to ${targetEmployee}`,
         bottomHtml: <span>Deployed by: <strong>{senderName || requestedByName || 'Inventory Staff'}</strong> <Badge type="inv">Inv. Staff</Badge></span>
       });
+
+      // If the deployment was returned, also append the RETURNED timeline node
+      const returnEvt = ascHistory.find(e => mapStatus(e.status) === 'RETURNED');
+      if (status === 'RETURNED' || returnEvt) {
+        const buildLocationStr = (name?: string, addr?: string) => {
+          if (!name && !addr) return '';
+          const cleanAddr = addr ? cleanAddress(addr) : '';
+          if (name && cleanAddr) {
+            if (name.includes(cleanAddr)) return name;
+            if (cleanAddr.includes(name)) return cleanAddr;
+            return `${name}, ${cleanAddr}`;
+          }
+          return name || cleanAddr;
+        };
+
+        const fullReceivedLocation = buildLocationStr(senderSiteName, senderSiteAddress);
+        const fullReturnedLocation = buildLocationStr(receiverSiteName, receiverSiteAddress);
+        const retTimestamp = returnEvt ? returnEvt.timestamp : (receivedAt || new Date().toISOString());
+
+        nodes.push({
+          type: 'returned',
+          title: 'RETURNED',
+          titleColor: '#059669',
+          iconColor: '#059669',
+          iconSvg: getReturnedIcon(),
+          timestamp: retTimestamp,
+          boxText: returnEvt?.comment || 'Item returned to inventory',
+          bottomHtml: (
+            <span>
+              Returned by: <strong>{receiverName || requestedByName}</strong>
+              {fullReturnedLocation && <> (from <strong>{fullReturnedLocation}</strong>)</>}
+              &middot; Received by: <strong>{returnEvt?.byName || senderName || 'Inventory Staff'}</strong>
+              {fullReceivedLocation && <> at <strong>{fullReceivedLocation}</strong></>}
+            </span>
+          )
+        });
+      }
+
+      nodes.reverse();
       return nodes;
     }
 
