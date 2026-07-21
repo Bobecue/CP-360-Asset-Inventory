@@ -670,7 +670,7 @@ export const CatalogTab = ({
 
                 <div style={{ display: "flex", gap: "0.65rem", alignItems: "center" }}>
                   {(() => {
-                    const canDeploy = currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "INVENTORY_STAFF" || currentUser?.role === "OPS_MANAGER";
+                    const canDeploy = currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "INVENTORY_STAFF" || currentUser?.role === "OPS_MANAGER" || currentUser?.role === "ADMIN";
                     return (
                       <button
                         onClick={onOpenBulkRequestModal}
@@ -1084,7 +1084,7 @@ export const CatalogTab = ({
 
                 <div style={{ display: "flex", gap: "0.6rem", alignItems: "center" }}>
                   {(() => {
-                    const canDeploy = currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "INVENTORY_STAFF" || currentUser?.role === "OPS_MANAGER";
+                    const canDeploy = currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "INVENTORY_STAFF" || currentUser?.role === "OPS_MANAGER" || currentUser?.role === "ADMIN";
                     return (
                       <button
                         onClick={onOpenBulkRequestModal}

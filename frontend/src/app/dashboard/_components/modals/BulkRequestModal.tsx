@@ -157,7 +157,7 @@ const getCategoryIcon = (category?: string, name?: string) => {
 };
 
 export function BulkRequestModal({ open, onClose, selectedItems, sites, currentUser, onSubmit }: BulkRequestModalProps) {
-  const canDeploy = !currentUser || currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'INVENTORY_STAFF' || currentUser?.role === 'OPS_MANAGER';
+  const canDeploy = !currentUser || currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'INVENTORY_STAFF' || currentUser?.role === 'OPS_MANAGER' || currentUser?.role === 'ADMIN';
 
   const [quantities, setQuantities] = useState<Record<string, number>>(() => {
     const init: Record<string, number> = {};
