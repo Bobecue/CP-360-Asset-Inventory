@@ -2467,9 +2467,6 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
         </div>
       </div>
 
-        </div>
-      )}
-
       <style dangerouslySetInnerHTML={{
         __html: `
         @keyframes spin {
