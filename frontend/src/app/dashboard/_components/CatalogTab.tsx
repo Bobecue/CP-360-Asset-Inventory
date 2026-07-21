@@ -232,6 +232,33 @@ export const CatalogTab = ({
     doc.save(`Deployment_Receipt_${dep.employeeEid || dep.id}.pdf`);
   };
 
+  const handleReturnDeploymentAsset = async (dep: any) => {
+    const confirmMsg = `Are you sure you want to mark ${dep.itemName} (${dep.assetTag}) as RETURNED to inventory by ${dep.employeeName}?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      if (!isUsingMockData && dep.id) {
+        await fetch(`http://localhost:3001/requests/${dep.id}/status`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: "RETURNED",
+            comment: `Returned by ${dep.employeeName} to site inventory`,
+            returnedAt: new Date().toISOString()
+          })
+        });
+      }
+    } catch (err) {
+      console.warn("Backend return status update error:", err);
+    }
+
+    setDeploymentsList((prev: any[]) => prev.map((d: any) => d.id === dep.id ? { ...d, status: "RETURNED", returnedAt: new Date().toISOString() } : d));
+
+    if (selectedDeployment?.id === dep.id) {
+      setSelectedDeployment({ ...selectedDeployment, status: "RETURNED", returnedAt: new Date().toISOString() });
+    }
+  };
+
   const toggleMultiSelectMode = () => {
     if (isMultiSelectMode) {
       // Exit multi select mode and clear selections if active
@@ -312,29 +339,6 @@ export const CatalogTab = ({
             </span>
           </button>
         </div>
-
-        {catalogSubTab === "deployments" && canEditAddRemove && (
-          <button
-            onClick={() => onOpenBulkRequestModal("deploy")}
-            style={{
-              padding: "0.55rem 1.25rem",
-              borderRadius: "8px",
-              border: "none",
-              backgroundColor: "#210cae",
-              color: "#ffffff",
-              fontSize: "0.82rem",
-              fontWeight: 700,
-              cursor: "pointer",
-              boxShadow: "0 2px 8px rgba(33, 12, 174, 0.2)",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.4rem"
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-            Deploy Hardware to Employee
-          </button>
-        )}
       </div>
 
       {/* Warnings & Notices */}
@@ -1942,6 +1946,7 @@ export const CatalogTab = ({
                       <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Asset Tag</th>
                       <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Site Location</th>
                       <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Issued By</th>
+                      <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Status</th>
                       <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569", textAlign: "right" }}>Actions</th>
                     </tr>
                   </thead>
@@ -1997,29 +2002,78 @@ export const CatalogTab = ({
                         <td style={{ padding: "0.9rem 1.25rem", color: "#64748b" }}>
                           {dep.requestedByName}
                         </td>
-                        <td style={{ padding: "0.9rem 1.25rem", textAlign: "right" }}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDownloadDeploymentReceipt(dep);
-                            }}
-                            title="Download PDF Receipt"
-                            style={{
-                              padding: "0.35rem 0.65rem",
-                              borderRadius: "6px",
-                              border: "1px solid #cbd5e1",
-                              backgroundColor: "#ffffff",
-                              color: "#2563eb",
-                              fontSize: "0.75rem",
-                              fontWeight: 600,
-                              cursor: "pointer",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "0.25rem"
-                            }}
-                          >
-                            📄 PDF
-                          </button>
+                        <td style={{ padding: "0.9rem 1.25rem" }}>
+                          <span style={{
+                            padding: "0.2rem 0.6rem",
+                            borderRadius: "12px",
+                            fontSize: "0.72rem",
+                            fontWeight: 700,
+                            backgroundColor: dep.status === "RETURNED" ? "#d1fae5" : "#dbeafe",
+                            color: dep.status === "RETURNED" ? "#065f46" : "#1d4ed8"
+                          }}>
+                            {dep.status === "RETURNED" ? "RETURNED" : "ACTIVE"}
+                          </span>
+                        </td>
+                        <td style={{ padding: "0.9rem 1.25rem", textAlign: "right", whiteSpace: "nowrap" }}>
+                          <div style={{ display: "flex", gap: "0.4rem", justifyContent: "flex-end", alignItems: "center" }}>
+                            {dep.status !== "RETURNED" ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleReturnDeploymentAsset(dep);
+                                }}
+                                title="Return Asset to Inventory"
+                                style={{
+                                  padding: "0.35rem 0.65rem",
+                                  borderRadius: "6px",
+                                  border: "1px solid #10b981",
+                                  backgroundColor: "#ecfdf5",
+                                  color: "#047857",
+                                  fontSize: "0.75rem",
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "0.25rem"
+                                }}
+                              >
+                                ↩️ Return Asset
+                              </button>
+                            ) : (
+                              <span style={{
+                                padding: "0.2rem 0.5rem",
+                                borderRadius: "6px",
+                                fontSize: "0.72rem",
+                                fontWeight: 700,
+                                backgroundColor: "#f1f5f9",
+                                color: "#065f46"
+                              }}>
+                                ✓ Returned
+                              </span>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownloadDeploymentReceipt(dep);
+                              }}
+                              title="Download PDF Receipt"
+                              style={{
+                                padding: "0.35rem 0.65rem",
+                                borderRadius: "6px",
+                                border: "1px solid #cbd5e1",
+                                backgroundColor: "#ffffff",
+                                color: "#2563eb",
+                                fontSize: "0.75rem",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "0.25rem"
+                              }}
+                            >
+                              📄 PDF
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -2081,16 +2135,38 @@ export const CatalogTab = ({
               {/* Status Bar */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', padding: '0.85rem 1rem', borderRadius: 8, border: '1px solid #e2e8f0' }}>
                 <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#475569' }}>Deployment Status</span>
-                <span style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  padding: '0.25rem 0.6rem',
-                  borderRadius: '12px',
-                  backgroundColor: '#dbeafe',
-                  color: '#2563eb'
-                }}>
-                  ACTIVE DEPLOYMENT
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    padding: '0.25rem 0.6rem',
+                    borderRadius: '12px',
+                    backgroundColor: selectedDeployment.status === 'RETURNED' ? '#d1fae5' : '#dbeafe',
+                    color: selectedDeployment.status === 'RETURNED' ? '#065f46' : '#2563eb'
+                  }}>
+                    {selectedDeployment.status === 'RETURNED' ? 'RETURNED' : 'ACTIVE DEPLOYMENT'}
+                  </span>
+                  {selectedDeployment.status !== 'RETURNED' && (
+                    <button
+                      onClick={() => handleReturnDeploymentAsset(selectedDeployment)}
+                      style={{
+                        padding: '0.35rem 0.65rem',
+                        borderRadius: '6px',
+                        border: '1px solid #10b981',
+                        backgroundColor: '#ecfdf5',
+                        color: '#047857',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}
+                    >
+                      ↩️ Return Asset
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Employee Info */}
