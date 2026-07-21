@@ -930,7 +930,7 @@ export default function DashboardPage() {
           created.status = "RELEASED";
         }
 
-        // Deduct inventory stock level automatically for asset deployment
+        // Deduct inventory stock level and remove deployed asset tags automatically for asset deployment
         if (reason && reason.includes("[ASSET DEPLOYMENT]")) {
           setCatalogItems(prevItems => prevItems.map(item => {
             if (item.id === req.itemId) {
@@ -940,7 +940,15 @@ export default function DashboardPage() {
                 }
                 return sl;
               });
-              return { ...item, stockLevels: updatedLevels };
+
+              // Remove the deployed assets/tags matching requested quantity
+              const remainingAssets = (item.assets || []).slice(req.quantity);
+
+              return {
+                ...item,
+                stockLevels: updatedLevels,
+                assets: remainingAssets
+              };
             }
             return item;
           }));
