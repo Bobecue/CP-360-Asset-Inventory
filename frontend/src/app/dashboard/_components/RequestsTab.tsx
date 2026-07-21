@@ -169,7 +169,7 @@ export function RequestsTab({
   };
 
   const renderStatusBadge = (status: RequestStatus, reason?: string) => {
-    if (reason && reason.includes("[ASSET DEPLOYMENT]")) {
+    if (reason && reason.includes("[ASSET DEPLOYMENT]") && status !== 'RETURNED') {
       return (
         <span style={{
           display: 'inline-flex', alignItems: 'center', padding: '0.25rem 0.65rem',
@@ -660,7 +660,9 @@ export function RequestsTab({
     setSelectedRequest(req);
     setIsDetailDrawerOpen(true);
     setShowDrawerReturnForm(true);
-    setReturnAssetTag(req.assetTag || '');
+    // Use same fallback logic as the Asset Tag display in Request Details
+    const resolvedTag = req.assetTag || req.assetId || (req.id ? `AST-${req.id.slice(-4).toUpperCase()}` : 'AST-1001');
+    setReturnAssetTag(resolvedTag);
     setReturnComment('');
     setReturnQuantityStatus('COMPLETE');
     setReturnMissingCount(0);
@@ -1487,8 +1489,8 @@ export function RequestsTab({
             )}
 
 
-            {/* Return Asset Form & Button for Inventory Staff */}
-            {showDrawerReturnForm && (selectedRequest.status === 'RELEASED' || selectedRequest.status === 'ITEM_RECEIVED') && currentUser.role === 'INVENTORY_STAFF' && selectedRequest.requestedById !== currentUser.id && (
+            {/* Return Asset Form & Button for Inventory Staff, Admin, and Super Admin */}
+            {showDrawerReturnForm && (selectedRequest.status === 'RELEASED' || selectedRequest.status === 'ITEM_RECEIVED') && ['SUPER_ADMIN', 'ADMIN', 'INVENTORY_STAFF'].includes(currentUser.role) && (
               <div style={{ padding: '1.25rem 1.5rem', borderTop: '2px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1607,15 +1609,13 @@ export function RequestsTab({
                         <button
                           onClick={() => {
                             if (!isValid) return;
-                            showConfirm('Are you sure you want to return this asset? This will adjust stock levels back.', () => {
-                              handleReturnRequest(selectedRequest.id, returnQuantityStatus, returnMissingCount, returnCondition, returnComment.trim(), returnAssetTag);
-                              setReturnComment('');
-                              setReturnQuantityStatus('COMPLETE');
-                              setReturnMissingCount(0);
-                              setReturnCondition('GOOD');
-                              setReturnAssetTag('');
-                              setIsDetailDrawerOpen(false);
-                            });
+                            handleReturnRequest(selectedRequest.id, returnQuantityStatus, returnMissingCount, returnCondition, returnComment.trim(), returnAssetTag);
+                            setReturnComment('');
+                            setReturnQuantityStatus('COMPLETE');
+                            setReturnMissingCount(0);
+                            setReturnCondition('GOOD');
+                            setReturnAssetTag('');
+                            setIsDetailDrawerOpen(false);
                           }}
                           disabled={isSubmittingReview || !isValid}
                           style={{

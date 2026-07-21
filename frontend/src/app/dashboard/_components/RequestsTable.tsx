@@ -1145,11 +1145,6 @@ export function RequestsTable({
                         </div>
                       )
                     ) : (req.status === 'RELEASED' || req.status === 'ITEM_RECEIVED') && (currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN' || currentUserRole === 'INVENTORY_STAFF') ? (
-                      req.requestedById === currentUserId ? (
-                        <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontStyle: 'italic' }}>
-                          Self-request
-                        </span>
-                      ) : (
                         <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center' }}>
                           <button
                             onClick={() => onReturn && onReturn(req)}
@@ -1178,7 +1173,6 @@ export function RequestsTable({
                             View →
                           </button>
                         </div>
-                      )
                     ) : (
                       <button
                         onClick={() => onRowClick(req)}
