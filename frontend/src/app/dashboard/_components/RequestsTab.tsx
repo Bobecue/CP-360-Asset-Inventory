@@ -1429,13 +1429,13 @@ export function RequestsTab({
                     }
                     receiverSiteName={
                       selectedRequest.receiverSiteName ||
-                      sites.find(s => s.id === selectedRequest.siteId || s.name === selectedRequest.siteName)?.name ||
+                      sites.find(s => s.id === selectedRequest.siteId || (s.name && selectedRequest.siteName && s.name.trim().toLowerCase() === selectedRequest.siteName.trim().toLowerCase()))?.name ||
                       selectedRequest.siteName ||
                       undefined
                     }
                     receiverSiteAddress={
                       selectedRequest.receiverSiteAddress ||
-                      sites.find(s => s.id === selectedRequest.siteId || s.name === selectedRequest.siteName)?.address ||
+                      sites.find(s => s.id === selectedRequest.siteId || (s.name && selectedRequest.siteName && s.name.trim().toLowerCase() === selectedRequest.siteName.trim().toLowerCase()))?.address ||
                       undefined
                     }
                     receivedAt={selectedRequest.returnedAt || selectedRequest.updatedAt}
