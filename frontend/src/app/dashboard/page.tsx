@@ -959,7 +959,7 @@ export default function DashboardPage() {
           currentList = JSON.parse(cached);
           // Normalize existing deployment requests in cache
           currentList = currentList.map((r: any) => {
-            if (r.reason && r.reason.includes("[ASSET DEPLOYMENT]")) {
+            if (r.reason && r.reason.includes("[ASSET DEPLOYMENT]") && r.status !== 'RETURNED') {
               return { ...r, status: "RELEASED" };
             }
             return r;

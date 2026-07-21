@@ -231,7 +231,7 @@ export function RequestsTab({
           const merged = [...apiData, ...localOnly]
             .filter(r => !!r.itemId && r.quantity >= 1)
             .map(r => {
-              if (r.reason && r.reason.includes("[ASSET DEPLOYMENT]")) {
+              if (r.reason && r.reason.includes("[ASSET DEPLOYMENT]") && r.status !== 'RETURNED') {
                 return { ...r, status: 'RELEASED' as RequestStatus };
               }
               if (r.status === ('REJECTED' as any) && r.reviewComment === 'Cancelled by requester.') {
@@ -266,7 +266,7 @@ export function RequestsTab({
             .filter(r => !!r.itemId && r.quantity >= 1)
             .map(r => {
               let status = r.status;
-              if (r.reason && r.reason.includes("[ASSET DEPLOYMENT]")) {
+              if (r.reason && r.reason.includes("[ASSET DEPLOYMENT]") && status !== 'RETURNED') {
                 status = "RELEASED";
               } else if (status === ('REJECTED' as any) && r.reviewComment === 'Cancelled by requester.') {
                 status = 'CANCELLED';
@@ -616,6 +616,18 @@ export function RequestsTab({
         };
         setAllRequests(prev => prev.map(r => r.id === id ? { ...r, ...returnedState } : r));
         setSelectedRequest(prev => prev?.id === id ? { ...prev, ...returnedState } : prev);
+      }
+
+      // Explicitly sync updated status to local storage cache so it persists on reload
+      try {
+        const cached = localStorage.getItem('salivio_requests');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          const updatedCache = parsed.map((req: any) => req.id === id ? { ...req, status: 'RETURNED', returnedAt: new Date().toISOString() } : req);
+          localStorage.setItem('salivio_requests', JSON.stringify(updatedCache));
+        }
+      } catch (err) {
+        console.error('Failed to sync return state to cache:', err);
       }
       setRefreshTrigger(prev => prev + 1);
       if (onRefreshNotifications) onRefreshNotifications();
