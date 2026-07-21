@@ -1437,14 +1437,22 @@ export function RequestsTab({
                     }
                     receiverSiteName={
                       (() => {
-                        const targetSite = sites.find(s => s.id === selectedRequest.siteId || (s.name && selectedRequest.siteName && s.name.trim().toLowerCase() === selectedRequest.siteName.trim().toLowerCase()));
-                        return selectedRequest.receiverSiteName || targetSite?.name || selectedRequest.siteName || undefined;
+                        const sName = selectedRequest.siteName || selectedRequest.receiverSiteName;
+                        const targetSite = sites.find(s =>
+                          (selectedRequest.siteId && s.id === selectedRequest.siteId) ||
+                          (sName && (s.name.trim().toLowerCase() === sName.trim().toLowerCase() || (s.address && s.address.trim().toLowerCase() === sName.trim().toLowerCase())))
+                        );
+                        return targetSite?.name || sName || undefined;
                       })()
                     }
                     receiverSiteAddress={
                       (() => {
-                        const targetSite = sites.find(s => s.id === selectedRequest.siteId || (s.name && selectedRequest.siteName && s.name.trim().toLowerCase() === selectedRequest.siteName.trim().toLowerCase()));
-                        return selectedRequest.receiverSiteAddress || targetSite?.address || undefined;
+                        const sName = selectedRequest.siteName || selectedRequest.receiverSiteName;
+                        const targetSite = sites.find(s =>
+                          (selectedRequest.siteId && s.id === selectedRequest.siteId) ||
+                          (sName && (s.name.trim().toLowerCase() === sName.trim().toLowerCase() || (s.address && s.address.trim().toLowerCase() === sName.trim().toLowerCase())))
+                        );
+                        return targetSite?.address || (targetSite?.name ? targetSite.name : undefined);
                       })()
                     }
                     receivedAt={selectedRequest.returnedAt || selectedRequest.updatedAt}
