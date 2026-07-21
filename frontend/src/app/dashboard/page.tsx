@@ -602,8 +602,10 @@ export default function DashboardPage() {
     setSelectedItemIds((prev) => {
       const isSelected = prev.includes(id);
       const nextSelection = isSelected ? prev.filter((x) => x !== id) : [...prev, id];
-      // In single mode (not multi-select mode), automatically open Asset Deployment modal on click
+      // In single mode (not multi-select mode), automatically open modal on click
       if (!isMultiSelectMode && nextSelection.length > 0) {
+        const canDeploy = !currentUser || currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'INVENTORY_STAFF' || currentUser?.role === 'OPS_MANAGER' || currentUser?.role === 'ADMIN';
+        setBulkRequestInitialMode(canDeploy ? 'deploy' : 'request');
         setIsBulkRequestOpen(true);
       }
       return nextSelection;
