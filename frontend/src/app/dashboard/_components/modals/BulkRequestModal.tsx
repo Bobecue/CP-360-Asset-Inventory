@@ -158,6 +158,8 @@ const getCategoryIcon = (category?: string, name?: string) => {
 
 export function BulkRequestModal({ open, onClose, selectedItems, sites, currentUser, onSubmit }: BulkRequestModalProps) {
   const canDeploy = !currentUser || currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'INVENTORY_STAFF' || currentUser?.role === 'OPS_MANAGER' || currentUser?.role === 'ADMIN';
+  const [mode, setMode] = useState<'deploy' | 'request'>(canDeploy ? 'deploy' : 'request');
+  const isDeployMode = canDeploy && mode === 'deploy';
 
   const [quantities, setQuantities] = useState<Record<string, number>>(() => {
     const init: Record<string, number> = {};
@@ -189,7 +191,7 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
   const handleSubmit = async () => {
     setReqFormError(null);
 
-    if (canDeploy) {
+    if (isDeployMode) {
       if (!employeeName.trim()) {
         setReqFormError("Employee's Name is required.");
         return;
@@ -204,7 +206,7 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
       }
     }
     if (!reqSiteId.trim()) {
-      setReqFormError("Deployment Site is required.");
+      setReqFormError(isDeployMode ? "Deployment Site is required." : "Target Site is required.");
       return;
     }
 
@@ -218,7 +220,7 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
         quantity: quantities[item.id] || 1
       }));
 
-      const deploymentReason = canDeploy
+      const deploymentReason = isDeployMode
         ? `[ASSET DEPLOYMENT] Deploy to: ${employeeName.trim()} | Account: ${employeeAccount.trim()} | EID: ${employeeEid.trim()}${deploymentNotes.trim() ? ` | Notes: ${deploymentNotes.trim()}` : ''}`
         : `Bulk asset request for selected items${deploymentNotes.trim() ? `: ${deploymentNotes.trim()}` : ''}`;
 
@@ -364,19 +366,61 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
         }}
       >
         {/* Header */}
-        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{canDeploy ? "Asset Deployment" : "Asset Request"}</h2>
-            <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
-              {canDeploy ? `Deploy ${selectedItems.length} selected asset${selectedItems.length === 1 ? '' : 's'} to employee` : `Submit request for ${selectedItems.length} selected item${selectedItems.length === 1 ? '' : 's'}`}
-            </p>
+        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{isDeployMode ? "Asset Deployment" : "Asset Request"}</h2>
+              <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                {isDeployMode ? `Deploy ${selectedItems.length} selected asset${selectedItems.length === 1 ? '' : 's'} to employee` : `Submit request for ${selectedItems.length} selected item${selectedItems.length === 1 ? '' : 's'}`}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '1.5rem', padding: '4px' }}
+            >
+              ×
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '1.5rem', padding: '4px' }}
-          >
-            ×
-          </button>
+
+          {/* Mode Toggle — only for privileged roles */}
+          {canDeploy && (
+            <div style={{
+              display: 'flex',
+              backgroundColor: '#f1f5f9',
+              borderRadius: 10,
+              padding: '0.2rem',
+              gap: '0.2rem',
+              border: '1px solid #e2e8f0'
+            }}>
+              {[
+                { id: 'deploy' as const, label: '🚀 Deployment', icon: '' },
+                { id: 'request' as const, label: '📋 Request', icon: '' }
+              ].map((tab) => {
+                const isActive = mode === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setMode(tab.id)}
+                    style={{
+                      flex: 1,
+                      padding: '0.45rem 0.75rem',
+                      borderRadius: 8,
+                      border: 'none',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      backgroundColor: isActive ? (tab.id === 'deploy' ? '#210cae' : '#7c3aed') : 'transparent',
+                      color: isActive ? '#ffffff' : '#64748b',
+                      boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Form Body */}
@@ -471,8 +515,8 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
               </div>
             </div>
 
-            {/* Conditional Fields: Employee details ONLY for Deployer roles */}
-            {canDeploy ? (
+            {/* Conditional Fields: Employee details ONLY in Deploy mode */}
+            {isDeployMode ? (
               <>
                 {/* Employee's Name */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -514,7 +558,7 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
 
             {/* Deployment / Target Site */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-              <label htmlFor="site-input" style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>{canDeploy ? "Deployment Site *" : "Target Site *"}</label>
+              <label htmlFor="site-input" style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>{isDeployMode ? "Deployment Site *" : "Target Site *"}</label>
               <input
                 id="site-input"
                 list="sites-list"
@@ -533,10 +577,10 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
 
             {/* Notes / Reason */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-              <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>{canDeploy ? "Deployment Notes (Optional)" : "Reason / Purpose (Optional)"}</label>
+              <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>{isDeployMode ? "Deployment Notes (Optional)" : "Reason / Purpose (Optional)"}</label>
               <textarea
                 rows={3}
-                placeholder={canDeploy ? "Additional notes for this asset deployment..." : "Specify reason for requesting these assets..."}
+                placeholder={isDeployMode ? "Additional notes for this asset deployment..." : "Specify reason for requesting these assets..."}
                 value={deploymentNotes}
                 onChange={(e) => setDeploymentNotes(e.target.value)}
                 style={{ padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', color: '#0f172a', fontFamily: 'inherit', resize: 'vertical' }}
@@ -586,21 +630,21 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={isSubmitting || selectedItems.length === 0 || !reqSiteId.trim() || (canDeploy && (!employeeName.trim() || !employeeAccount.trim() || !employeeEid.trim()))}
+            disabled={isSubmitting || selectedItems.length === 0 || !reqSiteId.trim() || (isDeployMode && (!employeeName.trim() || !employeeAccount.trim() || !employeeEid.trim()))}
             style={{
-              backgroundColor: canDeploy ? '#210cae' : '#7c3aed',
+              backgroundColor: isDeployMode ? '#210cae' : '#7c3aed',
               color: '#ffffff',
               border: 'none',
               borderRadius: 8,
               padding: '0.5rem 1.25rem',
               fontSize: '0.82rem',
               fontWeight: 600,
-              cursor: (isSubmitting || selectedItems.length === 0 || !reqSiteId.trim() || (canDeploy && (!employeeName.trim() || !employeeAccount.trim() || !employeeEid.trim()))) ? 'not-allowed' : 'pointer',
-              opacity: (isSubmitting || selectedItems.length === 0 || !reqSiteId.trim() || (canDeploy && (!employeeName.trim() || !employeeAccount.trim() || !employeeEid.trim()))) ? 0.5 : 1,
+              cursor: (isSubmitting || selectedItems.length === 0 || !reqSiteId.trim() || (isDeployMode && (!employeeName.trim() || !employeeAccount.trim() || !employeeEid.trim()))) ? 'not-allowed' : 'pointer',
+              opacity: (isSubmitting || selectedItems.length === 0 || !reqSiteId.trim() || (isDeployMode && (!employeeName.trim() || !employeeAccount.trim() || !employeeEid.trim()))) ? 0.5 : 1,
               transition: 'all 0.15s ease'
             }}
           >
-            {isSubmitting ? (canDeploy ? 'Deploying...' : 'Submitting...') : (canDeploy ? 'Deploy Asset' : 'Submit Request')}
+            {isSubmitting ? (isDeployMode ? 'Deploying...' : 'Submitting...') : (isDeployMode ? 'Deploy Asset' : 'Submit Request')}
           </button>
         </div>
       </div>
