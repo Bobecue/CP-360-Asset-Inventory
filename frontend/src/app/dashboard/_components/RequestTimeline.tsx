@@ -504,9 +504,9 @@ export function RequestTimeline({
           boxText: evt.comment || 'Item returned to inventory',
           bottomHtml: (
             <span>
-              Returned by: <strong>{requestedByName}</strong>
+              Returned by: <strong>{receiverName || requestedByName}</strong>
               {receiverSiteName && <> (from <strong>{receiverSiteName}</strong>)</>}
-              &middot; Received by: <strong>{evt.byName || 'Inventory Staff'}</strong>
+              &middot; Received by: <strong>{evt.byName || senderName || 'Inventory Staff'}</strong>
               {senderSiteName && <> at <strong>{senderSiteName}</strong></>}
             </span>
           )
