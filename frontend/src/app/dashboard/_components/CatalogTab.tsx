@@ -191,51 +191,99 @@ export const CatalogTab = ({
   });
 
   const handleDownloadDeploymentReceipt = (dep: any) => {
+    const isReturned = dep.status === "RETURNED";
+    const cond = dep.returnCondition || "GOOD";
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    doc.setFillColor(33, 12, 174);
+
+    // Header Banner
+    if (isReturned) {
+      if (cond === "DAMAGED") {
+        doc.setFillColor(217, 119, 6); // Amber
+      } else if (cond === "MISSING") {
+        doc.setFillColor(190, 18, 60); // Rose Red
+      } else {
+        doc.setFillColor(5, 150, 105); // Emerald Green
+      }
+    } else {
+      doc.setFillColor(33, 12, 174); // Deep Indigo
+    }
+
     doc.rect(0, 0, 210, 24, 'F');
     doc.setFont("helvetica", "bold");
     doc.setFontSize(15);
     doc.setTextColor(255, 255, 255);
-    doc.text("HARDWARE ASSET DEPLOYMENT RECEIPT", 14, 15);
+    doc.text(isReturned ? "HARDWARE ASSET RETURN RECEIPT" : "HARDWARE ASSET DEPLOYMENT RECEIPT", 14, 15);
 
     doc.setFontSize(10);
     doc.setTextColor(50, 50, 50);
     doc.text(`Receipt Ref: ${dep.id}`, 14, 34);
     doc.text(`Issuance Date: ${new Date(dep.createdAt).toLocaleDateString()}`, 14, 40);
+    if (isReturned) {
+      doc.text(`Return Date: ${dep.returnedAt ? new Date(dep.returnedAt).toLocaleDateString() : new Date().toLocaleDateString()}`, 110, 40);
+    }
 
+    // Employee Custodian Information
     doc.setFillColor(245, 247, 250);
     doc.rect(14, 46, 182, 38, 'F');
     doc.setFont("helvetica", "bold");
-    doc.text("EMPLOYEE RECIPIENT INFORMATION", 18, 54);
+    doc.text("EMPLOYEE CUSTODIAN INFORMATION", 18, 54);
     doc.setFont("helvetica", "normal");
     doc.text(`Employee Name: ${dep.employeeName}`, 18, 62);
     doc.text(`Employee ID (EID): ${dep.employeeEid}`, 18, 68);
     doc.text(`Department / Account: ${dep.employeeAccount}`, 18, 74);
     doc.text(`Site Location: ${dep.siteName || 'Cebu IT Park'}`, 18, 80);
 
+    // Equipment & Condition Details Box
     doc.setFillColor(245, 247, 250);
-    doc.rect(14, 90, 182, 38, 'F');
+    const boxHeight = isReturned ? 50 : 38;
+    doc.rect(14, 90, 182, boxHeight, 'F');
     doc.setFont("helvetica", "bold");
-    doc.text("ASSIGNED EQUIPMENT DETAILS", 18, 98);
+    doc.text(isReturned ? "RETURNED EQUIPMENT & CONDITION DETAILS" : "ASSIGNED EQUIPMENT DETAILS", 18, 98);
     doc.setFont("helvetica", "normal");
     doc.text(`Item Description: ${dep.itemName}`, 18, 106);
     doc.text(`Asset Tag Code: ${dep.assetTag}`, 18, 112);
-    doc.text(`Issuing Staff: ${dep.requestedByName || 'Inventory Staff'}`, 18, 118);
 
+    if (isReturned) {
+      const condLabel = cond === "DAMAGED" 
+        ? "DAMAGED (Requires Maintenance/Repair)" 
+        : cond === "MISSING" 
+        ? `MISSING ITEMS (${dep.missingCount || 1} item(s) missing)` 
+        : "GOOD WORKING CONDITION";
+      
+      doc.text(`Return Status: RETURNED TO SITE INVENTORY`, 18, 118);
+      doc.text(`Condition on Return: ${condLabel}`, 18, 124);
+      if (dep.returnNotes) {
+        doc.setFontSize(8.5);
+        doc.text(`Return Remarks & Notes: ${dep.returnNotes}`, 18, 130);
+        doc.setFontSize(10);
+      }
+    } else {
+      doc.text(`Issuing Staff: ${dep.requestedByName || 'Inventory Staff'}`, 18, 118);
+    }
+
+    // Signatures
+    const sigY = isReturned ? 152 : 140;
     doc.setFont("helvetica", "bold");
-    doc.text("ACKNOWLEDGEMENT & SIGNATURE", 14, 140);
+    doc.text("ACKNOWLEDGEMENT & SIGNATURE", 14, sigY);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
-    doc.text("I acknowledge receipt of the hardware equipment listed above in good working condition.", 14, 147);
+    doc.text(
+      isReturned
+        ? "I acknowledge the return of the hardware equipment specified above back into site inventory in the noted condition."
+        : "I acknowledge receipt of the hardware equipment listed above in good working condition.",
+      14,
+      sigY + 7
+    );
 
-    doc.line(14, 175, 90, 175);
-    doc.text("Employee Signature", 14, 180);
+    const lineY = sigY + 35;
+    doc.line(14, lineY, 90, lineY);
+    doc.text(isReturned ? "Returning Employee Signature" : "Employee Signature", 14, lineY + 5);
 
-    doc.line(120, 175, 196, 175);
-    doc.text("Authorized Inventory Issuer Signature", 120, 180);
+    doc.line(120, lineY, 196, lineY);
+    doc.text(isReturned ? "Receiving Inventory Staff Signature" : "Authorized Inventory Issuer Signature", 120, lineY + 5);
 
-    doc.save(`Deployment_Receipt_${dep.employeeEid || dep.id}.pdf`);
+    const fileName = isReturned ? `Asset_Return_Receipt_${dep.employeeEid || dep.id}.pdf` : `Deployment_Receipt_${dep.employeeEid || dep.id}.pdf`;
+    doc.save(fileName);
   };
 
   const handleOpenReturnModal = (dep: any) => {
@@ -2321,7 +2369,9 @@ export const CatalogTab = ({
                       boxShadow: '0 2px 6px rgba(37,99,235,0.2)'
                     }}
                   >
-                    📄 Download Deployment Handover Receipt (PDF)
+                    {selectedDeployment.status === "RETURNED" 
+                      ? "📄 Download Asset Return Receipt (PDF)" 
+                      : "📄 Download Deployment Handover Receipt (PDF)"}
                   </button>
                 </div>
               </div>
