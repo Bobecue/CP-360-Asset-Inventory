@@ -263,8 +263,12 @@ export function RequestsTable({
 
 
 
-  // Filter logic
+  // Filter logic: Exclude Asset Deployments from Request Orders queue
   const filtered = allRequests.filter(r => {
+    if (r.reason && r.reason.includes('[ASSET DEPLOYMENT]')) {
+      return false;
+    }
+
     const matchesSearch =
       r.itemName.toLowerCase().includes(search.toLowerCase()) ||
       r.requestedByName.toLowerCase().includes(search.toLowerCase()) ||

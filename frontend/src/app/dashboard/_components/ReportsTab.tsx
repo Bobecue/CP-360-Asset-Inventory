@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { getApiUrl } from "../../../utils/api";
 import { mockItems } from "@/types/dashboard";
+import { RequestTimeline } from "./RequestTimeline";
 
 interface ReportsTabProps {
   isUsingMockData: boolean;
@@ -57,6 +58,10 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   // Interactive Overview Panel states
   const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
   const [activeMetricFilter, setActiveMetricFilter] = useState<"ALL" | "PO_ORDERS" | "STOCK_ADJUSTMENTS" | "LOW_STOCK_ALERTS" | "ASSET_DEPLOYMENTS">("ALL");
+
+  // Deployment Details Modal State for Asset Deployments
+  const [selectedDeployment, setSelectedDeployment] = useState<any | null>(null);
+  const [isDeploymentDrawerOpen, setIsDeploymentDrawerOpen] = useState(false);
 
   // Floating chart interactive tooltip state
   const [hoveredPoint, setHoveredPoint] = useState<{
@@ -377,6 +382,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     employeeAccount: req.reason ? (req.reason.match(/Account:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
     employeeEid: req.reason ? (req.reason.match(/EID:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
     siteName: req.siteName || "Cebu IT Park",
+    rawRequest: req,
   }));
 
   const filteredDeploymentLogs = deploymentLogs.filter(log => {
@@ -2167,9 +2173,14 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                   filteredDeploymentLogs.map((dep: any, idx: number) => (
                     <tr key={dep.id + "_" + idx}
                       className="table-row-hover"
+                      onClick={() => {
+                        setSelectedDeployment(dep.rawRequest || dep);
+                        setIsDeploymentDrawerOpen(true);
+                      }}
                       style={{
                         borderBottom: idx < filteredDeploymentLogs.length - 1 ? "1px solid #f1f5f9" : "none",
                         backgroundColor: idx % 2 === 1 ? "#fcfdfe" : "#ffffff",
+                        cursor: "pointer"
                       }}
                     >
                       <td style={{ padding: "0.9rem 1.25rem", color: "#64748b", fontSize: "0.78rem" }}>
@@ -2406,6 +2417,158 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           </div>
         </div>
       </div>
+
+      {/* Deployment Details Slide-Over Drawer */}
+      {isDeploymentDrawerOpen && selectedDeployment && (
+        <div
+          onClick={() => setIsDeploymentDrawerOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.4)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 9999,
+            display: 'flex',
+            justifyContent: 'flex-end',
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: '540px',
+              height: '100%',
+              backgroundColor: '#ffffff',
+              boxShadow: '-4px 0 24px rgba(0, 0, 0, 0.15)',
+              display: 'flex',
+              flexDirection: 'column',
+              animation: 'slideLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+          >
+            {/* Header */}
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '0.72rem', color: '#64748b', fontFamily: 'monospace' }}>{selectedDeployment.id}</span>
+                <h3 style={{ margin: '0.15rem 0 0 0', fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>
+                  Deployment Details
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsDeploymentDrawerOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '1.5rem', padding: '4px' }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div style={{ flex: 1, padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              
+              {/* Status Bar */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', padding: '0.85rem 1rem', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#475569' }}>Current Status</span>
+                <span style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  padding: '0.25rem 0.6rem',
+                  borderRadius: '12px',
+                  backgroundColor: selectedDeployment.status === 'RETURNED' ? '#d1fae5' : '#dbeafe',
+                  color: selectedDeployment.status === 'RETURNED' ? '#059669' : '#2563eb'
+                }}>
+                  {selectedDeployment.status === 'RETURNED' ? 'Returned' : 'Deployed'}
+                </span>
+              </div>
+
+              {/* Info Details */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Item Name</label>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', marginTop: '0.15rem' }}>{selectedDeployment.itemName || 'Assigned Asset'}</div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Quantity</label>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#0f172a', marginTop: '0.15rem' }}>{selectedDeployment.quantity || 1} units</div>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Asset Tag</label>
+                    <div style={{ marginTop: '0.15rem' }}>
+                      <span style={{
+                        fontSize: '0.78rem',
+                        fontFamily: 'monospace',
+                        fontWeight: 700,
+                        color: '#210cae',
+                        backgroundColor: '#eef2ff',
+                        border: '1px solid #c7d2fe',
+                        borderRadius: '4px',
+                        padding: '0.15rem 0.45rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}>
+                        🏷️ {selectedDeployment.assetTag || selectedDeployment.assetId || (selectedDeployment.id ? `AST-${selectedDeployment.id.slice(-4).toUpperCase()}` : 'AST-1001')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Deployed By</label>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginTop: '0.15rem' }}>
+                      {selectedDeployment.requestedByName || 'Inventory Staff'}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Deployment Site</label>
+                    <div style={{ fontSize: '0.85rem', color: '#334155', marginTop: '0.15rem' }}>
+                      {selectedDeployment.siteName || (sitesList.find((s: any) => s.id === selectedDeployment.siteId)?.name) || 'Skyrise Alpha'}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Deployment Notes</label>
+                  <div style={{ fontSize: '0.82rem', color: '#475569', lineHeight: 1.5, marginTop: '0.25rem', padding: '0.75rem', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+                    {selectedDeployment.reason || selectedDeployment.details || 'N/A'}
+                  </div>
+                </div>
+
+                {/* Timeline / Movement details */}
+                <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: '0.85rem' }}>
+                    Deployment Timeline
+                  </label>
+                  <RequestTimeline
+                    requestId={selectedDeployment.id}
+                    status={selectedDeployment.status || 'RELEASED'}
+                    requestedById={selectedDeployment.requestedById || currentUser.id}
+                    requestedByName={selectedDeployment.requestedByName || 'Inventory Staff'}
+                    currentUserEmail={currentUser.email}
+                    currentUserId={currentUser.id}
+                    currentUserRole={currentUser.role}
+                    history={selectedDeployment.history || []}
+                    onConfirmSuccess={() => {}}
+                    assetTag={selectedDeployment.assetTag || selectedDeployment.assetId}
+                    itemName={selectedDeployment.itemName}
+                    itemCategory={selectedDeployment.itemCategory}
+                    senderName={selectedDeployment.requestedByName || 'Inventory Staff'}
+                    senderSiteName={sitesList.find((s: any) => s.id === currentUser?.siteId || s.name === currentUser?.site?.name)?.name || 'Skyrise 4B'}
+                    senderSiteAddress={sitesList.find((s: any) => s.id === currentUser?.siteId || s.name === currentUser?.site?.name)?.address || undefined}
+                    receiverName={selectedDeployment.employeeName || selectedDeployment.requestedByName || "Employee"}
+                    receiverSiteName={selectedDeployment.siteName || selectedDeployment.receiverSiteName || 'Skyrise Alpha'}
+                    receiverSiteAddress={sitesList.find((s: any) => s.name === selectedDeployment.siteName || s.id === selectedDeployment.siteId)?.address}
+                  />
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
       <style dangerouslySetInnerHTML={{
         __html: `
         @keyframes spin {
