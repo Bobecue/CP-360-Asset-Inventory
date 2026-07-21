@@ -494,6 +494,8 @@ export function RequestTimeline({
         });
       }
       if (s === 'RETURNED') {
+        const fullReceivedLocation = [senderSiteName, senderSiteAddress].filter(Boolean).join(' - ');
+        const fullReturnedLocation = [receiverSiteName, receiverSiteAddress].filter(Boolean).join(' - ');
         nodes.push({
           type: 'returned',
           title: 'RETURNED',
@@ -505,9 +507,9 @@ export function RequestTimeline({
           bottomHtml: (
             <span>
               Returned by: <strong>{receiverName || requestedByName}</strong>
-              {receiverSiteName && <> (from <strong>{receiverSiteName}</strong>)</>}
+              {fullReturnedLocation && <> (from <strong>{fullReturnedLocation}</strong>)</>}
               &middot; Received by: <strong>{evt.byName || senderName || 'Inventory Staff'}</strong>
-              {senderSiteName && <> at <strong>{senderSiteName}</strong></>}
+              {fullReceivedLocation && <> at <strong>{fullReceivedLocation}</strong></>}
             </span>
           )
         });
