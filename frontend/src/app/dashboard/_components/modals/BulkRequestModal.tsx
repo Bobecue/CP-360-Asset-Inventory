@@ -282,17 +282,31 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
       doc.setFontSize(9);
       doc.setTextColor(30, 27, 75);
       doc.text('Asset Name', 22, y + 5.5);
-      doc.text('SKU', 110, y + 5.5);
-      doc.text('Qty', 165, y + 5.5);
+      doc.text('SKU', 85, y + 5.5);
+      doc.text('Asset Tag(s)', 125, y + 5.5);
+      doc.text('Qty', 175, y + 5.5);
 
       y += 8;
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(50, 50, 50);
       selectedItems.forEach((it) => {
         const qty = quantities[it.id] || 1;
-        doc.text(it.name.substring(0, 45), 22, y + 5.5);
-        doc.text(it.sku, 110, y + 5.5);
-        doc.text(String(qty), 165, y + 5.5);
+        const availableTags = it.assetTags || [];
+        const tagsList: string[] = [];
+        for (let i = 0; i < qty; i++) {
+          if (availableTags[i]) {
+            tagsList.push(availableTags[i]);
+          } else {
+            const prefix = (it.sku || 'AST').replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase();
+            tagsList.push(`${prefix}-${String(1001 + i).padStart(4, '0')}`);
+          }
+        }
+        const tagsStr = tagsList.join(', ');
+
+        doc.text(it.name.substring(0, 32), 22, y + 5.5);
+        doc.text(it.sku.substring(0, 20), 85, y + 5.5);
+        doc.text(tagsStr.substring(0, 28), 125, y + 5.5);
+        doc.text(String(qty), 175, y + 5.5);
         doc.line(20, y + 8, 190, y + 8);
         y += 8;
       });
