@@ -89,6 +89,8 @@ export const CatalogTab = ({
   const canAdjustStock = canEditAddRemove;
 
   const [returnModalDeployment, setReturnModalDeployment] = useState<any | null>(null);
+  const [returnCondition, setReturnCondition] = useState<"GOOD" | "DAMAGED" | "MISSING">("GOOD");
+  const [missingCount, setMissingCount] = useState<number>(1);
   const [returnNotes, setReturnNotes] = useState<string>("");
   const [isSubmittingReturn, setIsSubmittingReturn] = useState<boolean>(false);
 
@@ -238,13 +240,40 @@ export const CatalogTab = ({
 
   const handleOpenReturnModal = (dep: any) => {
     setReturnModalDeployment(dep);
+    setReturnCondition("GOOD");
+    setMissingCount(1);
     setReturnNotes("Returned in good working condition");
+  };
+
+  const handleConditionChange = (cond: "GOOD" | "DAMAGED" | "MISSING") => {
+    setReturnCondition(cond);
+    if (cond === "GOOD") {
+      setReturnNotes("Returned in good working condition");
+    } else if (cond === "DAMAGED") {
+      setReturnNotes("Returned damaged - requires maintenance/repair");
+    } else if (cond === "MISSING") {
+      setReturnNotes(`Returned incomplete - ${missingCount} item(s) missing`);
+    }
+  };
+
+  const handleMissingCountChange = (cnt: number) => {
+    const val = Math.max(1, cnt);
+    setMissingCount(val);
+    if (returnCondition === "MISSING") {
+      setReturnNotes(`Returned incomplete - ${val} item(s) missing`);
+    }
   };
 
   const handleConfirmReturnAsset = async () => {
     if (!returnModalDeployment) return;
     setIsSubmittingReturn(true);
     const dep = returnModalDeployment;
+
+    const finalComment = returnCondition === "MISSING" 
+      ? `[MISSING: ${missingCount}] ${returnNotes}` 
+      : returnCondition === "DAMAGED" 
+      ? `[DAMAGED] ${returnNotes}` 
+      : `[GOOD] ${returnNotes}`;
 
     try {
       if (!isUsingMockData && dep.id) {
@@ -253,7 +282,9 @@ export const CatalogTab = ({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             status: "RETURNED",
-            comment: returnNotes || `Returned by ${dep.employeeName} to site inventory`,
+            condition: returnCondition,
+            missingCount: returnCondition === "MISSING" ? missingCount : 0,
+            comment: finalComment,
             returnedAt: new Date().toISOString()
           })
         });
@@ -262,10 +293,19 @@ export const CatalogTab = ({
       console.warn("Backend return status update error:", err);
     }
 
-    setDeploymentsList((prev: any[]) => prev.map((d: any) => d.id === dep.id ? { ...d, status: "RETURNED", returnedAt: new Date().toISOString() } : d));
+    const updatedDep = {
+      ...dep,
+      status: "RETURNED",
+      returnCondition,
+      missingCount: returnCondition === "MISSING" ? missingCount : 0,
+      returnNotes: finalComment,
+      returnedAt: new Date().toISOString()
+    };
+
+    setDeploymentsList((prev: any[]) => prev.map((d: any) => d.id === dep.id ? updatedDep : d));
 
     if (selectedDeployment?.id === dep.id) {
-      setSelectedDeployment({ ...selectedDeployment, status: "RETURNED", returnedAt: new Date().toISOString() });
+      setSelectedDeployment(updatedDep);
     }
 
     setIsSubmittingReturn(false);
@@ -2021,10 +2061,16 @@ export const CatalogTab = ({
                             borderRadius: "12px",
                             fontSize: "0.72rem",
                             fontWeight: 700,
-                            backgroundColor: dep.status === "RETURNED" ? "#d1fae5" : "#dbeafe",
-                            color: dep.status === "RETURNED" ? "#065f46" : "#1d4ed8"
+                            backgroundColor: dep.status === "RETURNED" 
+                              ? (dep.returnCondition === "DAMAGED" ? "#fffbeb" : dep.returnCondition === "MISSING" ? "#fef2f2" : "#d1fae5") 
+                              : "#dbeafe",
+                            color: dep.status === "RETURNED" 
+                              ? (dep.returnCondition === "DAMAGED" ? "#b45309" : dep.returnCondition === "MISSING" ? "#b91c1c" : "#065f46") 
+                              : "#1d4ed8"
                           }}>
-                            {dep.status === "RETURNED" ? "RETURNED" : "ACTIVE"}
+                            {dep.status === "RETURNED" 
+                              ? (dep.returnCondition === "DAMAGED" ? "⚠️ DAMAGED" : dep.returnCondition === "MISSING" ? `❌ MISSING (${dep.missingCount || 1})` : "RETURNED") 
+                              : "ACTIVE"}
                           </span>
                         </td>
                         <td style={{ padding: "0.9rem 1.25rem", textAlign: "right", whiteSpace: "nowrap" }}>
@@ -2154,10 +2200,16 @@ export const CatalogTab = ({
                     fontWeight: 700,
                     padding: '0.25rem 0.6rem',
                     borderRadius: '12px',
-                    backgroundColor: selectedDeployment.status === 'RETURNED' ? '#d1fae5' : '#dbeafe',
-                    color: selectedDeployment.status === 'RETURNED' ? '#065f46' : '#2563eb'
+                    backgroundColor: selectedDeployment.status === 'RETURNED' 
+                      ? (selectedDeployment.returnCondition === 'DAMAGED' ? '#fffbeb' : selectedDeployment.returnCondition === 'MISSING' ? '#fef2f2' : '#d1fae5') 
+                      : '#dbeafe',
+                    color: selectedDeployment.status === 'RETURNED' 
+                      ? (selectedDeployment.returnCondition === 'DAMAGED' ? '#b45309' : selectedDeployment.returnCondition === 'MISSING' ? '#b91c1c' : '#065f46') 
+                      : '#2563eb'
                   }}>
-                    {selectedDeployment.status === 'RETURNED' ? 'RETURNED' : 'ACTIVE DEPLOYMENT'}
+                    {selectedDeployment.status === 'RETURNED' 
+                      ? (selectedDeployment.returnCondition === 'DAMAGED' ? 'RETURNED (DAMAGED)' : selectedDeployment.returnCondition === 'MISSING' ? `RETURNED (${selectedDeployment.missingCount || 1} MISSING)` : 'RETURNED (GOOD)') 
+                      : 'ACTIVE DEPLOYMENT'}
                   </span>
                   {selectedDeployment.status !== 'RETURNED' && (
                     <button
@@ -2384,10 +2436,133 @@ export const CatalogTab = ({
                 </div>
               </div>
 
+              {/* Asset Condition Selection */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155' }}>
+                  Returned Asset Condition & Status <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+                  {/* Good Option */}
+                  <button
+                    type="button"
+                    onClick={() => handleConditionChange("GOOD")}
+                    style={{
+                      padding: '0.65rem 0.5rem',
+                      borderRadius: '10px',
+                      border: returnCondition === "GOOD" ? '2px solid #10b981' : '1px solid #e2e8f0',
+                      backgroundColor: returnCondition === "GOOD" ? '#ecfdf5' : '#ffffff',
+                      color: returnCondition === "GOOD" ? '#047857' : '#475569',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <span style={{ fontSize: '1.1rem' }}>✓</span>
+                    <span>Good Condition</span>
+                  </button>
+
+                  {/* Damaged Option */}
+                  <button
+                    type="button"
+                    onClick={() => handleConditionChange("DAMAGED")}
+                    style={{
+                      padding: '0.65rem 0.5rem',
+                      borderRadius: '10px',
+                      border: returnCondition === "DAMAGED" ? '2px solid #f59e0b' : '1px solid #e2e8f0',
+                      backgroundColor: returnCondition === "DAMAGED" ? '#fffbeb' : '#ffffff',
+                      color: returnCondition === "DAMAGED" ? '#b45309' : '#475569',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <span style={{ fontSize: '1.1rem' }}>⚠️</span>
+                    <span>Damaged</span>
+                  </button>
+
+                  {/* Missing Option */}
+                  <button
+                    type="button"
+                    onClick={() => handleConditionChange("MISSING")}
+                    style={{
+                      padding: '0.65rem 0.5rem',
+                      borderRadius: '10px',
+                      border: returnCondition === "MISSING" ? '2px solid #ef4444' : '1px solid #e2e8f0',
+                      backgroundColor: returnCondition === "MISSING" ? '#fef2f2' : '#ffffff',
+                      color: returnCondition === "MISSING" ? '#b91c1c' : '#475569',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <span style={{ fontSize: '1.1rem' }}>❌</span>
+                    <span>Missing Item(s)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Specified Number of Missing Items Input */}
+              {returnCondition === "MISSING" && (
+                <div style={{
+                  backgroundColor: '#fff1f2',
+                  borderRadius: '10px',
+                  padding: '0.85rem 1rem',
+                  border: '1px solid #fecdd3',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem',
+                  animation: 'fadeIn 0.15s ease-out'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#9f1239' }}>
+                      Specified Number of Missing Items:
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={missingCount}
+                      onChange={(e) => handleMissingCountChange(parseInt(e.target.value) || 1)}
+                      style={{
+                        width: '70px',
+                        padding: '0.35rem 0.5rem',
+                        borderRadius: '6px',
+                        border: '1px solid #fda4af',
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        color: '#9f1239',
+                        textAlign: 'center',
+                        outline: 'none',
+                        backgroundColor: '#ffffff'
+                      }}
+                    />
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: '#be123c' }}>
+                    ⚠️ {missingCount} item(s) will be logged as missing/lost from inventory during this return transaction.
+                  </span>
+                </div>
+              )}
+
               {/* Notes Input */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                 <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155' }}>
-                  Return Notes & Condition (Optional)
+                  Return Notes & Condition Details
                 </label>
                 <textarea
                   rows={2}
