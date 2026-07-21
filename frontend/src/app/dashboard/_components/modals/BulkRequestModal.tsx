@@ -592,35 +592,37 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
 
         {/* Footer actions */}
         <div style={{ position: 'sticky', bottom: 0, padding: '1.25rem 1.5rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.65rem', backgroundColor: '#f8fafc', zIndex: 10 }}>
-          <button
-            type="button"
-            onClick={handleExportPDF}
-            style={{
-              padding: '0.5rem 0.9rem',
-              border: '1px solid #cbd5e1',
-              color: '#0f172a',
-              backgroundColor: '#ffffff',
-              borderRadius: 8,
-              fontSize: '0.82rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <path d="M12 18v-6" />
-              <path d="M9 15l3 3 3-3" />
-            </svg>
-            Export PDF
-          </button>
+          {isDeployMode && (
+            <button
+              type="button"
+              onClick={handleExportPDF}
+              style={{
+                padding: '0.5rem 0.9rem',
+                border: '1px solid #cbd5e1',
+                color: '#0f172a',
+                backgroundColor: '#ffffff',
+                borderRadius: 8,
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <path d="M12 18v-6" />
+                <path d="M9 15l3 3 3-3" />
+              </svg>
+              Export PDF
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
