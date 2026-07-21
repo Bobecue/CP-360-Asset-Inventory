@@ -1410,8 +1410,16 @@ export function RequestsTab({
                         ? (selectedRequest.requestedByName || "Inventory Staff")
                         : (selectedRequest.senderName || undefined)
                     }
-                    senderSiteName={selectedRequest.senderSiteName || undefined}
-                    senderSiteAddress={selectedRequest.senderSiteAddress || undefined}
+                    senderSiteName={
+                      selectedRequest.senderSiteName ||
+                      sites.find(s => s.id === currentUser?.siteId || s.name === currentUser?.site?.name)?.name ||
+                      "Skyrise 4B"
+                    }
+                    senderSiteAddress={
+                      selectedRequest.senderSiteAddress ||
+                      sites.find(s => s.id === currentUser?.siteId || s.name === currentUser?.site?.name)?.address ||
+                      undefined
+                    }
                     assetSiteName={selectedRequest.assetSiteName || undefined}
                     assetSiteAddress={selectedRequest.assetSiteAddress || undefined}
                     receiverName={
@@ -1419,8 +1427,17 @@ export function RequestsTab({
                         ? (selectedRequest.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || selectedRequest.requestedByName)
                         : (selectedRequest.receiverName || selectedRequest.requestedByName)
                     }
-                    receiverSiteName={selectedRequest.receiverSiteName || selectedRequest.siteName || undefined}
-                    receiverSiteAddress={selectedRequest.receiverSiteAddress || sites.find(s => s.name === selectedRequest.siteName)?.address || undefined}
+                    receiverSiteName={
+                      selectedRequest.receiverSiteName ||
+                      sites.find(s => s.id === selectedRequest.siteId || s.name === selectedRequest.siteName)?.name ||
+                      selectedRequest.siteName ||
+                      undefined
+                    }
+                    receiverSiteAddress={
+                      selectedRequest.receiverSiteAddress ||
+                      sites.find(s => s.id === selectedRequest.siteId || s.name === selectedRequest.siteName)?.address ||
+                      undefined
+                    }
                     receivedAt={selectedRequest.returnedAt || selectedRequest.updatedAt}
                   />
                 </div>
