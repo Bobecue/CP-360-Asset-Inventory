@@ -9,7 +9,7 @@ export class ItemsService {
     private prisma: PrismaService,
     private notificationsService: NotificationsService,
     private auditLogsService: AuditLogsService,
-  ) {}
+  ) { }
 
   async findAll(categoryId?: string, search?: string) {
     const where: any = {};
@@ -457,15 +457,15 @@ export class ItemsService {
           const toRemove = (assetIdsToRemove && assetIdsToRemove.length > 0)
             ? assetIdsToRemove
             : (await tx.asset.findMany({
-                where: { itemId, siteId, status: "AVAILABLE" },
-                orderBy: { createdAt: "asc" },
-                take: oldQty - quantity,
-              })).map(a => a.id);
+              where: { itemId, siteId, status: "AVAILABLE" },
+              orderBy: { createdAt: "asc" },
+              take: oldQty - quantity,
+            })).map(a => a.id);
 
           if (toRemove.length > 0) {
             const retireCondition = reason === "DAMAGED_OR_BROKEN" ? "DAMAGED"
               : reason === "LOST_OR_STOLEN" ? "LOST"
-              : "RETIRED";
+                : "RETIRED";
             await tx.asset.updateMany({
               where: { id: { in: toRemove } },
               data: { status: "RETIRED", condition: retireCondition },
@@ -537,13 +537,15 @@ export class ItemsService {
       if (categoryId && categoryId !== 'ALL' && item.categoryId !== categoryId) continue;
 
       const defaultRP = item.reorderPoint || 5;
-      const stockLevels = item.stockLevels || [];
 
-      for (const stock of stockLevels) {
-        if (siteId && siteId !== 'ALL' && stock.siteId !== siteId) continue;
+      if (siteId && siteId !== 'ALL') {
+        const siteStock = (item.stockLevels || []).find(s => s.siteId === siteId);
+        let currentQty = siteStock ? siteStock.quantity : 0;
+        if (!siteStock && item.assets && item.assets.length > 0) {
+          currentQty = item.assets.filter((a: any) => a.siteId === siteId && (a.status === 'AVAILABLE' || a.status === 'ASSIGNED')).length;
+        }
 
-        const currentQty = stock.quantity;
-        const rp = stock.reorderPoint || defaultRP;
+        const rp = siteStock?.reorderPoint ?? defaultRP;
 
         if (currentQty <= rp) {
           const isCritical = currentQty === 0 || currentQty <= Math.floor(rp / 2);
@@ -551,11 +553,8 @@ export class ItemsService {
 
           if (!severity || severity === 'ALL' || itemSeverity === severity) {
             alerts.push({
-              id: `${item.id}-${stock.siteId}`,
+              id: item.id,
               itemId: item.id,
-              siteId: stock.siteId,
-              siteName: stock.site?.name || 'Site Inventory',
-              sitePrefix: stock.site?.prefix || 'SITE',
               name: item.name,
               sku: item.sku,
               unitPrice: item.unitPrice,
@@ -566,39 +565,40 @@ export class ItemsService {
               severity: itemSeverity,
               category: item.category,
               stockLevels: item.stockLevels,
-              daysBelowThreshold: Math.max(1, Math.floor((Date.now() - new Date(stock.updatedAt || item.updatedAt).getTime()) / (1000 * 60 * 60 * 24)))
+              daysBelowThreshold: Math.max(1, Math.floor((Date.now() - new Date(item.updatedAt).getTime()) / (1000 * 60 * 60 * 24)))
             });
           }
         }
-      }
+      } else {
+        // ALL SITES selected
+        const stockLevels = item.stockLevels || [];
+        const lowSiteStocks = stockLevels.filter(s => s.quantity <= (s.reorderPoint || defaultRP));
+        const totalStockQty = stockLevels.reduce((sum, s) => sum + s.quantity, 0);
 
-      if (stockLevels.length === 0) {
-        if (siteId && siteId !== 'ALL') continue;
+        const isLowOverall = stockLevels.length === 0 ? true : lowSiteStocks.length > 0 || totalStockQty <= defaultRP;
 
-        const currentQty = 0;
-        const rp = defaultRP;
-        const isCritical = true;
-        const itemSeverity = 'CRITICAL';
+        if (isLowOverall) {
+          const minQty = stockLevels.length > 0 ? Math.min(...stockLevels.map(s => s.quantity)) : 0;
+          const isCritical = minQty === 0 || minQty <= Math.floor(defaultRP / 2) || totalStockQty <= Math.floor(defaultRP / 2);
+          const itemSeverity = isCritical ? 'CRITICAL' : 'WARNING';
 
-        if (!severity || severity === 'ALL' || itemSeverity === severity) {
-          alerts.push({
-            id: `${item.id}-global`,
-            itemId: item.id,
-            siteId: 'all',
-            siteName: 'All Sites',
-            sitePrefix: 'ALL',
-            name: item.name,
-            sku: item.sku,
-            unitPrice: item.unitPrice,
-            leadTimeDays: item.leadTimeDays,
-            reorderPoint: rp,
-            reorderQuantity: item.reorderQuantity || 10,
-            currentQuantity: currentQty,
-            severity: itemSeverity,
-            category: item.category,
-            stockLevels: [],
-            daysBelowThreshold: Math.max(1, Math.floor((Date.now() - new Date(item.updatedAt).getTime()) / (1000 * 60 * 60 * 24)))
-          });
+          if (!severity || severity === 'ALL' || itemSeverity === severity) {
+            alerts.push({
+              id: item.id,
+              itemId: item.id,
+              name: item.name,
+              sku: item.sku,
+              unitPrice: item.unitPrice,
+              leadTimeDays: item.leadTimeDays,
+              reorderPoint: defaultRP,
+              reorderQuantity: item.reorderQuantity || 10,
+              currentQuantity: totalStockQty,
+              severity: itemSeverity,
+              category: item.category,
+              stockLevels: item.stockLevels,
+              daysBelowThreshold: Math.max(1, Math.floor((Date.now() - new Date(item.updatedAt).getTime()) / (1000 * 60 * 60 * 24)))
+            });
+          }
         }
       }
     }

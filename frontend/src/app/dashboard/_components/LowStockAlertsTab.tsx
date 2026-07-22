@@ -94,11 +94,11 @@ export const LowStockAlertsTab = ({
       }
       assetQty = relevantAssets.length;
 
-      const totalQty = (item.stockLevels && item.stockLevels.length > 0) 
-        ? stockQty 
-        : (item.assets && item.assets.length > 0) 
-        ? assetQty 
-        : (item.quantity ?? 0);
+      const totalQty = (item.stockLevels && item.stockLevels.length > 0)
+        ? stockQty
+        : (item.assets && item.assets.length > 0)
+          ? assetQty
+          : (item.quantity ?? 0);
 
       const threshold = item.reorderPoint || (item.stockLevels?.[0]?.reorderPoint ?? 5);
 
@@ -189,8 +189,8 @@ export const LowStockAlertsTab = ({
     setRequestModalItem(item);
     const needed = Math.max(1, (item.reorderPoint || 5) - item.currentQuantity + 5);
     setRequestQtyInput(needed);
-    setRequestReasonInput(`Low-Stock Automatic Replenishment Order for ${item.name} (${item.sku}) at ${item.siteName || 'Site Inventory'}`);
-    setRequestTargetSiteId(item.siteId && item.siteId !== "all" ? item.siteId : (sites[0]?.id || "site-1"));
+    setRequestReasonInput(`Low-Stock Automatic Replenishment Order for ${item.name} (${item.sku})`);
+    setRequestTargetSiteId(sites[0]?.id || "site-1");
   };
 
   const handleConfirmCreateRequest = async () => {
@@ -478,12 +478,10 @@ export const LowStockAlertsTab = ({
               <thead>
                 <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#475569", fontWeight: 700, textTransform: "uppercase", fontSize: "0.7rem", letterSpacing: "0.03em" }}>
                   <th style={{ padding: "0.75rem 1rem" }}>Item & SKU</th>
-                  <th style={{ padding: "0.75rem 1rem" }}>Location / Site</th>
                   <th style={{ padding: "0.75rem 1rem" }}>Category</th>
                   <th style={{ padding: "0.75rem 1rem" }}>Stock Status (Current / Reorder Point)</th>
                   <th style={{ padding: "0.75rem 1rem" }}>Severity</th>
                   <th style={{ padding: "0.75rem 1rem" }}>Est. Lead Time</th>
-                  <th style={{ padding: "0.75rem 1rem", textAlign: "right" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -497,21 +495,6 @@ export const LowStockAlertsTab = ({
                       <td style={{ padding: "0.85rem 1rem" }}>
                         <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.88rem" }}>{item.name}</div>
                         <div style={{ fontSize: "0.72rem", color: "#64748b", fontFamily: "monospace", marginTop: "0.1rem" }}>{item.sku}</div>
-                      </td>
-
-                      {/* Location / Site */}
-                      <td style={{ padding: "0.85rem 1rem" }}>
-                        <span style={{
-                          fontSize: "0.72rem",
-                          fontWeight: 700,
-                          padding: "0.2rem 0.55rem",
-                          borderRadius: 6,
-                          backgroundColor: "#eef2ff",
-                          color: "#210cae",
-                          border: "1px solid #c7d2fe"
-                        }}>
-                          📍 {item.siteName || "All Sites"} ({item.sitePrefix || "ALL"})
-                        </span>
                       </td>
 
                       {/* Category */}
@@ -573,53 +556,6 @@ export const LowStockAlertsTab = ({
                       <td style={{ padding: "0.85rem 1rem", color: "#475569" }}>
                         ⏱️ {item.leadTimeDays || 7} days
                       </td>
-
-                      {/* Actions */}
-                      <td style={{ padding: "0.85rem 1rem", textAlign: "right" }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "0.5rem" }}>
-                          {/* Create Request Button */}
-                          <button
-                            onClick={() => handleOpenRequestModal(item)}
-                            style={{
-                              padding: "0.45rem 0.75rem",
-                              borderRadius: 6,
-                              backgroundColor: "#2563eb",
-                              color: "#ffffff",
-                              fontSize: "0.78rem",
-                              fontWeight: 700,
-                              border: "none",
-                              cursor: "pointer",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "0.3rem",
-                              boxShadow: "0 1px 3px rgba(37,99,235,0.2)"
-                            }}
-                          >
-                            🛒 Create Reorder Request
-                          </button>
-
-                          {/* Edit Reorder Point Button */}
-                          {canEditReorderPoint && (
-                            <button
-                              onClick={() => handleOpenReorderModal(item)}
-                              title="Edit Reorder Threshold"
-                              style={{
-                                padding: "0.45rem",
-                                borderRadius: 6,
-                                border: "1px solid #cbd5e1",
-                                backgroundColor: "#ffffff",
-                                color: "#475569",
-                                cursor: "pointer",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                justifyContent: "center"
-                              }}
-                            >
-                              ⚙️
-                            </button>
-                          )}
-                        </div>
-                      </td>
                     </tr>
                   );
                 })}
@@ -628,194 +564,6 @@ export const LowStockAlertsTab = ({
           </div>
         )}
       </div>
-
-      {/* IN-PAGE DIALOG 1: Create Request Order Modal */}
-      {requestModalItem && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 9999,
-          backgroundColor: "rgba(15, 23, 42, 0.6)",
-          backdropFilter: "blur(4px)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "1rem"
-        }}>
-          <div style={{
-            backgroundColor: "#ffffff",
-            borderRadius: 12,
-            maxWidth: 480,
-            width: "100%",
-            padding: "1.5rem",
-            boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)"
-          }}>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#0f172a", margin: "0 0 0.5rem 0" }}>
-              🛒 Create Stock Replenishment Request
-            </h3>
-            <p style={{ fontSize: "0.82rem", color: "#64748b", marginBottom: "1.25rem" }}>
-              Submit an automated request order for <strong>{requestModalItem.name}</strong> to restore optimal inventory levels.
-            </p>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              <div>
-                <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569" }}>Item SKU / Code</label>
-                <input
-                  type="text"
-                  disabled
-                  value={`${requestModalItem.name} (${requestModalItem.sku})`}
-                  style={{ width: "100%", padding: "0.5rem", borderRadius: 6, border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", fontSize: "0.82rem" }}
-                />
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                <div>
-                  <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569" }}>Current Stock</label>
-                  <input
-                    type="text"
-                    disabled
-                    value={`${requestModalItem.currentQuantity} units`}
-                    style={{ width: "100%", padding: "0.5rem", borderRadius: 6, border: "1px solid #e2e8f0", backgroundColor: "#fff1f2", color: "#be123c", fontWeight: 700, fontSize: "0.82rem" }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569" }}>Reorder Threshold</label>
-                  <input
-                    type="text"
-                    disabled
-                    value={`${requestModalItem.reorderPoint} units`}
-                    style={{ width: "100%", padding: "0.5rem", borderRadius: 6, border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", fontSize: "0.82rem" }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569" }}>Reorder Quantity Requested</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={requestQtyInput}
-                  onChange={(e) => setRequestQtyInput(Number(e.target.value))}
-                  style={{ width: "100%", padding: "0.5rem", borderRadius: 6, border: "1px solid #2563eb", fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569" }}>Destination Site (Locked to Item Location)</label>
-                <select
-                  disabled
-                  value={requestTargetSiteId}
-                  style={{ width: "100%", padding: "0.5rem", borderRadius: 6, border: "1px solid #e2e8f0", backgroundColor: "#f1f5f9", color: "#334155", fontWeight: 600, fontSize: "0.82rem", cursor: "not-allowed" }}
-                >
-                  {sites.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.prefix})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569" }}>Reason / Notes</label>
-                <textarea
-                  rows={2}
-                  value={requestReasonInput}
-                  onChange={(e) => setRequestReasonInput(e.target.value)}
-                  style={{ width: "100%", padding: "0.5rem", borderRadius: 6, border: "1px solid #e2e8f0", fontSize: "0.82rem" }}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.5rem" }}>
-              <button
-                onClick={() => setRequestModalItem(null)}
-                style={{ padding: "0.55rem 1rem", borderRadius: 6, border: "1px solid #cbd5e1", backgroundColor: "#ffffff", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer" }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmCreateRequest}
-                disabled={isSubmittingRequest}
-                style={{ padding: "0.55rem 1.25rem", borderRadius: 6, backgroundColor: "#2563eb", color: "#ffffff", fontSize: "0.82rem", fontWeight: 700, border: "none", cursor: "pointer" }}
-              >
-                {isSubmittingRequest ? "Submitting..." : "Submit Reorder Request"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* IN-PAGE DIALOG 2: Edit Reorder Point Modal */}
-      {reorderModalItem && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 9999,
-          backgroundColor: "rgba(15, 23, 42, 0.6)",
-          backdropFilter: "blur(4px)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "1rem"
-        }}>
-          <div style={{
-            backgroundColor: "#ffffff",
-            borderRadius: 12,
-            maxWidth: 420,
-            width: "100%",
-            padding: "1.5rem",
-            boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)"
-          }}>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#0f172a", margin: "0 0 0.5rem 0" }}>
-              ⚙️ Configure Reorder Thresholds
-            </h3>
-            <p style={{ fontSize: "0.82rem", color: "#64748b", marginBottom: "1.25rem" }}>
-              Set minimum stock reorder point and target quantity for <strong>{reorderModalItem.name}</strong>.
-            </p>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              <div>
-                <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569" }}>Reorder Point (Threshold Qty)</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={reorderPointInput}
-                  onChange={(e) => setReorderPointInput(Number(e.target.value))}
-                  style={{ width: "100%", padding: "0.5rem", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: "0.85rem", fontWeight: 700 }}
-                />
-                <span style={{ fontSize: "0.7rem", color: "#64748b" }}>Alerts trigger when total stock drops to or below this number.</span>
-              </div>
-
-              <div>
-                <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569" }}>Default Reorder Quantity</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={reorderQtyInput}
-                  onChange={(e) => setReorderQtyInput(Number(e.target.value))}
-                  style={{ width: "100%", padding: "0.5rem", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: "0.85rem", fontWeight: 700 }}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.5rem" }}>
-              <button
-                onClick={() => setReorderModalItem(null)}
-                style={{ padding: "0.55rem 1rem", borderRadius: 6, border: "1px solid #cbd5e1", backgroundColor: "#ffffff", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer" }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveReorderPoint}
-                disabled={isSubmittingReorder}
-                style={{ padding: "0.55rem 1.25rem", borderRadius: 6, backgroundColor: "#0f172a", color: "#ffffff", fontSize: "0.82rem", fontWeight: 700, border: "none", cursor: "pointer" }}
-              >
-                {isSubmittingReorder ? "Saving..." : "Save Settings"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
