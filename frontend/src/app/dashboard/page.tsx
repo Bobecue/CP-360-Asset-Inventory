@@ -2032,9 +2032,11 @@ export default function DashboardPage() {
           />
         );
       case "catalog":
+      case "deployments":
         return (
           <CatalogTab
             isUsingMockData={isUsingMockData}
+            activeSubTab={activeTab === "deployments" ? "deployments" : "inventory"}
             catalogItems={catalogItems}
             setCatalogItems={setCatalogItems}
             sites={sites}

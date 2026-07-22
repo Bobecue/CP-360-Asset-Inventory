@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 
 interface SidebarProps {
   activeTab: string;
@@ -9,6 +10,7 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, currentUser }: SidebarProps) => {
+  const [isCatalogHovered, setIsCatalogHovered] = useState(false);
   const role = currentUser?.role || 'EMPLOYEE';
   const name = currentUser?.name || 'User';
   const employeeId = currentUser?.employeeId || 'EID-0000';
@@ -245,7 +247,107 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
               </span>
             )}
             {group.items.map((item) => {
-              const isActive = activeTab === item.id;
+              const isCatalogGroup = item.id === "catalog";
+              const canAccessDeployments = role === "SUPER_ADMIN" || role === "ADMIN" || role === "INVENTORY_STAFF";
+              const isActive = activeTab === item.id || (isCatalogGroup && activeTab === "deployments");
+
+              if (isCatalogGroup) {
+                const showSubMenu = isCatalogHovered || activeTab === "catalog" || activeTab === "deployments";
+                return (
+                  <div
+                    key={item.id}
+                    onMouseEnter={() => setIsCatalogHovered(true)}
+                    onMouseLeave={() => setIsCatalogHovered(false)}
+                    style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}
+                  >
+                    <button
+                      onClick={() => onTabChange("catalog")}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "0.75rem",
+                        padding: "0.6rem 0.8rem", borderRadius: 8, border: "none",
+                        background: (activeTab === "catalog" || activeTab === "deployments")
+                          ? "linear-gradient(90deg, rgba(33,12,174,0.08) 0%, rgba(77,201,230,0.04) 100%)"
+                          : "transparent",
+                        color: (activeTab === "catalog" || activeTab === "deployments") ? "#210cae" : "#475569",
+                        cursor: "pointer", fontSize: "0.84rem",
+                        fontWeight: (activeTab === "catalog" || activeTab === "deployments") ? 600 : 500,
+                        textAlign: "left",
+                        transition: "all 0.18s cubic-bezier(0.4, 0, 0.2, 1)",
+                        width: "100%",
+                        borderLeft: (activeTab === "catalog" || activeTab === "deployments") ? "3px solid #210cae" : "3px solid transparent",
+                        paddingLeft: (activeTab === "catalog" || activeTab === "deployments") ? "calc(0.8rem - 3px)" : "0.8rem",
+                        boxShadow: (activeTab === "catalog" || activeTab === "deployments")
+                          ? "inset 0 0 0 1px rgba(33,12,174,0.08), 2px 0 16px rgba(33,12,174,0.06)"
+                          : "none",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (activeTab !== "catalog" && activeTab !== "deployments") {
+                          e.currentTarget.style.background = "#f1f5f9";
+                          e.currentTarget.style.color = "#0f172a";
+                          e.currentTarget.style.transform = "translateX(2px)";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (activeTab !== "catalog" && activeTab !== "deployments") {
+                          e.currentTarget.style.background = "transparent";
+                          e.currentTarget.style.color = "#475569";
+                          e.currentTarget.style.transform = "translateX(0)";
+                        }
+                      }}
+                    >
+                      <span style={{ color: (activeTab === "catalog" || activeTab === "deployments") ? "#210cae" : "inherit", display: "flex", alignItems: "center" }}>{item.icon}</span>
+                      {isSidebarOpen && (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                          <span>{item.label}</span>
+                          <span style={{ fontSize: "0.65rem", color: "#94a3b8" }}>{showSubMenu ? "▾" : "▸"}</span>
+                        </div>
+                      )}
+                    </button>
+
+                    {/* Sub-menu nested directly below Asset Catalog */}
+                    {isSidebarOpen && canAccessDeployments && showSubMenu && (
+                      <div style={{
+                        display: "flex", flexDirection: "column", gap: "0.2rem",
+                        paddingLeft: "1.75rem", marginTop: "0.15rem", marginBottom: "0.25rem",
+                        borderLeft: "2px solid #e2e8f0", marginLeft: "1.25rem"
+                      }}>
+                        <button
+                          onClick={() => onTabChange("catalog")}
+                          style={{
+                            display: "flex", alignItems: "center", gap: "0.45rem",
+                            padding: "0.4rem 0.6rem", borderRadius: 6, border: "none",
+                            backgroundColor: activeTab === "catalog" ? "#eef2ff" : "transparent",
+                            color: activeTab === "catalog" ? "#210cae" : "#64748b",
+                            cursor: "pointer", fontSize: "0.78rem", fontWeight: activeTab === "catalog" ? 700 : 500,
+                            textAlign: "left", transition: "all 0.15s ease", width: "100%"
+                          }}
+                          onMouseEnter={(e) => { if (activeTab !== "catalog") e.currentTarget.style.backgroundColor = "#f1f5f9"; }}
+                          onMouseLeave={(e) => { if (activeTab !== "catalog") e.currentTarget.style.backgroundColor = "transparent"; }}
+                        >
+                          <span>📦 Catalog Inventory</span>
+                        </button>
+
+                        <button
+                          onClick={() => onTabChange("deployments")}
+                          style={{
+                            display: "flex", alignItems: "center", gap: "0.45rem",
+                            padding: "0.4rem 0.6rem", borderRadius: 6, border: "none",
+                            backgroundColor: activeTab === "deployments" ? "#eef2ff" : "transparent",
+                            color: activeTab === "deployments" ? "#210cae" : "#64748b",
+                            cursor: "pointer", fontSize: "0.78rem", fontWeight: activeTab === "deployments" ? 700 : 500,
+                            textAlign: "left", transition: "all 0.15s ease", width: "100%"
+                          }}
+                          onMouseEnter={(e) => { if (activeTab !== "deployments") e.currentTarget.style.backgroundColor = "#f1f5f9"; }}
+                          onMouseLeave={(e) => { if (activeTab !== "deployments") e.currentTarget.style.backgroundColor = "transparent"; }}
+                        >
+                          <span>🚀 Asset Deployments</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
               return (
                 <button
                   key={item.id}
