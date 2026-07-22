@@ -482,7 +482,7 @@ export const CatalogTab = ({
         flexWrap: "wrap",
         gap: "1rem"
       }}>
-        <div style={{ display: "flex", gap: "0.4rem", backgroundColor: "#f1f5f9", padding: "0.25rem", borderRadius: "10px" }}>
+        <div style={{ display: "flex", gap: "0.4rem", backgroundColor: "#f1f5f9", padding: "0.3rem", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
           <button
             onClick={() => setCatalogSubTab("inventory")}
             style={{
@@ -494,14 +494,24 @@ export const CatalogTab = ({
               cursor: "pointer",
               backgroundColor: catalogSubTab === "inventory" ? "#ffffff" : "transparent",
               color: catalogSubTab === "inventory" ? "#0f172a" : "#64748b",
-              boxShadow: catalogSubTab === "inventory" ? "0 1px 3px rgba(15,23,42,0.08)" : "none",
+              boxShadow: catalogSubTab === "inventory" ? "0 2px 5px rgba(15,23,42,0.08), 0 0 0 1px rgba(33,12,174,0.1)" : "none",
               transition: "all 0.15s ease",
               display: "flex",
               alignItems: "center",
-              gap: "0.4rem"
+              gap: "0.45rem"
             }}
           >
-            📦 Catalog Inventory ({catalogItems.length})
+            <span>📦 Catalog Inventory</span>
+            <span style={{
+              fontSize: "0.72rem",
+              fontWeight: 800,
+              padding: "0.15rem 0.5rem",
+              borderRadius: "10px",
+              backgroundColor: catalogSubTab === "inventory" ? "#f1f5f9" : "#e2e8f0",
+              color: catalogSubTab === "inventory" ? "#0f172a" : "#475569"
+            }}>
+              {catalogItems.length}
+            </span>
           </button>
 
           {canAccessDeployments && (
@@ -516,7 +526,7 @@ export const CatalogTab = ({
                 cursor: "pointer",
                 backgroundColor: catalogSubTab === "deployments" ? "#ffffff" : "transparent",
                 color: catalogSubTab === "deployments" ? "#210cae" : "#64748b",
-                boxShadow: catalogSubTab === "deployments" ? "0 1px 3px rgba(15,23,42,0.08)" : "none",
+                boxShadow: catalogSubTab === "deployments" ? "0 2px 5px rgba(15,23,42,0.08), 0 0 0 1px rgba(33,12,174,0.1)" : "none",
                 transition: "all 0.15s ease",
                 display: "flex",
                 alignItems: "center",
