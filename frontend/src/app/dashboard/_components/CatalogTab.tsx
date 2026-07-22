@@ -93,6 +93,7 @@ export const CatalogTab = ({
   const [deploymentSearch, setDeploymentSearch] = useState("");
   const [deploymentSiteFilter, setDeploymentSiteFilter] = useState("ALL");
   const [deploymentStatusFilter, setDeploymentStatusFilter] = useState("ALL");
+  const [deploymentCategoryTypeFilter, setDeploymentCategoryTypeFilter] = useState("ALL");
 
   const filteredIds = filteredItems.map((it) => it.id);
   const allSelected = filteredIds.length > 0 && filteredIds.every((id) => selectedItemIds.includes(id));
@@ -225,6 +226,11 @@ export const CatalogTab = ({
         deploymentStatusFilter === "ACTIVE" ? !isReturned :
           deploymentStatusFilter === "RETURNED" ? isReturned : true;
 
+    const itemObj = catalogItems.find(it => it.id === dep.rawRequest?.itemId || it.name === dep.itemName);
+    const categoryType = itemObj?.category?.type || dep.rawRequest?.item?.category?.type || (dep.itemName?.toLowerCase().includes("battery") || dep.itemName?.toLowerCase().includes("cable") || dep.itemName?.toLowerCase().includes("pen") ? "CONSUMABLE" : "NON_CONSUMABLE");
+    const matchesCategoryType =
+      deploymentCategoryTypeFilter === "ALL" ? true : categoryType === deploymentCategoryTypeFilter;
+
     const q = deploymentSearch.toLowerCase();
     const matchesSearch =
       !q ||
@@ -234,7 +240,7 @@ export const CatalogTab = ({
       (dep.itemName || "").toLowerCase().includes(q) ||
       (dep.assetTag || "").toLowerCase().includes(q) ||
       (dep.id || "").toLowerCase().includes(q);
-    return matchesSite && matchesStatus && matchesSearch;
+    return matchesSite && matchesStatus && matchesCategoryType && matchesSearch;
   });
 
   const handleDownloadDeploymentReceipt = (dep: any) => {
@@ -2054,6 +2060,28 @@ export const CatalogTab = ({
                 </select>
               </div>
 
+              {/* Category Selector */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "160px" }}>
+                <label style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Filter Category</label>
+                <select
+                  value={deploymentCategoryTypeFilter}
+                  onChange={(e) => setDeploymentCategoryTypeFilter(e.target.value)}
+                  style={{
+                    padding: "0.45rem 0.65rem",
+                    borderRadius: 6,
+                    border: "1px solid #e2e8f0",
+                    fontSize: "0.8rem",
+                    color: "#475569",
+                    backgroundColor: "#ffffff",
+                    outline: "none",
+                  }}
+                >
+                  <option value="ALL">All Categories</option>
+                  <option value="CONSUMABLE">🟢 Consumables</option>
+                  <option value="NON_CONSUMABLE">💻 Non-Consumables</option>
+                </select>
+              </div>
+
               {/* Search Bar */}
               <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", flex: 1, minWidth: "220px" }}>
                 <label style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Search Deployments</label>
@@ -2104,6 +2132,7 @@ export const CatalogTab = ({
                       <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Account</th>
                       <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>EID</th>
                       <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Deployed Asset</th>
+                      <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Category</th>
                       <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Asset Tag</th>
                       <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Site Location</th>
                       <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Issued By</th>
@@ -2142,6 +2171,34 @@ export const CatalogTab = ({
                         </td>
                         <td style={{ padding: "0.9rem 1.25rem", color: "#0f172a", fontWeight: 600 }}>
                           {dep.itemName}
+                        </td>
+                        <td style={{ padding: "0.9rem 1.25rem" }}>
+                          {(() => {
+                            const itemObj = catalogItems.find(it => it.id === dep.rawRequest?.itemId || it.name === dep.itemName);
+                            const catType = itemObj?.category?.type || dep.rawRequest?.item?.category?.type || (dep.itemName?.toLowerCase().includes("battery") || dep.itemName?.toLowerCase().includes("cable") || dep.itemName?.toLowerCase().includes("pen") ? "CONSUMABLE" : "NON_CONSUMABLE");
+                            const catName = itemObj?.category?.name || dep.rawRequest?.item?.category?.name || (catType === "CONSUMABLE" ? "Consumables" : "Equipment");
+                            const isConsumable = catType === "CONSUMABLE";
+                            return (
+                              <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
+                                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0f172a" }}>
+                                  {catName}
+                                </span>
+                                <span style={{
+                                  fontSize: "0.65rem",
+                                  fontWeight: 800,
+                                  padding: "0.1rem 0.45rem",
+                                  borderRadius: "4px",
+                                  display: "inline-block",
+                                  width: "fit-content",
+                                  backgroundColor: isConsumable ? "#ecfdf5" : "#eff6ff",
+                                  color: isConsumable ? "#047857" : "#1d4ed8",
+                                  border: `1px solid ${isConsumable ? "#a7f3d0" : "#bfdbfe"}`
+                                }}>
+                                  {isConsumable ? "CONSUMABLE" : "NON-CONSUMABLE"}
+                                </span>
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td style={{ padding: "0.9rem 1.25rem" }}>
                           <span style={{
