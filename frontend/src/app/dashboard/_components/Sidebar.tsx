@@ -248,7 +248,7 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
             )}
             {group.items.map((item) => {
               const isCatalogGroup = item.id === "catalog";
-              const canAccessDeployments = role === "SUPER_ADMIN" || role === "ADMIN" || role === "INVENTORY_STAFF";
+              const canAccessDeployments = role === "SUPER_ADMIN" || role === "ADMIN" || role === "OPS_MANAGER" || role === "OPERATIONS_MANAGER" || role === "INVENTORY_STAFF";
               const isActive = activeTab === item.id || (isCatalogGroup && activeTab === "deployments");
 
               if (isCatalogGroup) {
