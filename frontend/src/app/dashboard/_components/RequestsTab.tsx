@@ -74,7 +74,7 @@ interface RequestsTabProps {
   onRefreshCatalog?: () => void;
 }
 
-const REQUESTS_CACHE_V = 'v7';
+const REQUESTS_CACHE_V = 'v8';
 
 export function RequestsTab({
   currentUser,
@@ -227,10 +227,8 @@ export function RequestsTab({
         
         const normalized = apiData
           .filter(r => !!r.itemId && r.quantity >= 1)
+          .filter(r => !(r.reason && r.reason.includes("[ASSET DEPLOYMENT]")))
           .map(r => {
-            if (r.reason && r.reason.includes("[ASSET DEPLOYMENT]") && r.status !== 'RETURNED') {
-              return { ...r, status: 'RELEASED' as RequestStatus };
-            }
             if (r.status === ('REJECTED' as any) && r.reviewComment === 'Cancelled by requester.') {
               return { ...r, status: 'CANCELLED' as RequestStatus };
             }
@@ -263,11 +261,10 @@ export function RequestsTab({
         if (Array.isArray(parsed) && parsed.length > 0) {
           const normalized = parsed
             .filter(r => !!r.itemId && r.quantity >= 1)
+            .filter(r => !(r.reason && r.reason.includes("[ASSET DEPLOYMENT]")))
             .map(r => {
               let status = r.status;
-              if (r.reason && r.reason.includes("[ASSET DEPLOYMENT]") && status !== 'RETURNED') {
-                status = "RELEASED";
-              } else if (status === ('REJECTED' as any) && r.reviewComment === 'Cancelled by requester.') {
+              if (status === ('REJECTED' as any) && r.reviewComment === 'Cancelled by requester.') {
                 status = 'CANCELLED';
               }
               return { ...r, status };

@@ -269,11 +269,13 @@ export function RequestsTable({
 
 
 
+  // Exclude Asset Deployments from Request Orders queue
+  const requestOrdersOnly = useMemo(() => {
+    return allRequests.filter(r => !(r.reason && r.reason.includes('[ASSET DEPLOYMENT]')));
+  }, [allRequests]);
+
   // Filter logic: Exclude Asset Deployments from Request Orders queue
-  const filtered = allRequests.filter(r => {
-    if (r.reason && r.reason.includes('[ASSET DEPLOYMENT]')) {
-      return false;
-    }
+  const filtered = requestOrdersOnly.filter(r => {
 
     const matchesSearch =
       r.itemName.toLowerCase().includes(search.toLowerCase()) ||
@@ -568,13 +570,13 @@ export function RequestsTable({
   };
 
   const groupedCounts = {
-    ALL: allRequests.length,
-    PENDING: allRequests.filter(r => ['PENDING', 'PENDING_OPS_APPROVAL'].includes(r.status)).length,
-    PROCESSING: allRequests.filter(r => ['APPROVED', 'PENDING_PROCUREMENT'].includes(r.status)).length,
-    READY: allRequests.filter(r => ['READY_FOR_PICKUP'].includes(r.status)).length,
-    RELEASED: allRequests.filter(r => ['RELEASED', 'AWAITING_CONFIRMATION'].includes(r.status)).length,
-    COMPLETED: allRequests.filter(r => ['ITEM_RECEIVED'].includes(r.status)).length,
-    CLOSED: allRequests.filter(r => ['REJECTED', 'RETURNED', 'CANCELLED'].includes(r.status)).length,
+    ALL: requestOrdersOnly.length,
+    PENDING: requestOrdersOnly.filter(r => ['PENDING', 'PENDING_OPS_APPROVAL'].includes(r.status)).length,
+    PROCESSING: requestOrdersOnly.filter(r => ['APPROVED', 'PENDING_PROCUREMENT'].includes(r.status)).length,
+    READY: requestOrdersOnly.filter(r => ['READY_FOR_PICKUP'].includes(r.status)).length,
+    RELEASED: requestOrdersOnly.filter(r => ['RELEASED', 'AWAITING_CONFIRMATION'].includes(r.status)).length,
+    COMPLETED: requestOrdersOnly.filter(r => ['ITEM_RECEIVED'].includes(r.status)).length,
+    CLOSED: requestOrdersOnly.filter(r => ['REJECTED', 'RETURNED', 'CANCELLED'].includes(r.status)).length,
   };
 
   return (
