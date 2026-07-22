@@ -59,6 +59,7 @@ interface MyRequestsPanelProps {
   currentUserName?: string;
   collapsible?: boolean;
   onRowClick?: (req: RequestEntry) => void;
+  onBulkCancel?: (selectedIds: string[]) => Promise<void>;
 }
 
 const getCategoryIcon = (category?: string, name?: string) => {
@@ -198,13 +199,17 @@ export function MyRequestsPanel({
   currentUserId = 'user-1',
   currentUserName = 'Super Admin',
   collapsible = true,
-  onRowClick
+  onRowClick,
+  onBulkCancel
 }: MyRequestsPanelProps) {
   const [open, setOpen] = useState(!collapsible);
   const [filter, setFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [cancelRequestId, setCancelRequestId] = useState<string | null>(null);
   const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
+  const [selectedReqIds, setSelectedReqIds] = useState<string[]>([]);
+  const [isSubmittingBulk, setIsSubmittingBulk] = useState(false);
+  const [isBulkCancelConfirmOpen, setIsBulkCancelConfirmOpen] = useState(false);
 
   // Initialize open state from localStorage only if collapsible
   useEffect(() => {
@@ -283,6 +288,35 @@ export function MyRequestsPanel({
   }, [allRequests, currentUserId, currentUserName]);
 
   const isLoading = false;
+
+  const cancellableRequestsInView = useMemo(() => {
+    return (myRequests?.items || []).filter(
+      r => ['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'APPROVED', 'READY_FOR_PICKUP'].includes(r.status as string)
+    );
+  }, [myRequests?.items]);
+
+  const isAllCancellableSelected = cancellableRequestsInView.length > 0 &&
+    cancellableRequestsInView.every(r => selectedReqIds.includes(r.id));
+
+  const handleConfirmBulkCancel = async () => {
+    if (selectedReqIds.length === 0 || isSubmittingBulk) return;
+    setIsSubmittingBulk(true);
+    try {
+      if (onBulkCancel) {
+        await onBulkCancel(selectedReqIds);
+      } else {
+        for (const id of selectedReqIds) {
+          await onCancel(id);
+        }
+      }
+      setSelectedReqIds([]);
+    } catch (err) {
+      console.error('Error bulk cancelling requests:', err);
+    } finally {
+      setIsSubmittingBulk(false);
+      setIsBulkCancelConfirmOpen(false);
+    }
+  };
 
   const handleCancelClick = async (id: string) => {
     setCancelRequestId(id);
@@ -518,69 +552,164 @@ export function MyRequestsPanel({
       {/* Expandable body */}
       {open && (
         <div style={{ borderTop: '1px solid #e2e8f0', padding: '1rem 1.25rem', backgroundColor: '#ffffff' }}>
-          {/* Search bar */}
-          <div style={{ position: 'relative', marginBottom: '1rem' }}>
-            <input
-              type="text"
-              placeholder="Search item, reason, or status..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-glow"
-              style={{
-                width: '100%',
-                padding: '0.45rem 0.75rem 0.45rem 2.25rem',
-                fontSize: '0.8rem',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                outline: 'none',
-                transition: 'border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out',
-                color: '#0f172a',
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#E85D00';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(232, 93, 0, 0.1)';
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#cbd5e1';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            />
-            <svg
-              style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
+          {/* Search bar & Select All bar */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="text"
+                placeholder="Search item, reason, or status..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-glow"
                 style={{
-                  position: 'absolute',
-                  right: '0.75rem',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  color: '#94a3b8',
-                  cursor: 'pointer',
-                  padding: 0,
-                  display: 'flex',
-                  alignItems: 'center',
+                  width: '100%',
+                  padding: '0.45rem 0.75rem 0.45rem 2.25rem',
+                  fontSize: '0.8rem',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  outline: 'none',
+                  transition: 'border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out',
+                  color: '#0f172a',
                 }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#E85D00';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(232, 93, 0, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#cbd5e1';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              />
+              <svg
+                style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </button>
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  style={{
+                    position: 'absolute',
+                    right: '0.75rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {cancellableRequestsInView.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.35rem 0.5rem', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #f1f5f9' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, color: '#475569', userSelect: 'none' }}>
+                  <input
+                    type="checkbox"
+                    checked={isAllCancellableSelected}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedReqIds(cancellableRequestsInView.map(r => r.id));
+                      } else {
+                        setSelectedReqIds([]);
+                      }
+                    }}
+                    style={{ cursor: 'pointer', accentColor: '#dc2626', width: '15px', height: '15px' }}
+                  />
+                  Select All Cancellable Orders ({cancellableRequestsInView.length})
+                </label>
+                {selectedReqIds.length > 0 && (
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>
+                    {selectedReqIds.length} of {cancellableRequestsInView.length} selected
+                  </span>
+                )}
+              </div>
             )}
           </div>
+
+          {/* Bulk Action Banner */}
+          {selectedReqIds.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: '#0f172a',
+                color: '#ffffff',
+                padding: '0.75rem 1rem',
+                borderRadius: 10,
+                border: '1px solid #334155',
+                boxShadow: '0 4px 12px rgba(15, 23, 42, 0.25)',
+                marginBottom: '1rem',
+                animation: 'slideFadeIn 0.3s ease-out'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, backgroundColor: '#3b82f6', color: '#ffffff', padding: '0.25rem 0.55rem', borderRadius: '6px' }}>
+                  ⚡ {selectedReqIds.length} Request{selectedReqIds.length > 1 ? 's' : ''} Selected
+                </span>
+                <span style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>
+                  Ready to cancel selected request orders
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button
+                  onClick={() => setIsBulkCancelConfirmOpen(true)}
+                  disabled={isSubmittingBulk}
+                  style={{
+                    backgroundColor: '#dc2626',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '0.4rem 0.95rem',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    cursor: isSubmittingBulk ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    boxShadow: '0 2px 6px rgba(220, 38, 38, 0.3)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {isSubmittingBulk ? 'Cancelling...' : `🚫 Cancel Orders (${selectedReqIds.length})`}
+                </button>
+
+                <button
+                  onClick={() => setSelectedReqIds([])}
+                  style={{
+                    backgroundColor: 'transparent',
+                    color: '#94a3b8',
+                    border: '1px solid #475569',
+                    borderRadius: 8,
+                    padding: '0.4rem 0.75rem',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Deselect
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Card list */}
           {isLoading ? (
@@ -595,126 +724,147 @@ export function MyRequestsPanel({
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {myRequests.items.map(req => (
-                <div
-                  key={req.id}
-                  onClick={() => onRowClick && onRowClick(req)}
-                  style={{
-                    backgroundColor: '#ffffff',
-                    padding: '1rem',
-                    borderRadius: 12,
-                    border: '1px solid #e2e8f0',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.6rem',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.01)',
-                    cursor: onRowClick ? 'pointer' : 'default',
-                    transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
-                  }}
-                  onMouseEnter={(e) => { 
-                    if (onRowClick) { 
-                      e.currentTarget.style.borderColor = '#94a3b8'; 
-                      e.currentTarget.style.transform = 'translateY(-4px)';
-                      e.currentTarget.style.boxShadow = '0 10px 24px rgba(15, 23, 42, 0.08)';
-                    } 
-                  }}
-                  onMouseLeave={(e) => { 
-                    if (onRowClick) { 
-                      e.currentTarget.style.borderColor = '#e2e8f0'; 
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.01)';
-                    } 
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
-                      <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', marginTop: '0.15rem' }}>
-                        {getCategoryIcon(req.itemCategory, req.itemName)}
-                      </span>
-                      <div>
-                        <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>{getDisplayName(req)}</h4>
-                        <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.15rem', display: 'block' }}>
-                          Qty: {req.quantity} • Submitted: {formatRelativeTime(req.createdAt)}
+              {myRequests.items.map(req => {
+                const isCancellable = ['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'APPROVED', 'READY_FOR_PICKUP'].includes(req.status as string);
+                const isSelected = selectedReqIds.includes(req.id);
+
+                return (
+                  <div
+                    key={req.id}
+                    onClick={() => onRowClick && onRowClick(req)}
+                    style={{
+                      backgroundColor: isSelected ? '#fef2f2' : '#ffffff',
+                      padding: '1rem',
+                      borderRadius: 12,
+                      border: `1px solid ${isSelected ? '#fca5a5' : '#e2e8f0'}`,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.6rem',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.01)',
+                      cursor: onRowClick ? 'pointer' : 'default',
+                      transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                    }}
+                    onMouseEnter={(e) => { 
+                      if (onRowClick && !isSelected) { 
+                        e.currentTarget.style.borderColor = '#94a3b8'; 
+                        e.currentTarget.style.transform = 'translateY(-4px)';
+                        e.currentTarget.style.boxShadow = '0 10px 24px rgba(15, 23, 42, 0.08)';
+                      } 
+                    }}
+                    onMouseLeave={(e) => { 
+                      if (onRowClick && !isSelected) { 
+                        e.currentTarget.style.borderColor = '#e2e8f0'; 
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.01)';
+                      } 
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
+                        {isCancellable && (
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              if (e.target.checked) {
+                                setSelectedReqIds(prev => [...prev, req.id]);
+                              } else {
+                                setSelectedReqIds(prev => prev.filter(id => id !== req.id));
+                              }
+                            }}
+                            style={{ cursor: 'pointer', accentColor: '#dc2626', width: '16px', height: '16px', marginTop: '0.2rem' }}
+                          />
+                        )}
+                        <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', marginTop: '0.15rem' }}>
+                          {getCategoryIcon(req.itemCategory, req.itemName)}
                         </span>
+                        <div>
+                          <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>{getDisplayName(req)}</h4>
+                          <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.15rem', display: 'block' }}>
+                            Qty: {req.quantity} • Submitted: {formatRelativeTime(req.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
+                        {renderStatusBadge(req.status)}
+                        {req.status === 'RETURNED' && (
+                          <>
+                            {req.returnComment?.includes('Missing') && (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.15rem',
+                                padding: '0.1rem 0.35rem',
+                                borderRadius: 4,
+                                backgroundColor: '#fffbeb',
+                                color: '#b45309',
+                                border: '1px solid #fde68a',
+                                fontSize: '0.65rem',
+                                fontWeight: 600,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                ⚠️ Incomplete Qty
+                              </span>
+                            )}
+                            {(req.returnComment?.includes('Bad') || req.returnComment?.includes('Damaged')) && (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.15rem',
+                                padding: '0.1rem 0.35rem',
+                                borderRadius: 4,
+                                backgroundColor: '#fef2f2',
+                                color: '#b91c1c',
+                                border: '1px solid #fecaca',
+                                fontSize: '0.65rem',
+                                fontWeight: 600,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                🚨 Damaged
+                              </span>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
-                      {renderStatusBadge(req.status)}
-                      {req.status === 'RETURNED' && (
-                        <>
-                          {req.returnComment?.includes('Missing') && (
-                            <span style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.15rem',
-                              padding: '0.1rem 0.35rem',
-                              borderRadius: 4,
-                              backgroundColor: '#fffbeb',
-                              color: '#b45309',
-                              border: '1px solid #fde68a',
-                              fontSize: '0.65rem',
-                              fontWeight: 600,
-                              whiteSpace: 'nowrap'
-                            }}>
-                              ⚠️ Incomplete Qty
-                            </span>
-                          )}
-                          {(req.returnComment?.includes('Bad') || req.returnComment?.includes('Damaged')) && (
-                            <span style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.15rem',
-                              padding: '0.1rem 0.35rem',
-                              borderRadius: 4,
-                              backgroundColor: '#fef2f2',
-                              color: '#b91c1c',
-                              border: '1px solid #fecaca',
-                              fontSize: '0.65rem',
-                              fontWeight: 600,
-                              whiteSpace: 'nowrap'
-                            }}>
-                              🚨 Damaged
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </div>
+
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#475569', lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {req.reason}
+                    </p>
+
+                    {req.reviewComment && (
+                      <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '0.5rem', fontSize: '0.78rem', color: '#64748b', fontStyle: 'italic' }}>
+                        <strong>Review comment:</strong> "{req.reviewComment}"
+                      </div>
+                    )}
+
+                    {isCancellable && (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleCancelClick(req.id); }}
+                          style={{
+                            padding: '0.3rem 0.65rem',
+                            borderRadius: 6,
+                            border: '1px solid #fecaca',
+                            backgroundColor: '#ffffff',
+                            color: '#dc2626',
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#ffffff'; }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
                   </div>
-
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#475569', lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {req.reason}
-                  </p>
-
-                  {req.reviewComment && (
-                    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '0.5rem', fontSize: '0.78rem', color: '#64748b', fontStyle: 'italic' }}>
-                      <strong>Review comment:</strong> "{req.reviewComment}"
-                    </div>
-                  )}
-
-                  {(req.status === 'PENDING' || req.status === 'PENDING_OPS_APPROVAL') && (
-                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleCancelClick(req.id); }}
-                        style={{
-                          padding: '0.3rem 0.65rem',
-                          borderRadius: 6,
-                          border: '1px solid #fecaca',
-                          backgroundColor: '#ffffff',
-                          color: '#dc2626',
-                          fontSize: '0.72rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease'
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#fef2f2'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#ffffff'; }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -740,6 +890,17 @@ export function MyRequestsPanel({
           }
         }}
         onCancel={() => setCancelRequestId(null)}
+      />
+
+      <InteractiveModal
+        isOpen={isBulkCancelConfirmOpen}
+        type="confirm"
+        title="Cancel Selected Orders"
+        message={`Are you sure you want to cancel these ${selectedReqIds.length} selected request orders? This action cannot be undone.`}
+        confirmText={`Cancel ${selectedReqIds.length} Order(s)`}
+        theme="danger"
+        onConfirm={handleConfirmBulkCancel}
+        onCancel={() => setIsBulkCancelConfirmOpen(false)}
       />
     </div>
   );

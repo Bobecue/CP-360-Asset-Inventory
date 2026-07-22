@@ -998,30 +998,6 @@ export function RequestsTable({
               </button>
             )}
 
-            {selectedRequests.some(r => ['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'APPROVED', 'READY_FOR_PICKUP'].includes(r.status as string)) && (
-              <button
-                onClick={handleBulkCancelClick}
-                disabled={isSubmittingBulk}
-                style={{
-                  backgroundColor: '#dc2626',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: 8,
-                  padding: '0.45rem 0.95rem',
-                  fontSize: '0.78rem',
-                  fontWeight: 700,
-                  cursor: isSubmittingBulk ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  boxShadow: '0 2px 6px rgba(220, 38, 38, 0.3)',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                {isSubmittingBulk ? 'Processing...' : `🚫 Cancel Orders`}
-              </button>
-            )}
-
             <button
               onClick={() => setSelectedReqIds([])}
               style={{

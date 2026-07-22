@@ -1352,6 +1352,7 @@ export function RequestsTab({
         ) : (
           <MyRequestsPanel
             onCancel={handleCancelRequest}
+            onBulkCancel={handleBulkCancel}
             renderStatusBadge={renderStatusBadge}
             formatRelativeTime={formatRelativeTime}
             refreshTrigger={refreshTrigger}
