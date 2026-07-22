@@ -221,11 +221,10 @@ export const AddUserModal = ({
 
                 {/* Employee ID */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-                  <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Employee ID *</label>
+                  <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Employee ID</label>
                   <input
                     type="text"
-                    required
-                    placeholder="e.g. EID-0042"
+                    placeholder="e.g. EID-0042 (Optional)"
                     value={formEmployeeId}
                     onChange={(e) => setFormEmployeeId(e.target.value)}
                     style={{

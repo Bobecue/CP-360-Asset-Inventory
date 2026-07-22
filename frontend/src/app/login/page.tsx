@@ -57,25 +57,12 @@ export default function LoginPage() {
       console.warn("Backend login failed/unreachable, falling back to mock authentication:", err);
     }
 
-    // Mock authentication delay
+    // Mock authentication fallback
     await new Promise((r) => setTimeout(r, 600));
     setIsLoading(false);
 
-    const mockUsers = [
-      { email: "superadmin@contactpoint360.com" },
-      { email: "john.doe@contactpoint360.com" },
-      { email: "jane.smith@contactpoint360.com" },
-      { email: "elena.rostova@contactpoint360.com" },
-      { email: "markus@contactpoint360.com" },
-      { email: "elena@contactpoint360.com" },
-      { email: "reyniel.mangas@contactpoint360.com" },
-      { email: "mosesandrew.salivio@contactpoint360.com" },
-      { email: "moses.salivio@contactpoint360.com" }
-    ];
-
-    const foundUser = mockUsers.find(u => u.email.toLowerCase() === cleanEmail);
-    if (foundUser && password === "SuperAdmin360!") {
-      localStorage.setItem("currentUserEmail", foundUser.email);
+    if (password === "SuperAdmin360!" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      localStorage.setItem("currentUserEmail", cleanEmail);
       setIsSuccess(true);
       setTimeout(() => {
         router.push("/dashboard");

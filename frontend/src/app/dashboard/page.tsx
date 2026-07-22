@@ -1075,19 +1075,7 @@ export default function DashboardPage() {
       return;
     }
 
-    // 3. Email Domain Validation
-    if (!cleanEmail.endsWith("@contactpoint360.com") && !cleanEmail.endsWith("@cp-360.com")) {
-      setFormError("Access Restricted: Only ContactPoint 360 corporate email addresses (@contactpoint360.com or @cp-360.com) are permitted.");
-      return;
-    }
-
-    // 4. Employee ID Validation
-    if (!formEmployeeId.trim()) {
-      setFormError("Employee ID is required as it is used to generate the default account password.");
-      return;
-    }
-
-    // 5. Site Validation
+    // 3. Site Validation
     if (formRole !== "SUPER_ADMIN" && !formSiteId) {
       setFormError("Assigned Site is required for non Super Admin roles.");
       return;

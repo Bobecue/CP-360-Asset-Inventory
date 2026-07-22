@@ -253,14 +253,8 @@ export const formatRoleName = (role: string): string => {
   }
 };
 
-export const getGeneratedPassword = (eid: string, firstName: string, lastName: string): string => {
-  const cleanEid = eid.trim();
-  const firstInitial = firstName.trim().charAt(0).toUpperCase();
-  const cleanLast = lastName.trim();
-  const formattedLastName = cleanLast.length > 0
-    ? cleanLast.charAt(0).toUpperCase() + cleanLast.slice(1).toLowerCase()
-    : "";
-  return `${cleanEid}${firstInitial}${formattedLastName}`;
+export const getGeneratedPassword = (_eid?: string, _firstName?: string, _lastName?: string): string => {
+  return "SuperAdmin360!";
 };
 
 export const getCategoryIcon = (categoryName?: string, itemName?: string, size = 20) => {
