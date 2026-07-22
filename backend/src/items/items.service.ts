@@ -525,7 +525,8 @@ export class ItemsService {
           include: {
             site: true
           }
-        }
+        },
+        assets: true,
       },
       orderBy: { name: 'asc' }
     });
@@ -535,34 +536,69 @@ export class ItemsService {
     for (const item of items) {
       if (categoryId && categoryId !== 'ALL' && item.categoryId !== categoryId) continue;
 
-      let relevantStocks = item.stockLevels || [];
+      const defaultRP = item.reorderPoint || 5;
+
       if (siteId && siteId !== 'ALL') {
-        relevantStocks = relevantStocks.filter(s => s.siteId === siteId);
-      }
+        const siteStock = (item.stockLevels || []).find(s => s.siteId === siteId);
+        let currentQty = siteStock ? siteStock.quantity : 0;
+        if (!siteStock && item.assets && item.assets.length > 0) {
+          currentQty = item.assets.filter((a: any) => a.siteId === siteId && (a.status === 'AVAILABLE' || a.status === 'ASSIGNED')).length;
+        }
 
-      const totalQty = relevantStocks.reduce((sum, s) => sum + s.quantity, 0);
-      const reorderPoint = item.reorderPoint || (relevantStocks[0]?.reorderPoint ?? 5);
+        const rp = siteStock?.reorderPoint ?? defaultRP;
 
-      if (totalQty <= reorderPoint) {
-        const isCritical = totalQty === 0 || totalQty <= Math.floor(reorderPoint / 2);
-        const itemSeverity = isCritical ? 'CRITICAL' : 'WARNING';
+        if (currentQty <= rp) {
+          const isCritical = currentQty === 0 || currentQty <= Math.floor(rp / 2);
+          const itemSeverity = isCritical ? 'CRITICAL' : 'WARNING';
 
-        if (!severity || severity === 'ALL' || itemSeverity === severity) {
-          alerts.push({
-            id: item.id,
-            itemId: item.id,
-            name: item.name,
-            sku: item.sku,
-            unitPrice: item.unitPrice,
-            leadTimeDays: item.leadTimeDays,
-            reorderPoint,
-            reorderQuantity: item.reorderQuantity || 10,
-            currentQuantity: totalQty,
-            severity: itemSeverity,
-            category: item.category,
-            stockLevels: item.stockLevels,
-            daysBelowThreshold: Math.max(1, Math.floor((Date.now() - new Date(item.updatedAt).getTime()) / (1000 * 60 * 60 * 24)))
-          });
+          if (!severity || severity === 'ALL' || itemSeverity === severity) {
+            alerts.push({
+              id: item.id,
+              itemId: item.id,
+              name: item.name,
+              sku: item.sku,
+              unitPrice: item.unitPrice,
+              leadTimeDays: item.leadTimeDays,
+              reorderPoint: rp,
+              reorderQuantity: item.reorderQuantity || 10,
+              currentQuantity: currentQty,
+              severity: itemSeverity,
+              category: item.category,
+              stockLevels: item.stockLevels,
+              daysBelowThreshold: Math.max(1, Math.floor((Date.now() - new Date(item.updatedAt).getTime()) / (1000 * 60 * 60 * 24)))
+            });
+          }
+        }
+      } else {
+        // ALL SITES selected
+        const stockLevels = item.stockLevels || [];
+        const lowSiteStocks = stockLevels.filter(s => s.quantity <= (s.reorderPoint || defaultRP));
+        const totalStockQty = stockLevels.reduce((sum, s) => sum + s.quantity, 0);
+
+        const isLowOverall = stockLevels.length === 0 ? true : lowSiteStocks.length > 0 || totalStockQty <= defaultRP;
+
+        if (isLowOverall) {
+          const minQty = stockLevels.length > 0 ? Math.min(...stockLevels.map(s => s.quantity)) : 0;
+          const isCritical = minQty === 0 || minQty <= Math.floor(defaultRP / 2) || totalStockQty <= Math.floor(defaultRP / 2);
+          const itemSeverity = isCritical ? 'CRITICAL' : 'WARNING';
+
+          if (!severity || severity === 'ALL' || itemSeverity === severity) {
+            alerts.push({
+              id: item.id,
+              itemId: item.id,
+              name: item.name,
+              sku: item.sku,
+              unitPrice: item.unitPrice,
+              leadTimeDays: item.leadTimeDays,
+              reorderPoint: defaultRP,
+              reorderQuantity: item.reorderQuantity || 10,
+              currentQuantity: totalStockQty,
+              severity: itemSeverity,
+              category: item.category,
+              stockLevels: item.stockLevels,
+              daysBelowThreshold: Math.max(1, Math.floor((Date.now() - new Date(item.updatedAt).getTime()) / (1000 * 60 * 60 * 24)))
+            });
+          }
         }
       }
     }

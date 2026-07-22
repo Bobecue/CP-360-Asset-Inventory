@@ -78,14 +78,27 @@ export const LowStockAlertsTab = ({
     catalogItems.forEach((item) => {
       if (categoryFilter !== "ALL" && item.categoryId !== categoryFilter) return;
 
-      let totalQty = item.quantity ?? 0;
-      if (item.stockLevels && item.stockLevels.length > 0) {
-        let filteredStocks = item.stockLevels;
-        if (siteFilter !== "ALL") {
-          filteredStocks = filteredStocks.filter((s) => s.siteId === siteFilter);
-        }
-        totalQty = filteredStocks.reduce((sum, s) => sum + (s.quantity || 0), 0);
+      let stockQty = 0;
+      let relevantStocks = item.stockLevels || [];
+      if (siteFilter !== "ALL") {
+        relevantStocks = relevantStocks.filter((s) => s.siteId === siteFilter);
       }
+      if (relevantStocks.length > 0) {
+        stockQty = relevantStocks.reduce((sum, s) => sum + (s.quantity || 0), 0);
+      }
+
+      let assetQty = 0;
+      let relevantAssets = (item.assets || []).filter((a: any) => a.status === "AVAILABLE" || a.status === "ASSIGNED");
+      if (siteFilter !== "ALL") {
+        relevantAssets = relevantAssets.filter((a: any) => a.siteId === siteFilter);
+      }
+      assetQty = relevantAssets.length;
+
+      const totalQty = (item.stockLevels && item.stockLevels.length > 0) 
+        ? stockQty 
+        : (item.assets && item.assets.length > 0) 
+        ? assetQty 
+        : (item.quantity ?? 0);
 
       const threshold = item.reorderPoint || (item.stockLevels?.[0]?.reorderPoint ?? 5);
 
