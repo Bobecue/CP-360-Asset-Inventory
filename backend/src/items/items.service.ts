@@ -303,10 +303,18 @@ export class ItemsService {
       throw new ConflictException("Cannot delete item as it has assets that are currently assigned or not available.");
     }
 
-    // Delete associated requests, siteStocks, assets and the item inside transaction
+    const poItemsCount = await this.prisma.purchaseOrderItem.count({ where: { itemId: id } });
+    if (poItemsCount > 0) {
+      throw new ConflictException("Cannot delete item as it is currently associated with purchase orders.");
+    }
+
+    const requestsCount = await this.prisma.request.count({ where: { itemId: id } });
+    if (requestsCount > 0) {
+      throw new ConflictException("Cannot delete item as it is currently associated with request orders.");
+    }
+
+    // Delete associated assets and the item inside transaction
     return this.prisma.$transaction(async (tx) => {
-      await tx.request.deleteMany({ where: { itemId: id } });
-      await tx.siteStock.deleteMany({ where: { itemId: id } });
       await tx.asset.deleteMany({ where: { itemId: id } });
 
       await tx.auditLog.create({
@@ -529,15 +537,13 @@ export class ItemsService {
       if (categoryId && categoryId !== 'ALL' && item.categoryId !== categoryId) continue;
 
       const defaultRP = item.reorderPoint || 5;
+      const stockLevels = item.stockLevels || [];
 
-      if (siteId && siteId !== 'ALL') {
-        const siteStock = (item.stockLevels || []).find(s => s.siteId === siteId);
-        let currentQty = siteStock ? siteStock.quantity : 0;
-        if (!siteStock && item.assets && item.assets.length > 0) {
-          currentQty = item.assets.filter((a: any) => a.siteId === siteId && (a.status === 'AVAILABLE' || a.status === 'ASSIGNED')).length;
-        }
+      for (const stock of stockLevels) {
+        if (siteId && siteId !== 'ALL' && stock.siteId !== siteId) continue;
 
-        const rp = siteStock?.reorderPoint ?? defaultRP;
+        const currentQty = stock.quantity;
+        const rp = stock.reorderPoint || defaultRP;
 
         if (currentQty <= rp) {
           const isCritical = currentQty === 0 || currentQty <= Math.floor(rp / 2);
@@ -545,8 +551,11 @@ export class ItemsService {
 
           if (!severity || severity === 'ALL' || itemSeverity === severity) {
             alerts.push({
-              id: item.id,
+              id: `${item.id}-${stock.siteId}`,
               itemId: item.id,
+              siteId: stock.siteId,
+              siteName: stock.site?.name || 'Site Inventory',
+              sitePrefix: stock.site?.prefix || 'SITE',
               name: item.name,
               sku: item.sku,
               unitPrice: item.unitPrice,
@@ -557,37 +566,41 @@ export class ItemsService {
               severity: itemSeverity,
               category: item.category,
               stockLevels: item.stockLevels,
-              daysBelowThreshold: Math.max(1, Math.floor((Date.now() - new Date(item.updatedAt).getTime()) / (1000 * 60 * 60 * 24)))
+              daysBelowThreshold: Math.max(1, Math.floor((Date.now() - new Date(stock.updatedAt || item.updatedAt).getTime()) / (1000 * 60 * 60 * 24)))
             });
           }
         }
-      } else {
-        // ALL SITES selected
-        const stockLevels = item.stockLevels || [];
-        const lowSiteStocks = stockLevels.filter(s => s.quantity <= (s.reorderPoint || defaultRP));
-        const totalStockQty = stockLevels.reduce((sum, s) => sum + s.quantity, 0);
+      }
 
-        const isLowOverall = stockLevels.length === 0 ? true : lowSiteStocks.length > 0 || totalStockQty <= defaultRP;
+      if (stockLevels.length === 0) {
+        let currentQty = 0;
+        let relevantAssets = (item.assets || []).filter((a: any) => a.status === 'AVAILABLE' || a.status === 'ASSIGNED');
+        if (siteId && siteId !== 'ALL') {
+          relevantAssets = relevantAssets.filter((a: any) => a.siteId === siteId);
+        }
+        currentQty = relevantAssets.length;
 
-        if (isLowOverall) {
-          const minQty = stockLevels.length > 0 ? Math.min(...stockLevels.map(s => s.quantity)) : 0;
-          const isCritical = minQty === 0 || minQty <= Math.floor(defaultRP / 2) || totalStockQty <= Math.floor(defaultRP / 2);
+        if (currentQty <= defaultRP) {
+          const isCritical = currentQty === 0 || currentQty <= Math.floor(defaultRP / 2);
           const itemSeverity = isCritical ? 'CRITICAL' : 'WARNING';
 
           if (!severity || severity === 'ALL' || itemSeverity === severity) {
             alerts.push({
-              id: item.id,
+              id: `${item.id}-global`,
               itemId: item.id,
+              siteId: siteId && siteId !== 'ALL' ? siteId : 'all',
+              siteName: siteId && siteId !== 'ALL' ? 'Selected Site' : 'All Sites',
+              sitePrefix: siteId && siteId !== 'ALL' ? 'SITE' : 'ALL',
               name: item.name,
               sku: item.sku,
               unitPrice: item.unitPrice,
               leadTimeDays: item.leadTimeDays,
               reorderPoint: defaultRP,
               reorderQuantity: item.reorderQuantity || 10,
-              currentQuantity: totalStockQty,
+              currentQuantity: currentQty,
               severity: itemSeverity,
               category: item.category,
-              stockLevels: item.stockLevels,
+              stockLevels: [],
               daysBelowThreshold: Math.max(1, Math.floor((Date.now() - new Date(item.updatedAt).getTime()) / (1000 * 60 * 60 * 24)))
             });
           }
