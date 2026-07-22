@@ -1,8 +1,37 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { CatalogItem } from "@/types/dashboard";
 import { getCategoryIcon } from "@/types/dashboard";
 import jsPDF from "jspdf";
 import { RequestTimeline } from "./RequestTimeline";
+
+// ── Count-Up Animation Hook for Premium Stats Numbers (matching Reports & Logs) ──
+function useCountUp(target: number, duration = 800, enabled = true) {
+  const [count, setCount] = useState(0);
+  const frameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!enabled || target === 0) {
+      setCount(target);
+      return;
+    }
+    const startTime = performance.now();
+    const tick = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      setCount(Math.round(ease * target));
+      if (progress < 1) {
+        frameRef.current = requestAnimationFrame(tick);
+      }
+    };
+    frameRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    };
+  }, [target, duration, enabled]);
+
+  return count;
+}
 
 interface CatalogTabProps {
   isUsingMockData: boolean;
@@ -591,7 +620,7 @@ export const CatalogTab = ({
       )}
 
       {catalogSubTab === "inventory" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+        <div className="table-container-fade" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
           {/* Items Summary Cards */}
           <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
             {[
@@ -2031,7 +2060,7 @@ export const CatalogTab = ({
       )}
 
       {catalogSubTab === "deployments" && canAccessDeployments && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+        <div className="table-container-fade" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           {/* Asset Deployments Sub-Module View */}
           {/* Summary Cards */}
           <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
@@ -2225,6 +2254,7 @@ export const CatalogTab = ({
                     {filteredDeployments.map((dep: any, idx: number) => (
                       <tr
                         key={dep.id + "_" + idx}
+                        className="table-row-hover"
                         onClick={() => {
                           setSelectedDeployment(dep);
                           setIsDeploymentDrawerOpen(true);
@@ -2901,6 +2931,70 @@ export const CatalogTab = ({
           </div>
         </div>
       )}
+
+      {/* Dynamic Keyframes & Transition Animations Matching Reports & Logs */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        /* 3D Folding Unfolding Entrance animation for table container & views */
+        @keyframes containerEntrance {
+          from {
+            opacity: 0;
+            transform: perspective(1200px) rotateX(-5deg) translateY(12px);
+          }
+          to {
+            opacity: 1;
+            transform: perspective(1200px) rotateX(0deg) translateY(0);
+          }
+        }
+        .table-container-fade {
+          transform-origin: top center;
+          animation: containerEntrance 0.48s cubic-bezier(0.23, 1, 0.32, 1) both;
+        }
+
+        /* Premium sliding lift row hover effect matching Reports & Logs */
+        .table-row-hover {
+          transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1),
+                      box-shadow 0.2s cubic-bezier(0.25, 1, 0.5, 1),
+                      background-color 0.2s ease !important;
+          position: relative;
+        }
+        .table-row-hover:hover {
+          background-color: #f8fafc !important;
+          background: #f8fafc !important;
+          transform: translateY(-2px) scale(1.002);
+          box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05), 0 0 0 1px rgba(77, 201, 230, 0.18) !important;
+          z-index: 5;
+        }
+
+        /* Grid card entrance & lift animation */
+        .grid-card-hover {
+          transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1),
+                      box-shadow 0.2s cubic-bezier(0.25, 1, 0.5, 1) !important;
+        }
+        .grid-card-hover:hover {
+          transform: translateY(-3px) scale(1.01);
+          box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(33, 12, 174, 0.15) !important;
+        }
+
+        /* Interactive action button hover effects */
+        .btn-hover-effect {
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        .btn-hover-effect:hover {
+          transform: translateY(-1.5px);
+          box-shadow: 0 4px 12px rgba(33, 12, 174, 0.18);
+        }
+        .btn-hover-effect:active {
+          transform: translateY(0);
+        }
+
+        /* Sub-tab pill animation */
+        .subtab-pill {
+          transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1) !important;
+        }
+        .subtab-pill:hover {
+          transform: translateY(-1px);
+        }
+      ` }} />
     </div>
   );
 };
