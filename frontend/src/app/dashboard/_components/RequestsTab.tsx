@@ -511,6 +511,52 @@ export function RequestsTab({
     }
   };
 
+  // Bulk Approve Requests
+  const handleBulkApprove = async (selectedIds: string[]) => {
+    setIsSubmittingReview(true);
+    try {
+      let updatedList: any[] = [];
+      try {
+        const response = await fetch('http://localhost:3001/requests/bulk-approve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ids: selectedIds,
+            approverEmail: currentUser.email,
+            comment: 'Bulk approved from Request Orders module'
+          })
+        });
+        if (response.ok) {
+          const json = await response.json();
+          updatedList = json.data || [];
+        }
+      } catch (err) {
+        console.warn('Backend bulk approve error, executing fallback loop:', err);
+      }
+
+      if (updatedList.length > 0) {
+        const updatedMap = new Map(updatedList.map(item => [item.id, item]));
+        setAllRequests(prev => prev.map(r => updatedMap.get(r.id) || r));
+      } else {
+        for (const id of selectedIds) {
+          const req = allRequests.find(r => r.id === id);
+          if (!req) continue;
+          let targetStatus: RequestStatus = 'APPROVED';
+          if (req.status === 'PENDING' || (req.status as string) === 'PENDING_APPROVAL') {
+            targetStatus = (currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') ? 'APPROVED' : 'PENDING_OPS_APPROVAL';
+          }
+          await handleReviewRequest(id, targetStatus, 'Bulk approved');
+        }
+      }
+
+      setRefreshTrigger(prev => prev + 1);
+      if (onRefreshCatalog) onRefreshCatalog();
+      if (onRefreshNotifications) onRefreshNotifications();
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
   // Release Request
   const handleReleaseRequest = async (id: string, assetId: string) => {
     setIsSubmittingReview(true);
@@ -1169,6 +1215,7 @@ export function RequestsTab({
               canExport={true}
               onReview={handleReviewRequest}
               onRelease={handleReleaseRequest}
+              onBulkApprove={handleBulkApprove}
               onExport={handleExportPDF}
               onReturn={handleOpenReturnFromTable}
               onRowClick={(req) => {

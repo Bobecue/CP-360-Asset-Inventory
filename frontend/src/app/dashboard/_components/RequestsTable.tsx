@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { InteractiveModal, ModalType } from '../../../components/ui/InteractiveModal';
 
 type RequestStatus = 'PENDING' | 'PENDING_OPS_APPROVAL' | 'APPROVED' | 'READY_FOR_PICKUP' | 'PENDING_PROCUREMENT' | 'REJECTED' | 'RETURNED' | 'CANCELLED' | 'RELEASED' | 'AWAITING_CONFIRMATION' | 'ITEM_RECEIVED';
@@ -70,6 +70,7 @@ interface RequestsTableProps {
   formatRelativeTime: (dateStr: string) => string;
   currentUserId?: string;
   currentUserRole: string;
+  onBulkApprove?: (selectedIds: string[]) => Promise<void>;
 }
 
 const getCategoryIcon = (category?: string, name?: string) => {
@@ -224,6 +225,10 @@ export function RequestsTable({
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
+  // Bulk approval state
+  const [selectedReqIds, setSelectedReqIds] = useState<string[]>([]);
+  const [isSubmittingBulk, setIsSubmittingBulk] = useState(false);
+
   // Sorting
   const [sortField, setSortField] = useState<'createdAt' | 'status'>('createdAt');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -332,6 +337,52 @@ export function RequestsTable({
   const itemsPerPage = 10;
   const paginated = sorted.slice((page - 1) * itemsPerPage, page * itemsPerPage);
   const totalPages = Math.ceil(sorted.length / itemsPerPage);
+
+  // Approvable requests in current filtered view
+  const approvableRequestsInView = useMemo(() => {
+    return filtered.filter(
+      r => r.status === 'PENDING' || r.status === 'PENDING_APPROVAL' || r.status === 'PENDING_OPS_APPROVAL'
+    );
+  }, [filtered]);
+
+  const selectedRequests = useMemo(() => {
+    return allRequests.filter(r => selectedReqIds.includes(r.id));
+  }, [allRequests, selectedReqIds]);
+
+  const isAllApprovableSelected = approvableRequestsInView.length > 0 &&
+    approvableRequestsInView.every(r => selectedReqIds.includes(r.id));
+
+  // Determine if all selected items belong to the same employee
+  const singleRequesterName = useMemo(() => {
+    if (selectedRequests.length === 0) return null;
+    const firstRequester = selectedRequests[0].requestedByName;
+    return selectedRequests.every(r => r.requestedByName === firstRequester) ? firstRequester : null;
+  }, [selectedRequests]);
+
+  const handleBulkApproveClick = async () => {
+    if (selectedReqIds.length === 0 || isSubmittingBulk) return;
+    setIsSubmittingBulk(true);
+    try {
+      if (onBulkApprove) {
+        await onBulkApprove(selectedReqIds);
+      } else {
+        for (const id of selectedReqIds) {
+          const req = allRequests.find(r => r.id === id);
+          if (!req) continue;
+          let targetStatus: RequestStatus = 'APPROVED';
+          if (req.status === 'PENDING' || req.status === 'PENDING_APPROVAL') {
+            targetStatus = (currentUserRole === 'ADMIN' || currentUserRole === 'SUPER_ADMIN') ? 'APPROVED' : 'PENDING_OPS_APPROVAL';
+          }
+          await onReview(id, targetStatus, 'Bulk approved');
+        }
+      }
+      setSelectedReqIds([]);
+    } catch (err) {
+      console.error('Error during bulk approve:', err);
+    } finally {
+      setIsSubmittingBulk(false);
+    }
+  };
 
   const toggleSort = (field: 'createdAt' | 'status') => {
     if (sortField === field) {
@@ -772,11 +823,108 @@ export function RequestsTable({
         )}
       </div>
 
+      {/* Bulk Approval Banner */}
+      {selectedReqIds.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: '#0f172a',
+            color: '#ffffff',
+            padding: '0.85rem 1.25rem',
+            borderRadius: 12,
+            border: '1px solid #334155',
+            boxShadow: '0 4px 12px rgba(15, 23, 42, 0.25)',
+            animation: 'slideFadeIn 0.3s ease-out'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, backgroundColor: '#3b82f6', color: '#ffffff', padding: '0.3rem 0.65rem', borderRadius: '6px' }}>
+              ⚡ {selectedReqIds.length} Request{selectedReqIds.length > 1 ? 's' : ''} Selected
+            </span>
+
+            {singleRequesterName ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 600, color: '#38bdf8' }}>
+                <span>👤 Requested by:</span>
+                <span style={{ color: '#ffffff', fontWeight: 700, backgroundColor: '#1e293b', padding: '0.2rem 0.55rem', borderRadius: '4px', border: '1px solid #334155' }}>
+                  {singleRequesterName}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: '#cbd5e1' }}>({selectedReqIds.length} item{selectedReqIds.length > 1 ? 's' : ''})</span>
+              </div>
+            ) : (
+              <span style={{ fontSize: '0.82rem', color: '#cbd5e1' }}>
+                👥 Across multiple employees ({selectedReqIds.length} items)
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            {canApprove && (
+              <button
+                onClick={handleBulkApproveClick}
+                disabled={isSubmittingBulk}
+                style={{
+                  backgroundColor: '#16a34a',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '0.45rem 1.1rem',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: isSubmittingBulk ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  boxShadow: '0 2px 6px rgba(22, 163, 74, 0.4)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {isSubmittingBulk ? 'Approving...' : `✅ Bulk Approve (${selectedReqIds.length})`}
+              </button>
+            )}
+
+            <button
+              onClick={() => setSelectedReqIds([])}
+              style={{
+                backgroundColor: 'transparent',
+                color: '#94a3b8',
+                border: '1px solid #475569',
+                borderRadius: 8,
+                padding: '0.45rem 0.85rem',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Clear Selection
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main requests table */}
       <div style={{ backgroundColor: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', overflowX: 'auto', boxShadow: '0 2px 10px rgba(15,23,42,0.02)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px', textAlign: 'left' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', textTransform: 'uppercase' }}>
+              {canApprove && (
+                <th style={{ width: '40px', padding: '0.85rem 0.5rem', textAlign: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={isAllApprovableSelected}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedReqIds(approvableRequestsInView.map(r => r.id));
+                      } else {
+                        setSelectedReqIds([]);
+                      }
+                    }}
+                    style={{ cursor: 'pointer', accentColor: '#3b82f6', width: '16px', height: '16px' }}
+                    title="Select all approvable requests"
+                  />
+                </th>
+              )}
               <th style={{ padding: '0.85rem 1rem', fontSize: '0.68rem', fontWeight: 700, color: '#64748b', textAlign: 'left', width: '110px' }}>Request ID</th>
               <th style={{ padding: '0.85rem 1rem', fontSize: '0.68rem', fontWeight: 700, color: '#64748b', textAlign: 'left' }}>Item Catalog</th>
               <th style={{ padding: '0.85rem 1rem', fontSize: '0.68rem', fontWeight: 700, color: '#64748b', textAlign: 'left' }}>Requested By</th>
@@ -797,7 +945,7 @@ export function RequestsTable({
           <tbody>
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={currentUserRole === 'ADMIN' || currentUserRole === 'INVENTORY_STAFF' ? 8 : 7} style={{ padding: '4rem 1rem', textAlign: 'center' }}>
+                <td colSpan={canApprove ? (currentUserRole === 'ADMIN' || currentUserRole === 'INVENTORY_STAFF' ? 9 : 8) : (currentUserRole === 'ADMIN' || currentUserRole === 'INVENTORY_STAFF' ? 8 : 7)} style={{ padding: '4rem 1rem', textAlign: 'center' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', animation: 'slideFadeIn 0.4s ease-out forwards' }}>
                     <div style={{ padding: '1.25rem', backgroundColor: '#f1f5f9', borderRadius: '50%', boxShadow: '0 4px 10px rgba(15,23,42,0.03)' }}>
                       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
@@ -820,12 +968,13 @@ export function RequestsTable({
                 onClick={() => onRowClick(req)}
                 style={{ 
                   borderBottom: '1px solid #e2e8f0', 
+                  backgroundColor: selectedReqIds.includes(req.id) ? '#f0f9ff' : 'transparent',
                   cursor: 'pointer', 
                   transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
                   animationDelay: `${index * 0.04}s` 
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f1f5f9';
+                  if (!selectedReqIds.includes(req.id)) e.currentTarget.style.backgroundColor = '#f1f5f9';
                   const iconSpan = e.currentTarget.querySelector('.item-icon') as HTMLElement;
                   if (iconSpan) {
                     iconSpan.style.transform = 'scale(1.2) rotate(-5deg)';
@@ -833,7 +982,7 @@ export function RequestsTable({
                   }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
+                  if (!selectedReqIds.includes(req.id)) e.currentTarget.style.backgroundColor = 'transparent';
                   const iconSpan = e.currentTarget.querySelector('.item-icon') as HTMLElement;
                   if (iconSpan) {
                     iconSpan.style.transform = 'scale(1) rotate(0deg)';
@@ -841,6 +990,25 @@ export function RequestsTable({
                   }
                 }}
               >
+                {canApprove && (
+                  <td onClick={(e) => e.stopPropagation()} style={{ width: '40px', padding: '0.85rem 0.5rem', textAlign: 'center' }}>
+                    {(req.status === 'PENDING' || req.status === 'PENDING_APPROVAL' || req.status === 'PENDING_OPS_APPROVAL') ? (
+                      <input
+                        type="checkbox"
+                        checked={selectedReqIds.includes(req.id)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          if (e.target.checked) {
+                            setSelectedReqIds(prev => [...prev, req.id]);
+                          } else {
+                            setSelectedReqIds(prev => prev.filter(id => id !== req.id));
+                          }
+                        }}
+                        style={{ cursor: 'pointer', accentColor: '#3b82f6', width: '16px', height: '16px' }}
+                      />
+                    ) : null}
+                  </td>
+                )}
                 <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
                   <span style={{
                     fontFamily: 'monospace',

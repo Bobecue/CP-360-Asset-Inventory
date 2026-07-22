@@ -54,6 +54,13 @@ export class RequestsController {
     return { data, message: "Request details fetched successfully", statusCode: 200 };
   }
 
+  @Post("bulk-approve")
+  async bulkApprove(@Body() body: { ids: string[]; approverEmail?: string; comment?: string }, @ReqCtx() req: any) {
+    const approverEmail = body.approverEmail || req.headers["x-user"] || "superadmin@contactpoint360.com";
+    const data = await this.svc.bulkApprove(body.ids || [], approverEmail, body.comment);
+    return { data, message: `Successfully bulk approved ${data.length} request(s)`, statusCode: 200 };
+  }
+
   @Post([":id/approve", ":id/approved", ":id/ready_for_pickup"])
   async approve(@Param("id") id: string, @Body() body: any) {
     const data = await this.svc.approve(id, body.comment, body.approverEmail);

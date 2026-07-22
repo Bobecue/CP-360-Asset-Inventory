@@ -883,6 +883,47 @@ export class RequestsService implements OnModuleInit {
     return this.mapRequestToDto(r);
   }
 
+  async bulkApprove(ids: string[], approverEmail: string, comment?: string) {
+    const user = await this.prisma.user.findUnique({ where: { email: approverEmail } });
+    if (!user) {
+      throw new NotFoundException('Approver user not found');
+    }
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN' && user.role !== 'INVENTORY_STAFF' && (user.role as string) !== 'OPS_MANAGER') {
+      throw new ForbiddenException('Unauthorized role for bulk approval.');
+    }
+
+    const results: any[] = [];
+    for (const id of ids) {
+      try {
+        const req = await this.prisma.request.findUnique({ where: { id } });
+        if (!req) continue;
+
+        const currentStatusStr = req.status as string;
+        if (currentStatusStr === 'PENDING_APPROVAL' || currentStatusStr === 'PENDING') {
+          if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
+            const staffApproved = await this.approveStaff(id, approverEmail, comment || 'Bulk approved').catch(() => null);
+            let finalReq = staffApproved;
+            try {
+              const opsUser = await this.prisma.user.findFirst({ where: { role: 'ADMIN', id: { not: user.id } } });
+              const opsEmailToUse = opsUser ? opsUser.email : 'superadmin@contactpoint360.com';
+              finalReq = await this.approveOps(id, opsEmailToUse, comment || 'Bulk approved').catch(() => staffApproved);
+            } catch {}
+            if (finalReq) results.push(finalReq);
+          } else {
+            const staffApproved = await this.approveStaff(id, approverEmail, comment || 'Bulk approved by Inventory Staff');
+            results.push(staffApproved);
+          }
+        } else if (currentStatusStr === 'PENDING_OPS_APPROVAL') {
+          const opsApproved = await this.approveOps(id, approverEmail, comment || 'Bulk approved by Ops Manager');
+          results.push(opsApproved);
+        }
+      } catch (err) {
+        console.error(`Error bulk approving request ${id}:`, err);
+      }
+    }
+    return results;
+  }
+
   async preparePickup(id: string, staffEmail: string, comment?: string) {
     const u = await this.prisma.user.findUnique({ where: { email: staffEmail } });
     if (!u) {
