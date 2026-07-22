@@ -269,7 +269,7 @@ export const CatalogTab = ({
       };
 
       const logoImg = await loadLogo();
-      if (logoImg) {
+      if (logoImg && logoImg.width > 0 && logoImg.height > 0) {
         const canvas = document.createElement("canvas");
         canvas.width = logoImg.width;
         canvas.height = logoImg.height;
@@ -279,10 +279,31 @@ export const CatalogTab = ({
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(logoImg, 0, 0);
           const logoDataUrl = canvas.toDataURL("image/png");
+
           // White rounded background container pill for logo
+          const badgeX = 155;
+          const badgeY = 3;
+          const badgeW = 44;
+          const badgeH = 18;
           doc.setFillColor(255, 255, 255);
-          doc.roundedRect(158, 3, 40, 18, 3, 3, 'F');
-          doc.addImage(logoDataUrl, "PNG", 160, 4.5, 36, 15);
+          doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 3, 3, 'F');
+
+          // Preserve exact original aspect ratio without stretching
+          const maxW = 38;
+          const maxH = 14;
+          const aspect = logoImg.width / logoImg.height;
+          let renderW = maxW;
+          let renderH = maxW / aspect;
+
+          if (renderH > maxH) {
+            renderH = maxH;
+            renderW = maxH * aspect;
+          }
+
+          const renderX = badgeX + (badgeW - renderW) / 2;
+          const renderY = badgeY + (badgeH - renderH) / 2;
+
+          doc.addImage(logoDataUrl, "PNG", renderX, renderY, renderW, renderH);
         }
       }
     } catch (e) {
