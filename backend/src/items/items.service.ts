@@ -516,4 +516,97 @@ export class ItemsService {
       },
     });
   }
+
+  async getLowStockAlerts(siteId?: string, categoryId?: string, severity?: string) {
+    const items = await this.prisma.item.findMany({
+      include: {
+        category: true,
+        stockLevels: {
+          include: {
+            site: true
+          }
+        }
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    const alerts: any[] = [];
+
+    for (const item of items) {
+      if (categoryId && categoryId !== 'ALL' && item.categoryId !== categoryId) continue;
+
+      let relevantStocks = item.stockLevels || [];
+      if (siteId && siteId !== 'ALL') {
+        relevantStocks = relevantStocks.filter(s => s.siteId === siteId);
+      }
+
+      const totalQty = relevantStocks.reduce((sum, s) => sum + s.quantity, 0);
+      const reorderPoint = item.reorderPoint || (relevantStocks[0]?.reorderPoint ?? 5);
+
+      if (totalQty <= reorderPoint) {
+        const isCritical = totalQty === 0 || totalQty <= Math.floor(reorderPoint / 2);
+        const itemSeverity = isCritical ? 'CRITICAL' : 'WARNING';
+
+        if (!severity || severity === 'ALL' || itemSeverity === severity) {
+          alerts.push({
+            id: item.id,
+            itemId: item.id,
+            name: item.name,
+            sku: item.sku,
+            unitPrice: item.unitPrice,
+            leadTimeDays: item.leadTimeDays,
+            reorderPoint,
+            reorderQuantity: item.reorderQuantity || 10,
+            currentQuantity: totalQty,
+            severity: itemSeverity,
+            category: item.category,
+            stockLevels: item.stockLevels,
+            daysBelowThreshold: Math.max(1, Math.floor((Date.now() - new Date(item.updatedAt).getTime()) / (1000 * 60 * 60 * 24)))
+          });
+        }
+      }
+    }
+
+    const totalAlerts = alerts.length;
+    const criticalAlerts = alerts.filter(a => a.severity === 'CRITICAL').length;
+    const warningAlerts = alerts.filter(a => a.severity === 'WARNING').length;
+    const totalItemsToReorder = alerts.reduce((sum, a) => sum + Math.max(1, a.reorderPoint - a.currentQuantity), 0);
+
+    return {
+      stats: {
+        totalAlerts,
+        criticalAlerts,
+        warningAlerts,
+        totalItemsToReorder
+      },
+      alerts
+    };
+  }
+
+  async updateReorderPoint(itemId: string, data: { siteId?: string; reorderPoint: number; reorderQuantity?: number }) {
+    const item = await this.prisma.item.findUnique({ where: { id: itemId } });
+    if (!item) throw new NotFoundException('Item not found');
+
+    const updated = await this.prisma.item.update({
+      where: { id: itemId },
+      data: {
+        reorderPoint: Number(data.reorderPoint),
+        ...(data.reorderQuantity ? { reorderQuantity: Number(data.reorderQuantity) } : {})
+      }
+    });
+
+    if (data.siteId) {
+      await this.prisma.siteStock.updateMany({
+        where: { itemId, siteId: data.siteId },
+        data: { reorderPoint: Number(data.reorderPoint) }
+      });
+    } else {
+      await this.prisma.siteStock.updateMany({
+        where: { itemId },
+        data: { reorderPoint: Number(data.reorderPoint) }
+      });
+    }
+
+    return updated;
+  }
 }

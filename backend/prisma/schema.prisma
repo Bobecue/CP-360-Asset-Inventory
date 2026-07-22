@@ -142,6 +142,8 @@ model Item {
   description   String?
   unitPrice     Decimal       @default(0.00) @db.Decimal(10, 2) // Track item cost/value
   leadTimeDays  Int           @default(7) // Estimated lead time for this specific item type
+  reorderPoint  Int           @default(5)
+  reorderQuantity Int         @default(10)
   
   categoryId    String
   category      AssetCategory @relation(fields: [categoryId], references: [id])

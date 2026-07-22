@@ -51,6 +51,8 @@ export interface CatalogItem {
   stockLevels?: SiteStock[] | null;
   assets?: any[] | null;
   quantity?: number;
+  reorderPoint?: number;
+  reorderQuantity?: number;
 }
 
 export interface DbNotification {

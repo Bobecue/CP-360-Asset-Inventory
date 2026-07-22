@@ -28,6 +28,7 @@ import { ScanOperationsTab } from "./_components/ScanOperationsTab";
 import { OfflineWarningScreen } from "./_components/OfflineWarningScreen";
 import { ProcurementTab } from "./_components/ProcurementTab";
 import { RequestsTab } from "./_components/RequestsTab";
+import { LowStockAlertsTab } from "./_components/LowStockAlertsTab";
 
 // Modals
 import { BulkRequestModal } from "./_components/modals/BulkRequestModal";
@@ -2230,6 +2231,17 @@ export default function DashboardPage() {
             catalogItems={catalogItems}
             users={users}
             onRefreshNotifications={fetchNotifications}
+            onRefreshCatalog={fetchItems}
+          />
+        );
+      case "alerts":
+        return (
+          <LowStockAlertsTab
+            isUsingMockData={isUsingMockData}
+            currentUser={currentUser}
+            sites={sites}
+            categories={categories}
+            catalogItems={catalogItems}
             onRefreshCatalog={fetchItems}
           />
         );

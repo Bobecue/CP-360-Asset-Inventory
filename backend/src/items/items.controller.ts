@@ -13,6 +13,15 @@ function getClientIp(req: any): string {
 export class ItemsController {
   constructor(private readonly itemsService: ItemsService) {}
 
+  @Get("low-stock")
+  async getLowStockAlerts(
+    @Query("siteId") siteId?: string,
+    @Query("categoryId") categoryId?: string,
+    @Query("severity") severity?: string,
+  ) {
+    return this.itemsService.getLowStockAlerts(siteId, categoryId, severity);
+  }
+
   @Get()
   async getAllItems(
     @Query("categoryId") categoryId?: string,
@@ -119,5 +128,13 @@ export class ItemsController {
       body.assignedToId,
       { userId, ipAddress: getClientIp(req) }
     );
+  }
+
+  @Patch(":id/reorder-point")
+  async updateReorderPoint(
+    @Param("id") id: string,
+    @Body() body: { siteId?: string; reorderPoint: number; reorderQuantity?: number }
+  ) {
+    return this.itemsService.updateReorderPoint(id, body);
   }
 }
