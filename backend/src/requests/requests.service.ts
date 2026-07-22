@@ -410,12 +410,71 @@ export class RequestsService implements OnModuleInit {
       releasedByUserId = requester.id;
     }
 
+    let assignedAssetId: string | undefined = undefined;
+
+    // Retrieve or assign asset tag for NON_CONSUMABLE items during deployment
+    const fullItem = await this.prisma.item.findUnique({
+      where: { id: item.id },
+      include: { category: true, assets: true }
+    });
+
+    if (fullItem && fullItem.category?.type === 'NON_CONSUMABLE') {
+      let availableAsset = fullItem.assets.find(
+        (a) => a.status === 'AVAILABLE' && a.siteId === siteObj.id
+      );
+      if (!availableAsset) {
+        availableAsset = fullItem.assets.find((a) => a.status === 'AVAILABLE');
+      }
+
+      if (!availableAsset) {
+        const sitePrefix = siteObj.prefix || 'SK4';
+        const catPrefix = fullItem.category?.prefix || 'EQP';
+        const assetCount = await this.prisma.asset.count({ where: { itemId: item.id } });
+        const generatedTagCode = `${sitePrefix}-${catPrefix}-${String(assetCount + 1).padStart(4, '0')}`;
+        const generatedSerial = `SN-${uuidv4().substring(0, 8).toUpperCase()}`;
+
+        availableAsset = await this.prisma.asset.create({
+          data: {
+            tagCode: generatedTagCode,
+            serialNumber: generatedSerial,
+            status: 'AVAILABLE',
+            itemId: item.id,
+            siteId: siteObj.id,
+          }
+        });
+      }
+
+      if (availableAsset) {
+        assignedAssetId = availableAsset.id;
+
+        if (isDeployment) {
+          await this.prisma.asset.update({
+            where: { id: availableAsset.id },
+            data: {
+              status: 'ASSIGNED',
+              assignedToId: requester.id
+            }
+          });
+
+          await this.prisma.assetEvent.create({
+            data: {
+              assetId: availableAsset.id,
+              action: 'DEPLOYED',
+              details: `Deployed to ${dto.reason || 'Employee'}`,
+              userId: requester.id,
+            }
+          });
+        }
+      }
+    }
+
     const r = await this.prisma.request.create({
       data: {
         id: `req-${uuidv4().substring(0, 8)}`,
         status: initialStatus,
         purpose: purposeJson,
         itemId: item.id,
+        assetId: assignedAssetId,
         requesterId: requester.id,
         releasedById: releasedByUserId,
         releasedAt: isDeployment ? new Date() : undefined,

@@ -182,7 +182,7 @@ export const CatalogTab = ({
                 createdAt: req.createdAt || new Date().toISOString(),
                 requestedByName: req.requestedByName || "Inventory Staff",
                 itemName: req.itemName || "Assigned Asset",
-                assetTag: req.assetTag || req.sku || "AST-DEP",
+                assetTag: req.assetTag || req.asset?.tagCode || req.asset?.assetTag || (req.reason ? req.reason.match(/Asset Tag:\s*([^|]+)/)?.[1]?.trim() : undefined) || undefined,
                 siteId: req.siteId || req.requestedBySiteId || "site-1",
                 siteName: req.siteName || "Cebu IT Park",
                 reason: req.reason || `Deployed ${req.quantity || 1} x ${req.itemName || 'Asset'} to employee`,
@@ -2201,18 +2201,37 @@ export const CatalogTab = ({
                           })()}
                         </td>
                         <td style={{ padding: "0.9rem 1.25rem" }}>
-                          <span style={{
-                            padding: "0.15rem 0.45rem",
-                            borderRadius: "4px",
-                            fontSize: "0.72rem",
-                            fontFamily: "monospace",
-                            fontWeight: 700,
-                            backgroundColor: "#eef2ff",
-                            color: "#210cae",
-                            border: "1px solid #c7d2fe"
-                          }}>
-                            🏷️ {dep.assetTag}
-                          </span>
+                          {(() => {
+                            const itemObj = catalogItems.find(it => it.id === dep.rawRequest?.itemId || it.name === dep.itemName);
+                            const catType = itemObj?.category?.type || dep.rawRequest?.item?.category?.type || (dep.itemName?.toLowerCase().includes("battery") || dep.itemName?.toLowerCase().includes("cable") || dep.itemName?.toLowerCase().includes("pen") ? "CONSUMABLE" : "NON_CONSUMABLE");
+                            const isConsumable = catType === "CONSUMABLE";
+                            
+                            // Retrieve real asset tag for non-consumable items
+                            const displayTag = dep.assetTag || dep.rawRequest?.assetTag || dep.rawRequest?.asset?.tagCode || dep.rawRequest?.asset?.assetTag || (itemObj?.assets && itemObj.assets[0]?.tagCode) || (itemObj?.assets && itemObj.assets[0]?.assetTag) || `AST-${dep.id.substring(dep.id.length - 4).toUpperCase()}`;
+
+                            if (isConsumable) {
+                              return (
+                                <span style={{ fontSize: "0.72rem", color: "#94a3b8", fontStyle: "italic" }}>
+                                  N/A (Bulk Consumable)
+                                </span>
+                              );
+                            }
+
+                            return (
+                              <span style={{
+                                padding: "0.15rem 0.45rem",
+                                borderRadius: "4px",
+                                fontSize: "0.72rem",
+                                fontFamily: "monospace",
+                                fontWeight: 700,
+                                backgroundColor: "#eef2ff",
+                                color: "#210cae",
+                                border: "1px solid #c7d2fe"
+                              }}>
+                                🏷️ {displayTag}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td style={{ padding: "0.9rem 1.25rem", color: "#475569" }}>
                           {dep.siteName}

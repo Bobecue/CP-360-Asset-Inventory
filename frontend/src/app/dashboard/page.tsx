@@ -904,6 +904,22 @@ export default function DashboardPage() {
           }
         }
 
+        const targetItem = catalogItems.find(it => it.id === req.itemId);
+        const isNonConsumable = targetItem?.category?.type === 'NON_CONSUMABLE' || targetItem?.category?.name !== 'Consumables';
+        let deployedAssetTag = undefined;
+        let deployedAssetId = undefined;
+
+        if (targetItem && isNonConsumable && targetItem.assets && targetItem.assets.length > 0) {
+          const availableAsset = targetItem.assets.find(a => a.status === 'AVAILABLE') || targetItem.assets[0];
+          deployedAssetTag = availableAsset.tagCode || availableAsset.assetTag;
+          deployedAssetId = availableAsset.id;
+        } else if (targetItem && isNonConsumable) {
+          const siteObj = sites.find((s: any) => s.id === siteId || s.name === siteId);
+          const sPrefix = siteObj?.prefix || 'SK4';
+          const cPrefix = targetItem?.category?.prefix || 'EQP';
+          deployedAssetTag = `${sPrefix}-${cPrefix}-${Math.floor(1000 + Math.random() * 9000)}`;
+        }
+
         if (!created) {
           // Fallback / simulation
           created = {
@@ -911,6 +927,8 @@ export default function DashboardPage() {
             itemId: req.itemId,
             itemName: itemName,
             itemCategory: itemCategory,
+            assetTag: deployedAssetTag,
+            assetId: deployedAssetId,
             requestedById: currentUser.id,
             requestedByName: currentUser.name,
             requestedByRole: currentUser.role,
@@ -929,6 +947,10 @@ export default function DashboardPage() {
 
         if (reason && reason.includes("[ASSET DEPLOYMENT]")) {
           created.status = "RELEASED";
+          if (!created.assetTag && deployedAssetTag) {
+            created.assetTag = deployedAssetTag;
+            created.assetId = deployedAssetId;
+          }
         }
 
         // Deduct inventory stock level and remove deployed asset tags automatically for asset deployment
