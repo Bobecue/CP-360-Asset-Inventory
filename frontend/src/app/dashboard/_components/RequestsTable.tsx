@@ -341,7 +341,7 @@ export function RequestsTable({
   // Approvable requests in current filtered view
   const approvableRequestsInView = useMemo(() => {
     return filtered.filter(
-      r => r.status === 'PENDING' || r.status === 'PENDING_APPROVAL' || r.status === 'PENDING_OPS_APPROVAL'
+      r => r.status === 'PENDING' || (r.status as string) === 'PENDING_APPROVAL' || r.status === 'PENDING_OPS_APPROVAL'
     );
   }, [filtered]);
 
@@ -370,7 +370,7 @@ export function RequestsTable({
           const req = allRequests.find(r => r.id === id);
           if (!req) continue;
           let targetStatus: RequestStatus = 'APPROVED';
-          if (req.status === 'PENDING' || req.status === 'PENDING_APPROVAL') {
+          if (req.status === 'PENDING' || (req.status as string) === 'PENDING_APPROVAL') {
             targetStatus = (currentUserRole === 'ADMIN' || currentUserRole === 'SUPER_ADMIN') ? 'APPROVED' : 'PENDING_OPS_APPROVAL';
           }
           await onReview(id, targetStatus, 'Bulk approved');
@@ -992,7 +992,7 @@ export function RequestsTable({
               >
                 {canApprove && (
                   <td onClick={(e) => e.stopPropagation()} style={{ width: '40px', padding: '0.85rem 0.5rem', textAlign: 'center' }}>
-                    {(req.status === 'PENDING' || req.status === 'PENDING_APPROVAL' || req.status === 'PENDING_OPS_APPROVAL') ? (
+                    {(req.status === 'PENDING' || (req.status as string) === 'PENDING_APPROVAL' || req.status === 'PENDING_OPS_APPROVAL') ? (
                       <input
                         type="checkbox"
                         checked={selectedReqIds.includes(req.id)}
