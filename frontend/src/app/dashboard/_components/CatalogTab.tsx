@@ -97,9 +97,10 @@ export const CatalogTab = ({
 
   const filteredIds = filteredItems.map((it) => it.id);
   const allSelected = filteredIds.length > 0 && filteredIds.every((id) => selectedItemIds.includes(id));
-  const canEditAddRemove = currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "ADMIN" || currentUser?.role === "OPS_MANAGER" || currentUser?.role === "OPERATIONS_MANAGER" || currentUser?.role === "INVENTORY_STAFF";
+  const normalizedRole = (currentUser?.role || "").toUpperCase().replace(/[\s\-]/g, "_");
+  const canEditAddRemove = ["SUPER_ADMIN", "ADMIN", "OPS_MANAGER", "OPERATIONS_MANAGER", "INVENTORY_STAFF"].includes(normalizedRole);
   const canAdjustStock = canEditAddRemove;
-  const canAccessDeployments = currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "ADMIN" || currentUser?.role === "OPS_MANAGER" || currentUser?.role === "OPERATIONS_MANAGER" || currentUser?.role === "INVENTORY_STAFF";
+  const canAccessDeployments = ["SUPER_ADMIN", "ADMIN", "OPS_MANAGER", "OPERATIONS_MANAGER", "INVENTORY_STAFF"].includes(normalizedRole);
 
   useEffect(() => {
     if (!canAccessDeployments && catalogSubTab === "deployments") {

@@ -829,9 +829,11 @@ export default function DashboardPage() {
       case "SUPER_ADMIN":
         return true;
       case "ADMIN":
-        return ["dashboard", "catalog", "requests", "procurement", "alerts", "scan-ops", "reports"].includes(tab);
+      case "OPS_MANAGER":
+      case "OPERATIONS_MANAGER":
+        return ["dashboard", "catalog", "deployments", "requests", "procurement", "alerts", "scan-ops", "reports"].includes(tab);
       case "INVENTORY_STAFF":
-        return ["catalog", "requests", "procurement", "alerts", "scan-ops", "reports"].includes(tab);
+        return ["catalog", "deployments", "requests", "procurement", "alerts", "scan-ops", "reports"].includes(tab);
       case "TEAM_LEADER":
         return ["catalog", "requests", "alerts"].includes(tab);
       case "EMPLOYEE":

@@ -248,7 +248,8 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
             )}
             {group.items.map((item) => {
               const isCatalogGroup = item.id === "catalog";
-              const canAccessDeployments = role === "SUPER_ADMIN" || role === "ADMIN" || role === "OPS_MANAGER" || role === "OPERATIONS_MANAGER" || role === "INVENTORY_STAFF";
+              const normalizedRole = (role || "").toUpperCase().replace(/[\s\-]/g, "_");
+              const canAccessDeployments = ["SUPER_ADMIN", "ADMIN", "OPS_MANAGER", "OPERATIONS_MANAGER", "INVENTORY_STAFF"].includes(normalizedRole);
               const isActive = activeTab === item.id || (isCatalogGroup && activeTab === "deployments");
 
               if (isCatalogGroup) {
