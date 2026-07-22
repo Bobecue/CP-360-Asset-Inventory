@@ -690,18 +690,18 @@ export function MyRequestsPanel({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                backgroundColor: '#0f172a',
-                color: '#ffffff',
+                backgroundColor: '#eff6ff',
+                color: '#1e293b',
                 padding: '0.75rem 1rem',
                 borderRadius: 10,
-                border: '1px solid #334155',
-                boxShadow: '0 4px 12px rgba(15, 23, 42, 0.25)',
+                border: '1px solid #bfdbfe',
+                boxShadow: '0 4px 14px rgba(37, 99, 235, 0.08)',
                 marginBottom: '1rem',
                 animation: 'slideFadeIn 0.3s ease-out'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, backgroundColor: '#3b82f6', color: '#ffffff', padding: '0.25rem 0.55rem', borderRadius: '6px' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, backgroundColor: '#2563eb', color: '#ffffff', padding: '0.25rem 0.55rem', borderRadius: '6px' }}>
                   ⚡ {selectedReqIds.length} Request{selectedReqIds.length > 1 ? 's' : ''} Selected
                 </span>
               </div>
@@ -758,9 +758,9 @@ export function MyRequestsPanel({
                 <button
                   onClick={() => setSelectedReqIds([])}
                   style={{
-                    backgroundColor: 'transparent',
-                    color: '#94a3b8',
-                    border: '1px solid #475569',
+                    backgroundColor: '#ffffff',
+                    color: '#475569',
+                    border: '1px solid #cbd5e1',
                     borderRadius: 8,
                     padding: '0.4rem 0.75rem',
                     fontSize: '0.78rem',

@@ -916,30 +916,30 @@ export function RequestsTable({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            backgroundColor: '#0f172a',
-            color: '#ffffff',
+            backgroundColor: '#eff6ff',
+            color: '#1e293b',
             padding: '0.85rem 1.25rem',
             borderRadius: 12,
-            border: '1px solid #334155',
-            boxShadow: '0 4px 12px rgba(15, 23, 42, 0.25)',
+            border: '1px solid #bfdbfe',
+            boxShadow: '0 4px 14px rgba(37, 99, 235, 0.08)',
             animation: 'slideFadeIn 0.3s ease-out'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 700, backgroundColor: '#3b82f6', color: '#ffffff', padding: '0.3rem 0.65rem', borderRadius: '6px' }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, backgroundColor: '#2563eb', color: '#ffffff', padding: '0.3rem 0.65rem', borderRadius: '6px' }}>
               ⚡ {selectedReqIds.length} Request{selectedReqIds.length > 1 ? 's' : ''} Selected
             </span>
 
             {singleRequesterName ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 600, color: '#38bdf8' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 600, color: '#1d4ed8' }}>
                 <span>👤 Requested by:</span>
-                <span style={{ color: '#ffffff', fontWeight: 700, backgroundColor: '#1e293b', padding: '0.2rem 0.55rem', borderRadius: '4px', border: '1px solid #334155' }}>
+                <span style={{ color: '#1e40af', fontWeight: 700, backgroundColor: '#dbeafe', padding: '0.2rem 0.55rem', borderRadius: '4px', border: '1px solid #93c5fd' }}>
                   {singleRequesterName}
                 </span>
-                <span style={{ fontSize: '0.75rem', color: '#cbd5e1' }}>({selectedReqIds.length} item{selectedReqIds.length > 1 ? 's' : ''})</span>
+                <span style={{ fontSize: '0.75rem', color: '#475569' }}>({selectedReqIds.length} item{selectedReqIds.length > 1 ? 's' : ''})</span>
               </div>
             ) : (
-              <span style={{ fontSize: '0.82rem', color: '#cbd5e1' }}>
+              <span style={{ fontSize: '0.82rem', color: '#475569', fontWeight: 500 }}>
                 👥 Across multiple employees ({selectedReqIds.length} items)
               </span>
             )}
@@ -1021,9 +1021,9 @@ export function RequestsTable({
             <button
               onClick={() => setSelectedReqIds([])}
               style={{
-                backgroundColor: 'transparent',
-                color: '#94a3b8',
-                border: '1px solid #475569',
+                backgroundColor: '#ffffff',
+                color: '#475569',
+                border: '1px solid #cbd5e1',
                 borderRadius: 8,
                 padding: '0.45rem 0.75rem',
                 fontSize: '0.78rem',
