@@ -153,7 +153,49 @@ export const TopBar = ({
                         </span>
                         {!n.isRead && <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#210cae", flexShrink: 0, marginTop: 5 }} />}
                       </div>
-                      <span style={{ fontSize: "0.72rem", color: "#64748b", lineHeight: 1.3 }}>{n.message}</span>
+                      {(() => {
+                        const isLowStock = n.title?.toLowerCase().includes("low stock");
+                        if (isLowStock) {
+                          const match = n.message.match(/at\s+["“]?([^"”\.]+?)["”]?\s+(has|dropped|is)/i) || 
+                                        n.message.match(/at\s+["“]?([^"”\.]+?)["”]?$/i) ||
+                                        n.message.match(/site\s+["“]?([^"”\.]+?)["”]?/i);
+                          const siteName = match ? match[1].trim() : null;
+
+                          if (siteName) {
+                            const escapedSite = siteName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                            const regex = new RegExp(`(at\\s+["“]?${escapedSite}["”]?|${escapedSite})`, 'i');
+                            const parts = n.message.split(regex);
+
+                            return (
+                              <span style={{ fontSize: "0.72rem", color: "#64748b", lineHeight: 1.45 }}>
+                                {parts.map((part, idx) => {
+                                  if (part.toLowerCase() === siteName.toLowerCase() || part.toLowerCase() === `at "${siteName.toLowerCase()}"` || part.toLowerCase() === `at ${siteName.toLowerCase()}`) {
+                                    return (
+                                      <span key={idx} style={{
+                                        fontSize: "0.68rem",
+                                        fontWeight: 800,
+                                        padding: "0.1rem 0.45rem",
+                                        borderRadius: "4px",
+                                        backgroundColor: "#eef2ff",
+                                        color: "#210cae",
+                                        border: "1px solid #c7d2fe",
+                                        margin: "0 0.15rem",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: "0.2rem"
+                                      }}>
+                                        📍 {siteName}
+                                      </span>
+                                    );
+                                  }
+                                  return <span key={idx}>{part}</span>;
+                                })}
+                              </span>
+                            );
+                          }
+                        }
+                        return <span style={{ fontSize: "0.72rem", color: "#64748b", lineHeight: 1.3 }}>{n.message}</span>;
+                      })()}
                       <span style={{ fontSize: "0.62rem", color: "#cbd5e1", marginTop: "0.1rem" }}>
                         {new Date(n.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </span>
