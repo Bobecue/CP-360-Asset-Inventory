@@ -133,7 +133,7 @@ export class ItemsController {
   @Patch(":id/reorder-point")
   async updateReorderPoint(
     @Param("id") id: string,
-    @Body() body: { siteId?: string; reorderPoint: number; reorderQuantity?: number }
+    @Body() body: { siteId?: string; reorderPoint?: number; reorderQuantity?: number; leadTimeDays?: number }
   ) {
     return this.itemsService.updateReorderPoint(id, body);
   }

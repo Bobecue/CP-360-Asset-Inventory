@@ -46,10 +46,41 @@ export const LowStockAlertsTab = ({
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
   const [requestSuccessNotice, setRequestSuccessNotice] = useState<string | null>(null);
 
-  const canEditReorderPoint =
+  const [editingLeadTimeItemId, setEditingLeadTimeItemId] = useState<string | null>(null);
+  const [leadTimeInput, setLeadTimeInput] = useState<number>(7);
+  const [isSavingLeadTime, setIsSavingLeadTime] = useState(false);
+
+  const canEditLeadTime =
     currentUser?.role === "SUPER_ADMIN" ||
     currentUser?.role === "ADMIN" ||
     currentUser?.role === "INVENTORY_STAFF";
+
+  const handleStartEditLeadTime = (item: any) => {
+    setEditingLeadTimeItemId(item.id);
+    setLeadTimeInput(item.leadTimeDays || 7);
+  };
+
+  const handleSaveLeadTime = async (item: any) => {
+    setIsSavingLeadTime(true);
+    const targetItemId = item.itemId || item.id;
+    try {
+      if (!isUsingMockData) {
+        await fetch(`http://localhost:3001/items/${targetItemId}/reorder-point`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            leadTimeDays: Number(leadTimeInput),
+          }),
+        });
+      }
+    } catch (err) {
+      console.error("Error saving lead time:", err);
+    }
+    setIsSavingLeadTime(false);
+    setEditingLeadTimeItemId(null);
+    if (onRefreshCatalog) onRefreshCatalog();
+    fetchLowStockAlerts();
+  };
 
   const fetchLowStockAlerts = async () => {
     setIsLoading(true);
@@ -554,7 +585,86 @@ export const LowStockAlertsTab = ({
 
                       {/* Lead Time */}
                       <td style={{ padding: "0.85rem 1rem", color: "#475569" }}>
-                        ⏱️ {item.leadTimeDays || 7} days
+                        {editingLeadTimeItemId === item.id ? (
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                            <input
+                              type="number"
+                              min="1"
+                              value={leadTimeInput}
+                              onChange={(e) => setLeadTimeInput(Number(e.target.value))}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleSaveLeadTime(item);
+                                if (e.key === "Escape") setEditingLeadTimeItemId(null);
+                              }}
+                              autoFocus
+                              style={{
+                                width: "60px",
+                                padding: "0.2rem 0.4rem",
+                                borderRadius: 4,
+                                border: "1px solid #2563eb",
+                                fontSize: "0.8rem",
+                                fontWeight: 700,
+                              }}
+                            />
+                            <span style={{ fontSize: "0.75rem" }}>days</span>
+                            <button
+                              onClick={() => handleSaveLeadTime(item)}
+                              disabled={isSavingLeadTime}
+                              style={{
+                                padding: "0.2rem 0.45rem",
+                                borderRadius: 4,
+                                backgroundColor: "#2563eb",
+                                color: "#ffffff",
+                                border: "none",
+                                fontSize: "0.72rem",
+                                fontWeight: 700,
+                                cursor: "pointer",
+                              }}
+                            >
+                              ✓
+                            </button>
+                            <button
+                              onClick={() => setEditingLeadTimeItemId(null)}
+                              style={{
+                                padding: "0.2rem 0.45rem",
+                                borderRadius: 4,
+                                backgroundColor: "#f1f5f9",
+                                color: "#475569",
+                                border: "1px solid #cbd5e1",
+                                fontSize: "0.72rem",
+                                fontWeight: 700,
+                                cursor: "pointer",
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                            <span>⏱️ {item.leadTimeDays || 7} days</span>
+                            {canEditLeadTime && (
+                              <button
+                                onClick={() => handleStartEditLeadTime(item)}
+                                title="Edit Lead Time"
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  fontSize: "0.75rem",
+                                  color: "#64748b",
+                                  padding: "2px 4px",
+                                  borderRadius: "4px",
+                                  display: "inline-flex",
+                                  alignItems: "center"
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#e2e8f0"}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                              >
+                                ✏️
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );

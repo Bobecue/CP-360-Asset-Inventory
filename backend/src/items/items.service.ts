@@ -624,28 +624,38 @@ export class ItemsService {
     };
   }
 
-  async updateReorderPoint(itemId: string, data: { siteId?: string; reorderPoint: number; reorderQuantity?: number }) {
+  async updateReorderPoint(itemId: string, data: { siteId?: string; reorderPoint?: number; reorderQuantity?: number; leadTimeDays?: number }) {
     const item = await this.prisma.item.findUnique({ where: { id: itemId } });
     if (!item) throw new NotFoundException('Item not found');
 
+    const updateData: any = {};
+    if (typeof data.reorderPoint === 'number' && !isNaN(data.reorderPoint)) {
+      updateData.reorderPoint = Number(data.reorderPoint);
+    }
+    if (typeof data.reorderQuantity === 'number' && !isNaN(data.reorderQuantity)) {
+      updateData.reorderQuantity = Number(data.reorderQuantity);
+    }
+    if (typeof data.leadTimeDays === 'number' && !isNaN(data.leadTimeDays)) {
+      updateData.leadTimeDays = Math.max(1, Number(data.leadTimeDays));
+    }
+
     const updated = await this.prisma.item.update({
       where: { id: itemId },
-      data: {
-        reorderPoint: Number(data.reorderPoint),
-        ...(data.reorderQuantity ? { reorderQuantity: Number(data.reorderQuantity) } : {})
-      }
+      data: updateData,
     });
 
-    if (data.siteId) {
-      await this.prisma.siteStock.updateMany({
-        where: { itemId, siteId: data.siteId },
-        data: { reorderPoint: Number(data.reorderPoint) }
-      });
-    } else {
-      await this.prisma.siteStock.updateMany({
-        where: { itemId },
-        data: { reorderPoint: Number(data.reorderPoint) }
-      });
+    if (typeof data.reorderPoint === 'number' && !isNaN(data.reorderPoint)) {
+      if (data.siteId) {
+        await this.prisma.siteStock.updateMany({
+          where: { itemId, siteId: data.siteId },
+          data: { reorderPoint: Number(data.reorderPoint) }
+        });
+      } else {
+        await this.prisma.siteStock.updateMany({
+          where: { itemId },
+          data: { reorderPoint: Number(data.reorderPoint) }
+        });
+      }
     }
 
     return updated;
