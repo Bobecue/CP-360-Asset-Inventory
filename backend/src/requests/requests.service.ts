@@ -391,7 +391,57 @@ export class RequestsService implements OnModuleInit {
     return this.mapRequestToDto(r);
   }
 
+  async fixMisclassifiedProcurementRequests() {
+    try {
+      const procRequests = await this.prisma.request.findMany({
+        where: { status: 'PENDING_PROCUREMENT' },
+        include: { item: { include: { category: true } } }
+      });
+
+      for (const req of procRequests) {
+        let quantityNeeded = 1;
+        try {
+          if (req.purpose && req.purpose.startsWith('{')) {
+            const p = JSON.parse(req.purpose);
+            if (p.quantity) quantityNeeded = p.quantity;
+          }
+        } catch {}
+
+        let itemIds: string[] = [req.itemId];
+        if (req.item) {
+          const categoryItems = await this.prisma.item.findMany({
+            where: { categoryId: req.item.categoryId }
+          });
+          itemIds = categoryItems.map(i => i.id);
+        }
+
+        const stocks = await this.prisma.siteStock.findMany({
+          where: { itemId: { in: itemIds }, quantity: { gt: 0 } }
+        });
+        const stockFromLevels = stocks.reduce((sum, s) => sum + s.quantity, 0);
+        const availableAssetsCount = await this.prisma.asset.count({
+          where: { itemId: { in: itemIds }, status: 'AVAILABLE', condition: { notIn: ['BAD', 'DAMAGED'] } }
+        });
+
+        const totalStock = Math.max(stockFromLevels, availableAssetsCount);
+
+        if (totalStock >= quantityNeeded) {
+          await this.prisma.request.update({
+            where: { id: req.id },
+            data: {
+              status: 'APPROVED',
+              comments: 'Stock confirmed available in system inventory.'
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error auto-correcting misclassified procurement requests:', err);
+    }
+  }
+
   async findAll(q: any, user: string) {
+    await this.fixMisclassifiedProcurementRequests();
     const dbRequests = await this.prisma.request.findMany({
       include: this.requestInclude,
       orderBy: { createdAt: 'desc' }
@@ -754,25 +804,40 @@ export class RequestsService implements OnModuleInit {
 
     const updatedPurposeStr = JSON.stringify(parsedPurpose);
 
-    // Dynamic stock level check (re-using approve logic)
-    if (siteId && currentReq.item) {
+    // Dynamic stock level check across global system inventory (target site is destination)
+    if (currentReq.item) {
       const categoryItems = await this.prisma.item.findMany({
         where: { categoryId: currentReq.item.categoryId }
       });
       const itemIds = categoryItems.map(i => i.id);
 
+      // Fetch stock levels across all sites (not filtered by target site destination)
       const stocks = await this.prisma.siteStock.findMany({
         where: {
-          siteId: siteId,
-          itemId: { in: itemIds }
+          itemId: { in: itemIds },
+          quantity: { gt: 0 }
         }
       });
-      const availableStock = stocks.reduce((sum, s) => sum + s.quantity, 0);
+      const stockFromLevels = stocks.reduce((sum, s) => sum + s.quantity, 0);
 
-      if (availableStock < quantity) {
-        if (availableStock > 0) {
-          // Splitting logic
-          const childQuantity = quantity - availableStock;
+      // Fetch available assets in DB
+      const availableAssetsCount = await this.prisma.asset.count({
+        where: {
+          itemId: { in: itemIds },
+          status: 'AVAILABLE',
+          condition: { notIn: ['BAD', 'DAMAGED'] }
+        }
+      });
+
+      const totalSystemStock = Math.max(
+        stockFromLevels,
+        availableAssetsCount
+      );
+
+      if (totalSystemStock < quantity) {
+        if (totalSystemStock > 0) {
+          // Splitting logic for partial stock
+          const childQuantity = quantity - totalSystemStock;
 
           for (const s of stocks) {
             await this.prisma.siteStock.update({
@@ -781,7 +846,7 @@ export class RequestsService implements OnModuleInit {
             });
           }
 
-          parsedPurpose.quantity = availableStock;
+          parsedPurpose.quantity = totalSystemStock;
           const splitPurposeStr = JSON.stringify(parsedPurpose);
 
           const childPurpose = { ...parsedPurpose, quantity: childQuantity, parentId: id };
@@ -826,19 +891,19 @@ export class RequestsService implements OnModuleInit {
           return this.mapRequestToDto(r);
 
         } else {
-          // No stock at all
+          // No stock at all in system inventory
           const r = await this.prisma.request.update({
             where: { id },
             data: {
               status: 'PENDING_PROCUREMENT',
               purpose: updatedPurposeStr,
-              comments: comment || 'No stock available. Procurement needed.',
+              comments: comment || 'No stock available in inventory. Procurement needed.',
               opsApprovedById: u.id,
               opsApprovedAt: new Date(),
               events: {
                 create: {
                   status: 'PENDING_PROCUREMENT',
-                  comment: 'No stock available. Procurement needed.',
+                  comment: 'No stock available in inventory. Procurement needed.',
                   userId: u.id
                 }
               }
@@ -849,7 +914,7 @@ export class RequestsService implements OnModuleInit {
         }
       }
 
-      // Decrement stock from the category's items dynamically
+      // Decrement stock from available inventory site stocks dynamically
       let remainingToDecrement = quantity;
       for (const s of stocks) {
         if (remainingToDecrement <= 0) break;
