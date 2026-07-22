@@ -701,11 +701,11 @@ export const LowStockAlertsTab = ({
               </div>
 
               <div>
-                <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569" }}>Destination Site</label>
+                <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569" }}>Destination Site (Locked to Item Location)</label>
                 <select
+                  disabled
                   value={requestTargetSiteId}
-                  onChange={(e) => setRequestTargetSiteId(e.target.value)}
-                  style={{ width: "100%", padding: "0.5rem", borderRadius: 6, border: "1px solid #e2e8f0", fontSize: "0.82rem" }}
+                  style={{ width: "100%", padding: "0.5rem", borderRadius: 6, border: "1px solid #e2e8f0", backgroundColor: "#f1f5f9", color: "#334155", fontWeight: 600, fontSize: "0.82rem", cursor: "not-allowed" }}
                 >
                   {sites.map((s) => (
                     <option key={s.id} value={s.id}>
