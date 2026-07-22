@@ -835,7 +835,7 @@ export default function DashboardPage() {
       case "INVENTORY_STAFF":
         return ["catalog", "deployments", "requests", "procurement", "alerts", "scan-ops", "reports"].includes(tab);
       case "TEAM_LEADER":
-        return ["catalog", "requests", "alerts"].includes(tab);
+        return ["catalog", "requests"].includes(tab);
       case "EMPLOYEE":
         return ["catalog", "requests"].includes(tab);
       default:
