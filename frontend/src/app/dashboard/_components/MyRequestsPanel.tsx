@@ -289,14 +289,16 @@ export function MyRequestsPanel({
 
   const isLoading = false;
 
-  const cancellableRequestsInView = useMemo(() => {
-    return (myRequests?.items || []).filter(
-      r => ['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'APPROVED', 'READY_FOR_PICKUP'].includes(r.status as string)
-    );
+  const allSelectableRequestsInView = useMemo(() => {
+    return myRequests?.items || [];
   }, [myRequests?.items]);
 
-  const isAllCancellableSelected = cancellableRequestsInView.length > 0 &&
-    cancellableRequestsInView.every(r => selectedReqIds.includes(r.id));
+  const isAllSelected = allSelectableRequestsInView.length > 0 &&
+    allSelectableRequestsInView.every(r => selectedReqIds.includes(r.id));
+
+  const selectedRequests = useMemo(() => {
+    return allSelectableRequestsInView.filter(r => selectedReqIds.includes(r.id));
+  }, [allSelectableRequestsInView, selectedReqIds]);
 
   const handleConfirmBulkCancel = async () => {
     if (selectedReqIds.length === 0 || isSubmittingBulk) return;
@@ -315,6 +317,34 @@ export function MyRequestsPanel({
     } finally {
       setIsSubmittingBulk(false);
       setIsBulkCancelConfirmOpen(false);
+    }
+  };
+
+  const handleBulkConfirmReceipt = async () => {
+    if (selectedReqIds.length === 0 || isSubmittingBulk) return;
+    setIsSubmittingBulk(true);
+    try {
+      const confirmableIds = selectedRequests
+        .filter(r => r.status === 'AWAITING_CONFIRMATION' || r.status === 'RELEASED')
+        .map(r => r.id);
+
+      for (const id of confirmableIds) {
+        try {
+          await fetch(`http://localhost:3001/movements/${id}/confirm-receipt`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userEmail: currentUserName || 'superadmin@contactpoint360.com' })
+          });
+        } catch (err) {
+          console.error(`Error confirming receipt for ${id}:`, err);
+        }
+      }
+      setSelectedReqIds([]);
+      if (typeof window !== 'undefined') window.location.reload();
+    } catch (err) {
+      console.error('Error during bulk confirm receipt:', err);
+    } finally {
+      setIsSubmittingBulk(false);
     }
   };
 
@@ -617,26 +647,26 @@ export function MyRequestsPanel({
               )}
             </div>
 
-            {cancellableRequestsInView.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.35rem 0.5rem', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #f1f5f9' }}>
+            {allSelectableRequestsInView.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.35rem 0.5rem', backgroundColor: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, color: '#475569', userSelect: 'none' }}>
                   <input
                     type="checkbox"
-                    checked={isAllCancellableSelected}
+                    checked={isAllSelected}
                     onChange={(e) => {
                       if (e.target.checked) {
-                        setSelectedReqIds(cancellableRequestsInView.map(r => r.id));
+                        setSelectedReqIds(allSelectableRequestsInView.map(r => r.id));
                       } else {
                         setSelectedReqIds([]);
                       }
                     }}
-                    style={{ cursor: 'pointer', accentColor: '#dc2626', width: '15px', height: '15px' }}
+                    style={{ cursor: 'pointer', accentColor: '#3b82f6', width: '15px', height: '15px' }}
                   />
-                  Select All Cancellable Orders ({cancellableRequestsInView.length})
+                  Select All Orders ({allSelectableRequestsInView.length})
                 </label>
                 {selectedReqIds.length > 0 && (
                   <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>
-                    {selectedReqIds.length} of {cancellableRequestsInView.length} selected
+                    {selectedReqIds.length} of {allSelectableRequestsInView.length} selected
                   </span>
                 )}
               </div>
@@ -664,33 +694,56 @@ export function MyRequestsPanel({
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, backgroundColor: '#3b82f6', color: '#ffffff', padding: '0.25rem 0.55rem', borderRadius: '6px' }}>
                   ⚡ {selectedReqIds.length} Request{selectedReqIds.length > 1 ? 's' : ''} Selected
                 </span>
-                <span style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>
-                  Ready to cancel selected request orders
-                </span>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <button
-                  onClick={() => setIsBulkCancelConfirmOpen(true)}
-                  disabled={isSubmittingBulk}
-                  style={{
-                    backgroundColor: '#dc2626',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: 8,
-                    padding: '0.4rem 0.95rem',
-                    fontSize: '0.78rem',
-                    fontWeight: 700,
-                    cursor: isSubmittingBulk ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    boxShadow: '0 2px 6px rgba(220, 38, 38, 0.3)',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  {isSubmittingBulk ? 'Cancelling...' : `🚫 Cancel Orders (${selectedReqIds.length})`}
-                </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {selectedRequests.some(r => ['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'APPROVED', 'READY_FOR_PICKUP'].includes(r.status as string)) && (
+                  <button
+                    onClick={() => setIsBulkCancelConfirmOpen(true)}
+                    disabled={isSubmittingBulk}
+                    style={{
+                      backgroundColor: '#dc2626',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: 8,
+                      padding: '0.4rem 0.95rem',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      cursor: isSubmittingBulk ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      boxShadow: '0 2px 6px rgba(220, 38, 38, 0.3)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    {isSubmittingBulk ? 'Processing...' : `🚫 Cancel Orders`}
+                  </button>
+                )}
+
+                {selectedRequests.some(r => r.status === 'AWAITING_CONFIRMATION' || r.status === 'RELEASED') && (
+                  <button
+                    onClick={handleBulkConfirmReceipt}
+                    disabled={isSubmittingBulk}
+                    style={{
+                      backgroundColor: '#16a34a',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: 8,
+                      padding: '0.4rem 0.95rem',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      cursor: isSubmittingBulk ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      boxShadow: '0 2px 6px rgba(22, 163, 74, 0.3)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    {isSubmittingBulk ? 'Processing...' : `✅ Confirm Receipt`}
+                  </button>
+                )}
 
                 <button
                   onClick={() => setSelectedReqIds([])}
@@ -733,10 +786,10 @@ export function MyRequestsPanel({
                     key={req.id}
                     onClick={() => onRowClick && onRowClick(req)}
                     style={{
-                      backgroundColor: isSelected ? '#fef2f2' : '#ffffff',
+                      backgroundColor: isSelected ? '#f0f9ff' : '#ffffff',
                       padding: '1rem',
                       borderRadius: 12,
-                      border: `1px solid ${isSelected ? '#fca5a5' : '#e2e8f0'}`,
+                      border: `1px solid ${isSelected ? '#3b82f6' : '#e2e8f0'}`,
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '0.6rem',
@@ -761,22 +814,20 @@ export function MyRequestsPanel({
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
-                        {isCancellable && (
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              if (e.target.checked) {
-                                setSelectedReqIds(prev => [...prev, req.id]);
-                              } else {
-                                setSelectedReqIds(prev => prev.filter(id => id !== req.id));
-                              }
-                            }}
-                            style={{ cursor: 'pointer', accentColor: '#dc2626', width: '16px', height: '16px', marginTop: '0.2rem' }}
-                          />
-                        )}
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            if (e.target.checked) {
+                              setSelectedReqIds(prev => [...prev, req.id]);
+                            } else {
+                              setSelectedReqIds(prev => prev.filter(id => id !== req.id));
+                            }
+                          }}
+                          style={{ cursor: 'pointer', accentColor: '#3b82f6', width: '16px', height: '16px', marginTop: '0.2rem' }}
+                        />
                         <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', marginTop: '0.15rem' }}>
                           {getCategoryIcon(req.itemCategory, req.itemName)}
                         </span>
