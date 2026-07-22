@@ -189,8 +189,8 @@ export const LowStockAlertsTab = ({
     setRequestModalItem(item);
     const needed = Math.max(1, (item.reorderPoint || 5) - item.currentQuantity + 5);
     setRequestQtyInput(needed);
-    setRequestReasonInput(`Low-Stock Automatic Replenishment Order for ${item.name} (${item.sku})`);
-    setRequestTargetSiteId(sites[0]?.id || "site-1");
+    setRequestReasonInput(`Low-Stock Automatic Replenishment Order for ${item.name} (${item.sku}) at ${item.siteName || 'Site Inventory'}`);
+    setRequestTargetSiteId(item.siteId && item.siteId !== "all" ? item.siteId : (sites[0]?.id || "site-1"));
   };
 
   const handleConfirmCreateRequest = async () => {
@@ -478,6 +478,7 @@ export const LowStockAlertsTab = ({
               <thead>
                 <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#475569", fontWeight: 700, textTransform: "uppercase", fontSize: "0.7rem", letterSpacing: "0.03em" }}>
                   <th style={{ padding: "0.75rem 1rem" }}>Item & SKU</th>
+                  <th style={{ padding: "0.75rem 1rem" }}>Location / Site</th>
                   <th style={{ padding: "0.75rem 1rem" }}>Category</th>
                   <th style={{ padding: "0.75rem 1rem" }}>Stock Status (Current / Reorder Point)</th>
                   <th style={{ padding: "0.75rem 1rem" }}>Severity</th>
@@ -496,6 +497,21 @@ export const LowStockAlertsTab = ({
                       <td style={{ padding: "0.85rem 1rem" }}>
                         <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.88rem" }}>{item.name}</div>
                         <div style={{ fontSize: "0.72rem", color: "#64748b", fontFamily: "monospace", marginTop: "0.1rem" }}>{item.sku}</div>
+                      </td>
+
+                      {/* Location / Site */}
+                      <td style={{ padding: "0.85rem 1rem" }}>
+                        <span style={{
+                          fontSize: "0.72rem",
+                          fontWeight: 700,
+                          padding: "0.2rem 0.55rem",
+                          borderRadius: 6,
+                          backgroundColor: "#eef2ff",
+                          color: "#210cae",
+                          border: "1px solid #c7d2fe"
+                        }}>
+                          📍 {item.siteName || "All Sites"} ({item.sitePrefix || "ALL"})
+                        </span>
                       </td>
 
                       {/* Category */}
