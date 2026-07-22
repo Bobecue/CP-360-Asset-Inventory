@@ -33,6 +33,11 @@ function useCountUp(target: number, duration = 800, enabled = true) {
   return count;
 }
 
+function AnimatedNumber({ value }: { value: number }) {
+  const animatedValue = useCountUp(value);
+  return <>{animatedValue}</>;
+}
+
 interface CatalogTabProps {
   isUsingMockData: boolean;
   catalogItems: CatalogItem[];
@@ -703,7 +708,7 @@ export const CatalogTab = ({
                     {item.title}
                   </span>
                   <span style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a" }}>
-                    {item.value}
+                    <AnimatedNumber value={item.value} />
                   </span>
                   <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>
                     {item.desc}
@@ -2071,7 +2076,7 @@ export const CatalogTab = ({
             }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                 <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Total Deployments</span>
-                <span style={{ fontSize: "1.65rem", fontWeight: 800, color: "#210cae" }}>{filteredDeployments.length}</span>
+                <span style={{ fontSize: "1.65rem", fontWeight: 800, color: "#210cae" }}><AnimatedNumber value={filteredDeployments.length} /></span>
                 <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>Hardware assigned to personnel</span>
               </div>
               <div style={{ width: 42, height: 42, borderRadius: 10, backgroundColor: "#eef2ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -2086,7 +2091,7 @@ export const CatalogTab = ({
             }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                 <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Unique Employees</span>
-                <span style={{ fontSize: "1.65rem", fontWeight: 800, color: "#059669" }}>{new Set(filteredDeployments.map(d => d.employeeEid || d.employeeName)).size}</span>
+                <span style={{ fontSize: "1.65rem", fontWeight: 800, color: "#059669" }}><AnimatedNumber value={new Set(filteredDeployments.map(d => d.employeeEid || d.employeeName)).size} /></span>
                 <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>Active hardware custodians</span>
               </div>
               <div style={{ width: 42, height: 42, borderRadius: 10, backgroundColor: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -2101,7 +2106,7 @@ export const CatalogTab = ({
             }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                 <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Active Locations</span>
-                <span style={{ fontSize: "1.65rem", fontWeight: 800, color: "#d97706" }}>{new Set(filteredDeployments.map(d => d.siteId)).size}</span>
+                <span style={{ fontSize: "1.65rem", fontWeight: 800, color: "#d97706" }}><AnimatedNumber value={new Set(filteredDeployments.map(d => d.siteId)).size} /></span>
                 <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>Sites with deployed assets</span>
               </div>
               <div style={{ width: 42, height: 42, borderRadius: 10, backgroundColor: "#fffbeb", display: "flex", alignItems: "center", justifyContent: "center" }}>
