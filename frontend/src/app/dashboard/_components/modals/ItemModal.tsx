@@ -222,11 +222,24 @@ export const ItemModal = ({
                   }}
                 >
                   <option value="" disabled hidden>Select Category</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id} style={{ color: "#1e293b" }}>
-                      {c.name}
-                    </option>
-                  ))}
+                  {categories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !c.name.toLowerCase().includes("consumable"))).length > 0 && (
+                    <optgroup label="💻 Non-Consumable">
+                      {categories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !c.name.toLowerCase().includes("consumable"))).map((c) => (
+                        <option key={c.id} value={c.id} style={{ color: "#1e293b" }}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {categories.filter(c => c.type === "CONSUMABLE" || c.name.toLowerCase().includes("consumable")).length > 0 && (
+                    <optgroup label="🟢 Consumable">
+                      {categories.filter(c => c.type === "CONSUMABLE" || c.name.toLowerCase().includes("consumable")).map((c) => (
+                        <option key={c.id} value={c.id} style={{ color: "#1e293b" }}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>

@@ -433,8 +433,17 @@ export default function DashboardPage() {
       it.sku.toLowerCase().includes(catalogSearch.toLowerCase()) ||
       (it.description && it.description.toLowerCase().includes(catalogSearch.toLowerCase()));
 
-    const matchesCategory =
-      catalogCategoryFilter === "ALL" || it.categoryId === catalogCategoryFilter;
+    const itemCatType = it.category?.type || (it.category?.name?.toLowerCase().includes("consumable") ? "CONSUMABLE" : "NON_CONSUMABLE");
+    let matchesCategory = true;
+    if (catalogCategoryFilter === "ALL") {
+      matchesCategory = true;
+    } else if (catalogCategoryFilter === "NON_CONSUMABLE") {
+      matchesCategory = itemCatType === "NON_CONSUMABLE";
+    } else if (catalogCategoryFilter === "CONSUMABLE") {
+      matchesCategory = itemCatType === "CONSUMABLE";
+    } else {
+      matchesCategory = it.categoryId === catalogCategoryFilter;
+    }
 
     const siteStock = it.stockLevels?.find((sl) => sl.siteId === selectedSiteId);
     const quantity = siteStock ? siteStock.quantity : 0;

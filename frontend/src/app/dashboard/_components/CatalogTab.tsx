@@ -732,30 +732,6 @@ export const CatalogTab = ({
             boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(226,232,240,0.6)",
           }}>
             <div style={{ display: "flex", flex: 1, flexWrap: "wrap", gap: "0.75rem", minWidth: "280px" }}>
-              {/* Site Scope Selector */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "160px" }}>
-                <label style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Viewing Stock At</label>
-                <select
-                  value={selectedSiteId}
-                  onChange={(e) => setSelectedSiteId(e.target.value)}
-                  style={{
-                    padding: "0.45rem 0.65rem",
-                    borderRadius: 6,
-                    border: "1px solid #e2e8f0",
-                    fontSize: "0.8rem",
-                    color: "#475569",
-                    backgroundColor: "#ffffff",
-                    outline: "none",
-                  }}
-                >
-                  {sites.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.prefix})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               {/* Search */}
               <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", flex: 1, minWidth: "200px" }}>
                 <label style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Search Item</label>
@@ -803,6 +779,30 @@ export const CatalogTab = ({
                 </div>
               </div>
 
+              {/* Site Scope Selector */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "160px" }}>
+                <label style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Viewing Stock At</label>
+                <select
+                  value={selectedSiteId}
+                  onChange={(e) => setSelectedSiteId(e.target.value)}
+                  style={{
+                    padding: "0.45rem 0.65rem",
+                    borderRadius: 6,
+                    border: "1px solid #e2e8f0",
+                    fontSize: "0.8rem",
+                    color: "#475569",
+                    backgroundColor: "#ffffff",
+                    outline: "none",
+                  }}
+                >
+                  {sites.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.prefix})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Category Filter */}
               <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "150px" }}>
                 <label style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Category</label>
@@ -820,11 +820,26 @@ export const CatalogTab = ({
                   }}
                 >
                   <option value="ALL">All Categories</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
+                  <option value="NON_CONSUMABLE">💻 All Non-Consumables</option>
+                  <option value="CONSUMABLE">🟢 All Consumables</option>
+                  {categories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !c.name.toLowerCase().includes("consumable"))).length > 0 && (
+                    <optgroup label="💻 Non-Consumable">
+                      {categories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !c.name.toLowerCase().includes("consumable"))).map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {categories.filter(c => c.type === "CONSUMABLE" || c.name.toLowerCase().includes("consumable")).length > 0 && (
+                    <optgroup label="🟢 Consumable">
+                      {categories.filter(c => c.type === "CONSUMABLE" || c.name.toLowerCase().includes("consumable")).map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
 
@@ -2128,6 +2143,29 @@ export const CatalogTab = ({
             boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(226,232,240,0.6)",
           }}>
             <div style={{ display: "flex", flex: 1, flexWrap: "wrap", gap: "0.75rem", minWidth: "280px" }}>
+              {/* Search Bar */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", flex: 1, minWidth: "220px" }}>
+                <label style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Search Deployments</label>
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <svg style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+                  <input
+                    type="text"
+                    placeholder="Search Employee Name, EID, Account, Asset..."
+                    value={deploymentSearch}
+                    onChange={(e) => setDeploymentSearch(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "0.45rem 0.75rem 0.45rem 1.85rem",
+                      borderRadius: 6,
+                      border: "1px solid #e2e8f0",
+                      fontSize: "0.8rem",
+                      color: "#1e293b",
+                      outline: "none",
+                    }}
+                  />
+                </div>
+              </div>
+
               {/* Site Selector */}
               <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "160px" }}>
                 <label style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Filter Site</label>
@@ -2195,29 +2233,6 @@ export const CatalogTab = ({
                   <option value="CONSUMABLE">🟢 Consumables</option>
                   <option value="NON_CONSUMABLE">💻 Non-Consumables</option>
                 </select>
-              </div>
-
-              {/* Search Bar */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", flex: 1, minWidth: "220px" }}>
-                <label style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Search Deployments</label>
-                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                  <svg style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-                  <input
-                    type="text"
-                    placeholder="Search Employee Name, EID, Account, Asset..."
-                    value={deploymentSearch}
-                    onChange={(e) => setDeploymentSearch(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "0.45rem 0.75rem 0.45rem 1.85rem",
-                      borderRadius: 6,
-                      border: "1px solid #e2e8f0",
-                      fontSize: "0.8rem",
-                      color: "#1e293b",
-                      outline: "none",
-                    }}
-                  />
-                </div>
               </div>
             </div>
           </div>

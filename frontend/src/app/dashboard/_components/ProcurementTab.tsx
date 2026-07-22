@@ -21,6 +21,7 @@ export const ProcurementTab = ({
   currentUser,
 }: ProcurementTabProps) => {
   const [subTab, setSubTab] = useState<"pos" | "rrs">("pos");
+  const [searchQuery, setSearchQuery] = useState("");
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
   const [receivingReports, setReceivingReports] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -256,6 +257,25 @@ export const ProcurementTab = ({
     setIsRrDetailOpen(true);
   };
 
+  const filteredPOs = purchaseOrders.filter((po) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    const poNum = (po.poNumber || "").toLowerCase();
+    const supplierName = (po.supplier?.name || "").toLowerCase();
+    const creatorName = (po.creator?.name || "").toLowerCase();
+    return poNum.includes(q) || supplierName.includes(q) || creatorName.includes(q);
+  });
+
+  const filteredRRs = receivingReports.filter((rr) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    const rrNum = (rr.rrNumber || "").toLowerCase();
+    const invNum = (rr.supplierInvoiceNumber || "").toLowerCase();
+    const poNum = (rr.purchaseOrder?.poNumber || "").toLowerCase();
+    const recName = (rr.receiver?.name || "").toLowerCase();
+    return rrNum.includes(q) || invNum.includes(q) || poNum.includes(q) || recName.includes(q);
+  });
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       {/* Top Banner and Filter */}
@@ -316,6 +336,28 @@ export const ProcurementTab = ({
 
         {/* Filters and Action buttons */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+          {/* Search Bar */}
+          <div style={{ position: "relative", minWidth: "220px" }}>
+            <svg style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+            <input
+              type="text"
+              placeholder={subTab === "pos" ? "Search PO #, supplier..." : "Search RR #, invoice #..."}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-glow"
+              style={{
+                width: "100%",
+                padding: "0.45rem 0.75rem 0.45rem 1.85rem",
+                borderRadius: 8,
+                border: "1px solid #e2e8f0",
+                fontSize: "0.8rem",
+                color: "#1e293b",
+                outline: "none",
+                backgroundColor: "#ffffff",
+              }}
+            />
+          </div>
+
           {/* Site Selector */}
           <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
             <select
@@ -386,12 +428,12 @@ export const ProcurementTab = ({
           </div>
         ) : subTab === "pos" ? (
           /* PURCHASE ORDERS SUB-TAB */
-          purchaseOrders.length === 0 ? (
+          filteredPOs.length === 0 ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "4rem 1rem", textAlign: "center" }}>
               <span style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>📋</span>
               <h4 style={{ fontSize: "0.88rem", fontWeight: 600, color: "#3f3f46", margin: "0 0 0.25rem 0" }}>No Purchase Orders Found</h4>
               <p style={{ fontSize: "0.76rem", color: "#71717a", maxWidth: 280, margin: 0 }}>
-                Click "Create Draft PO" to draft a new purchasing shipment for this site.
+                {searchQuery ? "No purchase orders match your search query." : "Click \"Create Draft PO\" to draft a new purchasing shipment for this site."}
               </p>
             </div>
           ) : (
@@ -409,7 +451,7 @@ export const ProcurementTab = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {purchaseOrders.map((po, index) => {
+                  {filteredPOs.map((po, index) => {
                     const itemsList = po.items || [];
                     const totalOrdered = itemsList.reduce((sum: number, i: any) => sum + i.quantityOrdered, 0);
                     const totalReceived = itemsList.reduce((sum: number, i: any) => sum + i.quantityReceived, 0);
@@ -481,12 +523,12 @@ export const ProcurementTab = ({
           )
         ) : (
           /* RECEIVING LOGS SUB-TAB */
-          receivingReports.length === 0 ? (
+          filteredRRs.length === 0 ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "4rem 1rem", textAlign: "center" }}>
               <span style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>🚚</span>
               <h4 style={{ fontSize: "0.88rem", fontWeight: 600, color: "#3f3f46", margin: "0 0 0.25rem 0" }}>No Receiving Reports Found</h4>
               <p style={{ fontSize: "0.76rem", color: "#71717a", maxWidth: 280, margin: 0 }}>
-                Historical logs will populate here once orders are processed through the receiving wizard.
+                {searchQuery ? "No receiving reports match your search query." : "Historical logs will populate here once orders are processed through the receiving wizard."}
               </p>
             </div>
           ) : (
@@ -504,7 +546,7 @@ export const ProcurementTab = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {receivingReports.map((rr, index) => (
+                  {filteredRRs.map((rr, index) => (
                     <tr key={rr.id} 
                       className="animated-row"
                       style={{ borderBottom: "1px solid #f8fafc", animationDelay: `${index * 0.04}s` }}>

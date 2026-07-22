@@ -141,7 +141,10 @@ export const LowStockAlertsTab = ({
     // Fallback computation from catalogItems
     const computedAlerts: any[] = [];
     catalogItems.forEach((item) => {
-      if (categoryFilter !== "ALL" && item.categoryId !== categoryFilter) return;
+      const itemCatType = item.category?.type || (item.category?.name?.toLowerCase().includes("consumable") ? "CONSUMABLE" : "NON_CONSUMABLE");
+      if (categoryFilter === "NON_CONSUMABLE" && itemCatType !== "NON_CONSUMABLE") return;
+      if (categoryFilter === "CONSUMABLE" && itemCatType !== "CONSUMABLE") return;
+      if (categoryFilter !== "ALL" && categoryFilter !== "NON_CONSUMABLE" && categoryFilter !== "CONSUMABLE" && item.categoryId !== categoryFilter) return;
 
       let stockQty = 0;
       let relevantStocks = item.stockLevels || [];
@@ -485,11 +488,26 @@ export const LowStockAlertsTab = ({
               }}
             >
               <option value="ALL">All Categories</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
+              <option value="NON_CONSUMABLE">💻 All Non-Consumables</option>
+              <option value="CONSUMABLE">🟢 All Consumables</option>
+              {categories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !c.name.toLowerCase().includes("consumable"))).length > 0 && (
+                <optgroup label="💻 Non-Consumable">
+                  {categories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !c.name.toLowerCase().includes("consumable"))).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {categories.filter(c => c.type === "CONSUMABLE" || c.name.toLowerCase().includes("consumable")).length > 0 && (
+                <optgroup label="🟢 Consumable">
+                  {categories.filter(c => c.type === "CONSUMABLE" || c.name.toLowerCase().includes("consumable")).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </div>
 
