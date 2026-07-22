@@ -488,10 +488,47 @@ export const CatalogTab = ({
               return sl;
             });
 
+            // For non-consumable assets: retrieve and restore asset tag & record back into available assets
+            const catType = item.category?.type || dep.rawRequest?.item?.category?.type || (item.category?.name?.toLowerCase().includes("consumable") ? "CONSUMABLE" : "NON_CONSUMABLE");
+            const isNonConsumable = catType === "NON_CONSUMABLE";
+
+            let updatedAssets = item.assets || [];
+            if (isNonConsumable) {
+              const returnedTag = dep.assetTag || dep.rawRequest?.assetTag || dep.rawRequest?.asset?.tagCode || dep.rawRequest?.asset?.assetTag;
+              if (returnedTag) {
+                const existingAssetIdx = updatedAssets.findIndex(
+                  a => a.tagCode === returnedTag || a.assetTag === returnedTag
+                );
+                const restoredStatus = returnCondition === "DAMAGED" ? "UNDER_MAINTENANCE" : "AVAILABLE";
+
+                if (existingAssetIdx >= 0) {
+                  updatedAssets = updatedAssets.map((a, idx) =>
+                    idx === existingAssetIdx
+                      ? { ...a, status: restoredStatus, siteId: dep.siteId || selectedSiteId }
+                      : a
+                  );
+                } else {
+                  updatedAssets = [
+                    ...updatedAssets,
+                    {
+                      id: dep.rawRequest?.assetId || `ast-${Date.now().toString(36)}`,
+                      tagCode: returnedTag,
+                      assetTag: returnedTag,
+                      status: restoredStatus,
+                      itemId: item.id,
+                      siteId: dep.siteId || selectedSiteId,
+                      condition: returnCondition
+                    }
+                  ];
+                }
+              }
+            }
+
             return {
               ...item,
               quantity: newQty,
-              stockLevels: updatedStockLevels || item.stockLevels
+              stockLevels: updatedStockLevels || item.stockLevels,
+              assets: updatedAssets
             };
           }
           return item;
