@@ -509,10 +509,11 @@ export function RequestsTab({
   };
 
   // Bulk Approve Requests
-  const handleBulkApprove = async (selectedIds: string[]) => {
+  const handleBulkApprove = async (selectedIds: string[], comment?: string) => {
     setIsSubmittingReview(true);
     try {
       let updatedList: any[] = [];
+      const approvalComment = comment || 'Bulk approved from Request Orders module';
       try {
         const response = await fetch('http://localhost:3001/requests/bulk-approve', {
           method: 'POST',
@@ -520,7 +521,7 @@ export function RequestsTab({
           body: JSON.stringify({
             ids: selectedIds,
             approverEmail: currentUser.email,
-            comment: 'Bulk approved from Request Orders module'
+            comment: approvalComment
           })
         });
         if (response.ok) {
@@ -542,7 +543,7 @@ export function RequestsTab({
           if (req.status === 'PENDING' || (req.status as string) === 'PENDING_APPROVAL') {
             targetStatus = (currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') ? 'APPROVED' : 'PENDING_OPS_APPROVAL';
           }
-          await handleReviewRequest(id, targetStatus, 'Bulk approved');
+          await handleReviewRequest(id, targetStatus, approvalComment);
         }
       }
 

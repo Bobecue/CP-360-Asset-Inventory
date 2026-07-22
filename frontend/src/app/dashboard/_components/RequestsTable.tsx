@@ -70,7 +70,7 @@ interface RequestsTableProps {
   formatRelativeTime: (dateStr: string) => string;
   currentUserId?: string;
   currentUserRole: string;
-  onBulkApprove?: (selectedIds: string[]) => Promise<void>;
+  onBulkApprove?: (selectedIds: string[], comment?: string) => Promise<void>;
   onBulkPreparePickup?: (selectedIds: string[]) => Promise<void>;
   onBulkRelease?: (selectedIds: string[]) => Promise<void>;
   onBulkCancel?: (selectedIds: string[], comment?: string) => Promise<void>;
@@ -235,6 +235,9 @@ export function RequestsTable({
   // Bulk approval state
   const [selectedReqIds, setSelectedReqIds] = useState<string[]>([]);
   const [isSubmittingBulk, setIsSubmittingBulk] = useState(false);
+  const [isBulkApproveModalOpen, setIsBulkApproveModalOpen] = useState(false);
+  const [bulkApproveComment, setBulkApproveComment] = useState('');
+  const [bulkApproveError, setBulkApproveError] = useState<string | null>(null);
 
   // Sorting
   const [sortField, setSortField] = useState<'createdAt' | 'status'>('createdAt');
@@ -368,12 +371,27 @@ export function RequestsTable({
     return selectedRequests.every(r => r.requestedByName === firstRequester) ? firstRequester : null;
   }, [selectedRequests]);
 
-  const handleBulkApproveClick = async () => {
+  const handleOpenBulkApproveModal = () => {
     if (selectedReqIds.length === 0 || isSubmittingBulk) return;
+    setBulkApproveComment('');
+    setBulkApproveError(null);
+    setIsBulkApproveModalOpen(true);
+  };
+
+  const handleConfirmBulkApprove = async () => {
+    if (!bulkApproveComment.trim()) {
+      setBulkApproveError('An approval comment is required.');
+      return;
+    }
+    if (bulkApproveComment.trim().length < 3) {
+      setBulkApproveError('Approval comment must be at least 3 characters.');
+      return;
+    }
     setIsSubmittingBulk(true);
     try {
+      const commentToUse = bulkApproveComment.trim();
       if (onBulkApprove) {
-        await onBulkApprove(selectedReqIds);
+        await onBulkApprove(selectedReqIds, commentToUse);
       } else {
         for (const id of selectedReqIds) {
           const req = allRequests.find(r => r.id === id);
@@ -382,10 +400,12 @@ export function RequestsTable({
           if (req.status === 'PENDING' || (req.status as string) === 'PENDING_APPROVAL') {
             targetStatus = (currentUserRole === 'ADMIN' || currentUserRole === 'SUPER_ADMIN') ? 'APPROVED' : 'PENDING_OPS_APPROVAL';
           }
-          await onReview(id, targetStatus, 'Bulk approved');
+          await onReview(id, targetStatus, commentToUse);
         }
       }
       setSelectedReqIds([]);
+      setIsBulkApproveModalOpen(false);
+      setBulkApproveComment('');
     } catch (err) {
       console.error('Error during bulk approve:', err);
     } finally {
@@ -928,7 +948,7 @@ export function RequestsTable({
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             {canApprove && selectedRequests.some(r => ['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL'].includes(r.status as string)) && (
               <button
-                onClick={handleBulkApproveClick}
+                onClick={handleOpenBulkApproveModal}
                 disabled={isSubmittingBulk}
                 style={{
                   backgroundColor: '#16a34a',
@@ -1698,6 +1718,51 @@ export function RequestsTable({
         );
       })()}
 
+
+      {/* Bulk Approval Interactive Modal */}
+      <InteractiveModal
+        isOpen={isBulkApproveModalOpen}
+        type="prompt"
+        title="Bulk Approve Request Orders"
+        message={`You are approving ${selectedReqIds.length} selected request(s). Please provide an approval comment.`}
+        placeholder="Enter approval comment (e.g., Approved for deployment by Ops Admin)..."
+        confirmText={isSubmittingBulk ? "Approving..." : `Approve ${selectedReqIds.length} Request(s)`}
+        theme="approve"
+        onConfirm={async (val) => {
+          const comment = (val || '').trim();
+          if (!comment) {
+            return;
+          }
+          setIsSubmittingBulk(true);
+          try {
+            if (onBulkApprove) {
+              await onBulkApprove(selectedReqIds, comment);
+            } else {
+              for (const id of selectedReqIds) {
+                const req = allRequests.find(r => r.id === id);
+                if (!req) continue;
+                let targetStatus: RequestStatus = 'APPROVED';
+                if (req.status === 'PENDING' || (req.status as string) === 'PENDING_APPROVAL') {
+                  targetStatus = (currentUserRole === 'ADMIN' || currentUserRole === 'SUPER_ADMIN') ? 'APPROVED' : 'PENDING_OPS_APPROVAL';
+                }
+                await onReview(id, targetStatus, comment);
+              }
+            }
+            setSelectedReqIds([]);
+            setIsBulkApproveModalOpen(false);
+            setBulkApproveComment('');
+          } catch (err) {
+            console.error('Error during bulk approve:', err);
+          } finally {
+            setIsSubmittingBulk(false);
+          }
+        }}
+        onCancel={() => {
+          setIsBulkApproveModalOpen(false);
+          setBulkApproveComment('');
+          setBulkApproveError(null);
+        }}
+      />
 
       {/* Animated Confirm Modal */}
       <InteractiveModal
