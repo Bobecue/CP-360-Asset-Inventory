@@ -158,213 +158,10 @@ export default function DashboardPage() {
   const [isBulkRequestOpen, setIsBulkRequestOpen] = useState(false);
   const [bulkRequestInitialMode, setBulkRequestInitialMode] = useState<'deploy' | 'request'>('deploy');
 
-  const [mockAuditLogs, setMockAuditLogs] = useState<any[]>(() => {
-    const getPastDateStr = (daysAgo: number, timeStr: string) => {
-      const d = new Date();
-      d.setDate(d.getDate() - daysAgo);
-      const datePart = d.toISOString().split('T')[0];
-      return `${datePart}T${timeStr}`;
-    };
-
-    return [
-      {
-        id: "mock-log-1",
-        action: "STOCK_ADJUSTED",
-        details: "Qty 0 -> 3 at Skyrise 4B, STOCK_INCREASE",
-        userId: "user-christian",
-        user: {
-          id: "user-christian",
-          name: "Christian Mangas",
-          email: "christian.mangas@contactpoint360.com",
-          role: "ADMIN",
-          siteId: "site-1"
-        },
-        siteId: "site-1",
-        itemId: "item-1",
-        itemName: "Laptop",
-        itemSku: "AST-LAP-0012",
-        ipAddress: "192.168.1.102",
-        createdAt: getPastDateStr(1, "01:23:00.000Z") // Jul 9, 01:23 AM (1 day ago)
-      },
-      {
-        id: "mock-log-2",
-        action: "ITEM_CREATED",
-        details: "SKU AST-CON-0001 added to catalog",
-        userId: "user-christian",
-        user: {
-          id: "user-christian",
-          name: "Christian Mangas",
-          email: "christian.mangas@contactpoint360.com",
-          role: "ADMIN",
-          siteId: "site-1"
-        },
-        siteId: "site-1",
-        itemId: "item-4",
-        itemName: "AA batteries",
-        itemSku: "AST-CON-0001",
-        ipAddress: "192.168.1.102",
-        createdAt: getPastDateStr(2, "23:56:00.000Z") // Jul 8, 11:56 PM (2 days ago)
-      },
-      {
-        id: "mock-log-3",
-        action: "STOCK_ADJUSTED",
-        details: "Qty 6 -> 2 at Skyrise Alpha, correction",
-        userId: "user-christian",
-        user: {
-          id: "user-christian",
-          name: "Christian Mangas",
-          email: "christian.mangas@contactpoint360.com",
-          role: "ADMIN",
-          siteId: "site-1"
-        },
-        siteId: "site-1",
-        itemId: "item-1",
-        itemName: "Laptop",
-        itemSku: "AST-LAP-0012",
-        ipAddress: "192.168.1.102",
-        createdAt: getPastDateStr(2, "23:34:00.000Z") // Jul 8, 11:34 PM (2 days ago)
-      },
-      {
-        id: "mock-log-4",
-        action: "STOCK_ADJUSTED",
-        details: "Qty 0 -> 6 at Skyrise Alpha, increase",
-        userId: "user-1",
-        user: { ...mockUsers[0], siteId: "site-1" }, // Super Admin (acting at site-1)
-        siteId: "site-1",
-        itemId: "item-1",
-        itemName: "Laptop",
-        itemSku: "AST-LAP-0012",
-        ipAddress: "127.0.0.1",
-        createdAt: getPastDateStr(2, "22:34:00.000Z") // Jul 8, 10:34 PM (2 days ago)
-      },
-      {
-        id: "mock-log-5",
-        action: "STOCK_ADJUSTED",
-        details: "Qty 10 -> 12 at Cebu IT Park, increase",
-        userId: "user-3",
-        user: { ...mockUsers[2], siteId: "site-1" }, // Jane Smith
-        siteId: "site-1",
-        itemId: "item-2",
-        itemName: "Dell UltraSharp 27\" Monitor",
-        itemSku: "IT-DEL-U27",
-        ipAddress: "192.168.2.40",
-        createdAt: getPastDateStr(6, "10:15:00.000Z") // Jul 4 (6 days ago)
-      },
-      {
-        id: "mock-log-6",
-        action: "STOCK_ADJUSTED",
-        details: "Qty 5 -> 8 at Toronto HQ, correction",
-        userId: "user-2",
-        user: { ...mockUsers[1], siteId: "site-2" }, // John Doe
-        siteId: "site-2",
-        itemId: "item-3",
-        itemName: "Logitech MX Master 3S",
-        itemSku: "IT-LOG-MX3S",
-        ipAddress: "192.168.3.15",
-        createdAt: getPastDateStr(6, "14:30:00.000Z") // Jul 4 (6 days ago)
-      },
-      {
-        id: "mock-log-7",
-        action: "STOCK_ADJUSTED",
-        details: "Qty 20 -> 18 at Skyrise Alpha, allocation",
-        userId: "user-4",
-        user: { ...mockUsers[3], siteId: "site-1" }, // Elena Rostova
-        siteId: "site-1",
-        itemId: "item-1",
-        itemName: "Laptop",
-        itemSku: "AST-LAP-0012",
-        ipAddress: "192.168.1.55",
-        createdAt: getPastDateStr(5, "09:20:00.000Z") // Jul 5 (5 days ago)
-      },
-      {
-        id: "mock-log-8",
-        action: "STOCK_ADJUSTED",
-        details: "Qty 2 -> 5 at Skyrise 4B, restock",
-        userId: "user-christian",
-        user: {
-          id: "user-christian",
-          name: "Christian Mangas",
-          email: "christian.mangas@contactpoint360.com",
-          role: "ADMIN",
-          siteId: "site-1"
-        },
-        siteId: "site-1",
-        itemId: "item-1",
-        itemName: "Laptop",
-        itemSku: "AST-LAP-0012",
-        ipAddress: "192.168.1.102",
-        createdAt: getPastDateStr(4, "11:00:00.000Z") // Jul 6 (4 days ago)
-      },
-      {
-        id: "mock-log-9",
-        action: "STOCK_ADJUSTED",
-        details: "Qty 15 -> 12 at Toronto HQ, audit adjustment",
-        userId: "user-2",
-        user: { ...mockUsers[1], siteId: "site-2" }, // John Doe
-        siteId: "site-2",
-        itemId: "item-2",
-        itemName: "Dell UltraSharp 27\" Monitor",
-        itemSku: "IT-DEL-U27",
-        ipAddress: "192.168.3.15",
-        createdAt: getPastDateStr(4, "13:45:00.000Z") // Jul 6 (4 days ago)
-      },
-      {
-        id: "mock-log-10",
-        action: "STOCK_ADJUSTED",
-        details: "Qty 8 -> 10 at Cebu IT Park, stock in",
-        userId: "user-3",
-        user: { ...mockUsers[2], siteId: "site-1" }, // Jane Smith
-        siteId: "site-1",
-        itemId: "item-3",
-        itemName: "Logitech MX Master 3S",
-        itemSku: "IT-LOG-MX3S",
-        ipAddress: "192.168.2.40",
-        createdAt: getPastDateStr(4, "16:10:00.000Z") // Jul 6 (4 days ago)
-      },
-      {
-        id: "mock-log-11",
-        action: "STOCK_ADJUSTED",
-        details: "Qty 4 -> 10 at Skyrise Alpha, increase",
-        userId: "user-3",
-        user: { ...mockUsers[2], siteId: "site-1" }, // Jane Smith
-        siteId: "site-1",
-        itemId: "item-1",
-        itemName: "Laptop",
-        itemSku: "AST-LAP-0012",
-        ipAddress: "192.168.1.55",
-        createdAt: getPastDateStr(2, "08:12:00.000Z") // Jul 8 (2 days ago)
-      },
-      {
-        id: "mock-log-12",
-        action: "STOCK_ADJUSTED",
-        details: "Qty 30 -> 35 at Cebu IT Park, restock",
-        userId: "user-2",
-        user: { ...mockUsers[1], siteId: "site-1" }, // John Doe
-        siteId: "site-1",
-        itemId: "item-4",
-        itemName: "AA batteries",
-        itemSku: "AST-CON-0001",
-        ipAddress: "192.168.3.15",
-        createdAt: getPastDateStr(2, "14:25:00.000Z") // Jul 8 (2 days ago)
-      },
-      {
-        id: "mock-log-13",
-        action: "STOCK_ADJUSTED",
-        details: "Qty 12 -> 15 at Skyrise Alpha, check-in adjustment",
-        userId: "user-4",
-        user: { ...mockUsers[3], siteId: "site-1" }, // Elena Rostova
-        siteId: "site-1",
-        itemId: "item-1",
-        itemName: "Laptop",
-        itemSku: "AST-LAP-0012",
-        ipAddress: "192.168.1.55",
-        createdAt: getPastDateStr(0, "11:42:00.000Z") // Jul 10 (0 days ago / today)
-      }
-    ];
-  });
+  const [mockAuditLogs, setMockAuditLogs] = useState<any[]>([]);
   const [isLoadingItems, setIsLoadingItems] = useState(true);
   const [itemsError, setItemsError] = useState<string | null>(null);
-  const [selectedSiteId, setSelectedSiteId] = useState("");
+  const [selectedSiteId, setSelectedSiteId] = useState("ALL");
 
   // Filters for catalog
   const [catalogSearch, setCatalogSearch] = useState("");
@@ -445,23 +242,38 @@ export default function DashboardPage() {
       matchesCategory = it.categoryId === catalogCategoryFilter;
     }
 
-    const siteStock = it.stockLevels?.find((sl) => sl.siteId === selectedSiteId);
-    const quantity = siteStock ? siteStock.quantity : 0;
-    const reorderPoint = siteStock ? siteStock.reorderPoint : 5;
+    const siteStock = (selectedSiteId && selectedSiteId !== "ALL") ? it.stockLevels?.find((sl) => sl.siteId === selectedSiteId) : null;
+    const quantity = (selectedSiteId && selectedSiteId !== "ALL")
+      ? (siteStock ? siteStock.quantity : 0)
+      : (it.stockLevels && it.stockLevels.length > 0 ? it.stockLevels.reduce((acc, sl) => acc + (sl.quantity || 0), 0) : (it.quantity || 0));
+    const reorderPoint = siteStock ? siteStock.reorderPoint : (it.reorderPoint || 5);
 
     let matchesStock = true;
     if (catalogStockFilter === "LOW_STOCK") {
-      matchesStock = quantity <= reorderPoint;
+      matchesStock = quantity <= reorderPoint && quantity > 0;
     } else if (catalogStockFilter === "OUT_OF_STOCK") {
       matchesStock = quantity === 0;
     }
 
-    return matchesSearch && matchesCategory && matchesStock;
+    let matchesSite = true;
+    if (selectedSiteId && selectedSiteId !== "ALL") {
+      if (catalogStockFilter === "OUT_OF_STOCK") {
+        matchesSite = quantity === 0;
+      } else {
+        matchesSite = quantity > 0;
+      }
+    }
+
+    return matchesSearch && matchesCategory && matchesStock && matchesSite;
   }).sort((a, b) => {
-    const aStock = a.stockLevels?.find((sl) => sl.siteId === selectedSiteId);
-    const bStock = b.stockLevels?.find((sl) => sl.siteId === selectedSiteId);
-    const aQty = aStock ? aStock.quantity : 0;
-    const bQty = bStock ? bStock.quantity : 0;
+    const aStock = (selectedSiteId && selectedSiteId !== "ALL") ? a.stockLevels?.find((sl) => sl.siteId === selectedSiteId) : null;
+    const bStock = (selectedSiteId && selectedSiteId !== "ALL") ? b.stockLevels?.find((sl) => sl.siteId === selectedSiteId) : null;
+    const aQty = (selectedSiteId && selectedSiteId !== "ALL")
+      ? (aStock ? aStock.quantity : 0)
+      : (a.stockLevels && a.stockLevels.length > 0 ? a.stockLevels.reduce((acc, sl) => acc + (sl.quantity || 0), 0) : (a.quantity || 0));
+    const bQty = (selectedSiteId && selectedSiteId !== "ALL")
+      ? (bStock ? bStock.quantity : 0)
+      : (b.stockLevels && b.stockLevels.length > 0 ? b.stockLevels.reduce((acc, sl) => acc + (sl.quantity || 0), 0) : (b.quantity || 0));
 
     if (catalogSortKey === "name_asc") {
       return a.name.localeCompare(b.name);
@@ -524,7 +336,7 @@ export default function DashboardPage() {
         const data = await res.json();
         setSites(data);
         if (data.length > 0 && !selectedSiteId) {
-          setSelectedSiteId(data[0].id);
+          setSelectedSiteId("ALL");
         }
       } else {
         setIsBackendOffline(true);
@@ -598,7 +410,7 @@ export default function DashboardPage() {
       fetchAllMetadata();
     } else if (activeTab === "settings") {
       fetchAllMetadata();
-    } else if (activeTab === "catalog") {
+    } else if (activeTab === "catalog" || activeTab === "deployments") {
       fetchItems();
       fetchAllMetadata();
     }
@@ -964,24 +776,32 @@ export default function DashboardPage() {
           }
         }
 
-        // Deduct inventory stock level and remove deployed asset tags automatically for asset deployment
+        // Deduct inventory stock level and update deployed asset tags automatically for asset deployment
         if (reason && reason.includes("[ASSET DEPLOYMENT]")) {
           setCatalogItems(prevItems => prevItems.map(item => {
             if (item.id === req.itemId) {
+              const targetSite = sites.find((s: any) => s.id === siteId || s.name === siteId || (s.name && siteId && s.name.trim().toLowerCase() === siteId.trim().toLowerCase()));
+              const targetSiteId = targetSite ? targetSite.id : (siteId || selectedSiteId);
+
               const updatedLevels = (item.stockLevels || []).map(sl => {
-                if (sl.siteId === (siteId || selectedSiteId)) {
+                if (sl.siteId === targetSiteId || (targetSite && sl.siteId === targetSite.id)) {
                   return { ...sl, quantity: Math.max(0, sl.quantity - req.quantity) };
                 }
                 return sl;
               });
 
-              // Remove the deployed assets/tags matching requested quantity
-              const remainingAssets = (item.assets || []).slice(req.quantity);
+              // Mark deployed asset as ASSIGNED instead of removing it
+              const updatedAssets = (item.assets || []).map((ast: any) => {
+                if (ast.tagCode === deployedAssetTag || ast.assetTag === deployedAssetTag || ast.id === deployedAssetId) {
+                  return { ...ast, status: "ASSIGNED" };
+                }
+                return ast;
+              });
 
               return {
                 ...item,
                 stockLevels: updatedLevels,
-                assets: remainingAssets
+                assets: updatedAssets
               };
             }
             return item;
@@ -1371,10 +1191,11 @@ export default function DashboardPage() {
           let successCount = 0;
           let failCount = 0;
 
+          const siteQuery = (selectedSiteId && selectedSiteId !== "ALL") ? `?siteId=${selectedSiteId}` : "";
           await Promise.all(
             selectedItemIds.map(async (id) => {
               try {
-                const res = await fetch(`http://localhost:3001/items/${id}`, {
+                const res = await fetch(`http://localhost:3001/items/${id}${siteQuery}`, {
                   method: "DELETE",
                   headers: { "x-user-id": currentUser?.id || "" }
                 });
@@ -1394,9 +1215,9 @@ export default function DashboardPage() {
           setDeleteTarget(null);
 
           if (failCount > 0) {
-            showToast(`Deleted ${successCount} assets. Failed to delete ${failCount} assets (they may be linked to orders or physical assets).`, "error");
+            showToast(`Deleted ${successCount} assets. Failed to delete ${failCount} assets.`, "error");
           } else {
-            showToast("Selected assets deleted successfully!");
+            showToast("Selected items removed successfully!");
           }
         } catch (err: any) {
           console.error(err);
@@ -1428,14 +1249,27 @@ export default function DashboardPage() {
           };
           setMockAuditLogs(prev => [newLog, ...prev]);
         }
-        setCatalogItems((prev) => prev.filter((it) => it.id !== deleteTarget.id));
+        if (selectedSiteId && selectedSiteId !== "ALL") {
+          setCatalogItems((prev) => prev.map((it) => {
+            if (it.id === deleteTarget.id) {
+              return {
+                ...it,
+                stockLevels: (it.stockLevels || []).filter(sl => sl.siteId !== selectedSiteId)
+              };
+            }
+            return it;
+          }));
+        } else {
+          setCatalogItems((prev) => prev.filter((it) => it.id !== deleteTarget.id));
+        }
       }
       setDeleteConfirmOpen(false);
       setDeleteTarget(null);
     } else {
       try {
         const endpoint = deleteTarget.type === "site" ? "sites" : deleteTarget.type === "department" ? "departments" : deleteTarget.type === "category" ? "categories" : "items";
-        const res = await fetch(`http://localhost:3001/${endpoint}/${deleteTarget.id}`, {
+        const siteQuery = (deleteTarget.type === "item" && selectedSiteId && selectedSiteId !== "ALL") ? `?siteId=${selectedSiteId}` : "";
+        const res = await fetch(`http://localhost:3001/${endpoint}/${deleteTarget.id}${siteQuery}`, {
           method: "DELETE",
           headers: { "x-user-id": currentUser?.id || "" }
         });
@@ -1451,7 +1285,7 @@ export default function DashboardPage() {
         setDeleteTarget(null);
       } catch (err: any) {
         console.error(err);
-        setDeleteError(err.message || "Failed to delete item. It might be linked to other records.");
+        setDeleteError(err.message || "Failed to delete item.");
       }
     }
   };
@@ -1459,8 +1293,10 @@ export default function DashboardPage() {
   const handleCreateItemSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setItemError(null);
-    if (!itemName.trim() || !itemCategoryId) {
-      setItemError("Name and Category are required.");
+    const selectedCategory = categories.find(c => c.id === itemCategoryId);
+    const isSystemUnit = selectedCategory?.name?.toLowerCase().includes("system unit") || selectedCategory?.prefix === "SYS";
+    if (isSystemUnit && !itemDescription.trim()) {
+      setItemError("Asset Name and Model / Specifications are required for System Units.");
       return;
     }
 
@@ -1507,6 +1343,8 @@ export default function DashboardPage() {
       }
     }
 
+    const effectiveSiteId = itemSiteId || "ALL";
+
     const payload: any = {
       name: itemName.trim(),
       sku: finalSku || undefined,
@@ -1517,7 +1355,7 @@ export default function DashboardPage() {
     };
 
     if (!editingItem) {
-      payload.siteId = itemSiteId;
+      payload.siteId = effectiveSiteId;
       payload.quantity = qtyNum;
     }
 
@@ -2095,8 +1933,10 @@ export default function DashboardPage() {
               setItemModalOpen(true);
             }}
             onOpenEditModal={(it) => {
-              const stock = it.stockLevels?.find(sl => sl.siteId === selectedSiteId);
-              const qty = stock ? stock.quantity : 0;
+              const stock = (selectedSiteId && selectedSiteId !== "ALL")
+                ? it.stockLevels?.find(sl => sl.siteId === selectedSiteId || (sites.find(s => s.id === sl.siteId)?.name === selectedSiteId))
+                : null;
+              const qty = stock ? stock.quantity : ((it.stockLevels && it.stockLevels.length > 0) ? it.stockLevels.reduce((sum, sl) => sum + (sl.quantity || 0), 0) : (it.quantity || 0));
               setEditingItem(it);
               setItemName(it.name);
               setItemSku(it.sku);
@@ -2110,11 +1950,13 @@ export default function DashboardPage() {
               setItemModalOpen(true);
             }}
             onOpenStockModal={async (it) => {
-              const stock = it.stockLevels?.find(sl => sl.siteId === selectedSiteId);
-              const qty = stock ? stock.quantity : 0;
+              const targetSite = sites.find(s => s.id === selectedSiteId || s.name === selectedSiteId);
+              const targetSiteId = (selectedSiteId && selectedSiteId !== "ALL") ? (targetSite ? targetSite.id : selectedSiteId) : (sites[0]?.id || "");
+              const stock = it.stockLevels?.find(sl => sl.siteId === targetSiteId || (targetSite && sl.siteId === targetSite.id));
+              const qty = stock ? stock.quantity : ((it.stockLevels && it.stockLevels.length > 0) ? it.stockLevels.reduce((sum, sl) => sum + (sl.quantity || 0), 0) : (it.quantity || 0));
               const min = stock ? stock.reorderPoint : 5;
               setStockItem(it);
-              setStockSiteId(selectedSiteId);
+              setStockSiteId(targetSiteId);
               setStockQuantity(String(qty));
               setStockReorderPoint(String(min));
               setStockOriginalQuantity(qty);
@@ -2122,7 +1964,7 @@ export default function DashboardPage() {
 
               if (isUsingMockData) {
                 const assetsAtSite = it.assets?.filter(
-                  (a: any) => a.siteId === selectedSiteId && (a.status === "AVAILABLE" || a.status === "ASSIGNED")
+                  (a: any) => a.siteId === targetSiteId && (a.status === "AVAILABLE" || a.status === "ASSIGNED")
                 ) || [];
                 const active = it.assets?.filter(
                   (a: any) => (a.status === "AVAILABLE" || a.status === "ASSIGNED")
@@ -2134,7 +1976,7 @@ export default function DashboardPage() {
                   if (res.ok) {
                     const data = await res.json();
                     const filtered = data.filter(
-                      (a: any) => a.siteId === selectedSiteId && (a.status === "AVAILABLE" || a.status === "ASSIGNED")
+                      (a: any) => a.siteId === targetSiteId && (a.status === "AVAILABLE" || a.status === "ASSIGNED")
                     );
                     setStockActiveAssets(filtered);
                   }
@@ -2558,15 +2400,29 @@ export default function DashboardPage() {
           selectedItems={catalogItems
             .filter((it) => selectedItemIds.includes(it.id))
             .map((it) => {
-              const stock = it.stockLevels?.find(sl => sl.siteId === selectedSiteId) || { quantity: 0 };
-              const tags = (it.assets || []).map((a: any) => a.assetTag || a.serialNumber).filter(Boolean);
+              const matchingStock = (selectedSiteId && selectedSiteId !== "ALL")
+                ? it.stockLevels?.find(sl => sl.siteId === selectedSiteId || (sites.find(s => s.id === sl.siteId)?.name === selectedSiteId))
+                : null;
+              const totalQuantity = matchingStock
+                ? matchingStock.quantity
+                : ((it.stockLevels && it.stockLevels.length > 0)
+                    ? it.stockLevels.reduce((sum, sl) => sum + (sl.quantity || 0), 0)
+                    : (it.quantity || 0));
+              const availableAssets = (it.assets || []).filter((a: any) =>
+                a.status === "AVAILABLE" && a.condition !== "BAD" && a.condition !== "DAMAGED"
+              );
+              const tags = availableAssets.map((a: any) => a.assetTag || a.serialNumber || a.tagCode).filter(Boolean);
+              const allTags = (it.assets || []).map((a: any) => a.assetTag || a.serialNumber || a.tagCode).filter(Boolean);
               return {
                 id: it.id,
                 name: it.name,
                 sku: it.sku,
-                stock: stock.quantity,
+                stock: totalQuantity,
+                stockLevels: it.stockLevels || undefined,
                 category: it.category?.name,
+                categoryType: it.category?.type,
                 assetTags: tags,
+                allExistingTags: allTags,
               };
             })}
           sites={sites}

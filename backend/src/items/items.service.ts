@@ -124,10 +124,11 @@ export class ItemsService {
       });
 
       if (sites.length > 0) {
+        const isGlobal = data.siteId === "ALL";
         const stockData = sites.map((site) => ({
           siteId: site.id,
           itemId: item.id,
-          quantity: (data.siteId === site.id) ? qty : 0,
+          quantity: (isGlobal || site.id === data.siteId) ? qty : 0,
           reorderPoint: 5,
         }));
         await tx.siteStock.createMany({
@@ -136,56 +137,57 @@ export class ItemsService {
       }
 
       // Generate physical assets for NON_CONSUMABLE categories
-      if (!isConsumable && data.siteId) {
-        const site = sites.find(s => s.id === data.siteId);
-        const actualSitePrefix = (site?.prefix || "SYS").toUpperCase();
-        const actualCategoryPrefix = (category.prefix || "AST").toUpperCase();
-        const assetTagPrefix = `${actualSitePrefix}-${actualCategoryPrefix}-`;
+      if (!isConsumable && sites.length > 0) {
+        const targetSites = (data.siteId === "ALL" || !data.siteId) ? sites : sites.filter(s => s.id === data.siteId);
 
-        // Find current max sequential tagCode in Asset table for this category across all sites
-        const matchingAssets = await tx.asset.findMany({
-          where: { tagCode: { contains: `-${actualCategoryPrefix}-` } },
-          select: { tagCode: true },
-        });
+        for (const site of targetSites) {
+          const actualSitePrefix = (site.prefix || "SYS").toUpperCase();
+          const actualCategoryPrefix = (category.prefix || "AST").toUpperCase();
+          const assetTagPrefix = `${actualSitePrefix}-${actualCategoryPrefix}-`;
 
-        let assetNum = 1;
-        if (matchingAssets.length > 0) {
-          const numbers = matchingAssets.map((asset) => {
-            const parts = asset.tagCode.split("-");
-            const numStr = parts[parts.length - 1];
-            const num = parseInt(numStr, 10);
-            return isNaN(num) ? 0 : num;
+          const matchingAssets = await tx.asset.findMany({
+            where: { tagCode: { contains: `-${actualCategoryPrefix}-` } },
+            select: { tagCode: true },
           });
-          assetNum = Math.max(...numbers, 0) + 1;
-        }
 
-        // Loop to create physical assets
-        for (let i = 0; i < qty; i++) {
-          let tagCode = "";
-          let isUnique = false;
-          while (!isUnique) {
-            tagCode = `${assetTagPrefix}${String(assetNum).padStart(4, "0")}`;
-            const duplicate = await tx.asset.findUnique({
-              where: { tagCode },
+          let assetNum = 1;
+          if (matchingAssets.length > 0) {
+            const numbers = matchingAssets.map((asset) => {
+              const parts = asset.tagCode.split("-");
+              const numStr = parts[parts.length - 1];
+              const num = parseInt(numStr, 10);
+              return isNaN(num) ? 0 : num;
             });
-            if (!duplicate) {
-              isUnique = true;
-            }
-            assetNum++; // Always increment
+            assetNum = Math.max(...numbers, 0) + 1;
           }
 
-          const serialNumber = `SN-${tagCode}`;
+          for (let i = 0; i < qty; i++) {
+            let tagCode = "";
+            let isUnique = false;
+            while (!isUnique) {
+              tagCode = `${assetTagPrefix}${String(assetNum).padStart(4, "0")}`;
+              const duplicate = await tx.asset.findUnique({
+                where: { tagCode },
+              });
+              if (!duplicate) {
+                isUnique = true;
+              }
+              assetNum++;
+            }
 
-          await tx.asset.create({
-            data: {
-              itemId: item.id,
-              siteId: data.siteId,
-              status: "AVAILABLE",
-              condition: "GOOD",
-              tagCode,
-              serialNumber,
-            },
-          });
+            const serialNumber = `SN-${tagCode}`;
+
+            await tx.asset.create({
+              data: {
+                itemId: item.id,
+                siteId: site.id,
+                status: "AVAILABLE",
+                condition: "GOOD",
+                tagCode,
+                serialNumber,
+              },
+            });
+          }
         }
       }
 
@@ -286,49 +288,113 @@ export class ItemsService {
     return updatedItem;
   }
 
-  async remove(id: string, meta?: { userId?: string; ipAddress?: string }) {
+  async remove(id: string, meta?: { userId?: string; ipAddress?: string }, siteId?: string) {
     const item = await this.prisma.item.findUnique({ where: { id } });
     if (!item) {
       throw new NotFoundException("Catalog item not found.");
     }
 
-    // Safety checks: Can't delete if assets are in use (not AVAILABLE)
-    const activeAssetsCount = await this.prisma.asset.count({
-      where: {
-        itemId: id,
-        status: { not: "AVAILABLE" },
-      },
-    });
-    if (activeAssetsCount > 0) {
-      throw new ConflictException("Cannot delete item as it has assets that are currently assigned or not available.");
+    if (siteId && siteId !== "ALL") {
+      const site = await this.prisma.site.findUnique({ where: { id: siteId } });
+      return this.prisma.$transaction(async (tx) => {
+        // 1. Delete site stock for this specific site
+        await tx.siteStock.deleteMany({
+          where: { itemId: id, siteId: siteId }
+        });
+
+        // 2. Delete physical assets at this specific site
+        const siteAssets = await tx.asset.findMany({
+          where: { itemId: id, siteId: siteId },
+          select: { id: true }
+        });
+        const siteAssetIds = siteAssets.map(a => a.id);
+        if (siteAssetIds.length > 0) {
+          await tx.assetEvent.deleteMany({
+            where: { assetId: { in: siteAssetIds } }
+          });
+          await tx.asset.deleteMany({
+            where: { id: { in: siteAssetIds } }
+          });
+        }
+
+        // 3. Log audit action
+        await tx.auditLog.create({
+          data: {
+            action: "SITE_ITEM_REMOVED",
+            details: `Item "${item.name}" stock and assets were removed from site "${site?.name || siteId}".`,
+            userId: meta?.userId || null,
+            itemId: item.id,
+            itemName: item.name,
+            itemSku: item.sku,
+            ipAddress: meta?.ipAddress || null,
+          },
+        });
+
+        return { message: `Item removed from site ${site?.name || siteId}` };
+      });
     }
 
-    const poItemsCount = await this.prisma.purchaseOrderItem.count({ where: { itemId: id } });
-    if (poItemsCount > 0) {
-      throw new ConflictException("Cannot delete item as it is currently associated with purchase orders.");
-    }
-
-    const requestsCount = await this.prisma.request.count({ where: { itemId: id } });
-    if (requestsCount > 0) {
-      throw new ConflictException("Cannot delete item as it is currently associated with request orders.");
-    }
-
-    // Delete associated assets and the item inside transaction
+    // Global deletion across all sites if no siteId or siteId is ALL
     return this.prisma.$transaction(async (tx) => {
-      await tx.asset.deleteMany({ where: { itemId: id } });
+      // 1. Find and delete all request orders & events for this item
+      const itemRequests = await tx.request.findMany({
+        where: { itemId: id },
+        select: { id: true },
+      });
+      const reqIds = itemRequests.map((r) => r.id);
 
+      if (reqIds.length > 0) {
+        await tx.requestEvent.deleteMany({
+          where: { requestId: { in: reqIds } },
+        });
+
+        await tx.assetEvent.deleteMany({
+          where: { requestId: { in: reqIds } },
+        });
+
+        await tx.request.deleteMany({
+          where: { id: { in: reqIds } },
+        });
+      }
+
+      // 2. Find and delete all physical assets & asset events for this item
+      const itemAssets = await tx.asset.findMany({
+        where: { itemId: id },
+        select: { id: true },
+      });
+      const assetIds = itemAssets.map((a) => a.id);
+
+      if (assetIds.length > 0) {
+        await tx.assetEvent.deleteMany({
+          where: { assetId: { in: assetIds } },
+        });
+
+        await tx.asset.deleteMany({
+          where: { itemId: id },
+        });
+      }
+
+      // 3. Delete PO items & receiving report items
+      await tx.purchaseOrderItem.deleteMany({ where: { itemId: id } });
+      await tx.receivingReportItem.deleteMany({ where: { itemId: id } });
+
+      // 4. Delete site stocks
+      await tx.siteStock.deleteMany({ where: { itemId: id } });
+
+      // 5. Log audit action
       await tx.auditLog.create({
         data: {
           action: "ITEM_DELETED",
-          details: `Item "${item.name}" (SKU: ${item.sku}) was deleted.`,
+          details: `Item "${item.name}" (SKU: ${item.sku}) was deleted from global catalog.`,
           userId: meta?.userId || null,
-          itemId: id,
+          itemId: null,
           itemName: item.name,
           itemSku: item.sku,
           ipAddress: meta?.ipAddress || null,
         },
       });
 
+      // 6. Delete the item
       return tx.item.delete({ where: { id } });
     });
   }

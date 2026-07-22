@@ -154,7 +154,7 @@ export const StockModal = ({
             <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem", marginTop: "0.15rem" }}>
               <label style={{ fontSize: "0.68rem", color: "#210cae", textTransform: "uppercase", fontWeight: 700 }}>Site Location</label>
               <select
-                value={stockSiteId}
+                value={stockSiteId && stockSiteId !== "ALL" ? stockSiteId : (sites[0]?.id || "")}
                 onChange={(e) => onChangeSite(e.target.value)}
                 style={{
                   width: "100%",

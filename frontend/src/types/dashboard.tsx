@@ -181,8 +181,9 @@ export const mockItems: CatalogItem[] = [
 ];
 
 export const mockSites = [
-  { id: "site-1", name: "Cebu IT Park", prefix: "CEB", address: "Cebu City, Philippines" },
-  { id: "site-2", name: "Toronto HQ", prefix: "TOR", address: "Toronto, ON, Canada" },
+  { id: "e6ffecfe-2683-4374-b373-93a66b962161", name: "Skyrise 4B", prefix: "SK4", address: "Cebu IT Park, Skyrise 4B" },
+  { id: "69757c11-3849-40c2-9ca9-925a7056e932", name: "Skyrise Alpha", prefix: "SKA", address: "Cebu Business Park, Skyrise Alpha" },
+  { id: "24410602-efbc-4fd9-81f6-e7859db56bdd", name: "Skyrise Beta", prefix: "SKB", address: "Cebu Business Park, Skyrise Beta" },
 ];
 
 export const mockDepartments = [
@@ -193,9 +194,14 @@ export const mockDepartments = [
 ];
 
 export const mockCategories = [
-  { id: "cat-1", name: "Laptops", prefix: "LAP", type: "NON_CONSUMABLE", description: "Company laptops" },
-  { id: "cat-2", name: "Peripherals", prefix: "PER", type: "NON_CONSUMABLE", description: "Mice, keyboards, monitors" },
-  { id: "cat-3", name: "Office Consumables", prefix: "CON", type: "CONSUMABLE", description: "Pens, papers, batteries" },
+  { id: "cat-1", name: "Laptops", prefix: "LAP", type: "NON_CONSUMABLE", description: "Laptops, MacBooks, and Notebooks" },
+  { id: "cat-2", name: "Monitors", prefix: "MON", type: "NON_CONSUMABLE", description: "Desktop monitors and displays" },
+  { id: "cat-8", name: "System Units", prefix: "SYS", type: "NON_CONSUMABLE", description: "Desktop PCs, System Units, and Workstations" },
+  { id: "cat-5", name: "RAM", prefix: "RAM", type: "NON_CONSUMABLE", description: "Memory modules and RAM sticks" },
+  { id: "cat-6", name: "SSD / Storage", prefix: "SSD", type: "NON_CONSUMABLE", description: "Solid State Drives and hard drives" },
+  { id: "cat-3", name: "Keyboards", prefix: "KBD", type: "CONSUMABLE", description: "Keyboards and keypads" },
+  { id: "cat-4", name: "Mice", prefix: "MOU", type: "CONSUMABLE", description: "Computer mice and pointers" },
+  { id: "cat-7", name: "Cables", prefix: "CAB", type: "CONSUMABLE", description: "Cables, adapters, and power cords" },
 ];
 
 export const mockNotifications: DbNotification[] = [
@@ -295,7 +301,7 @@ export const getCategoryIcon = (categoryName?: string, itemName?: string, size =
   }
 
   // Keyboards
-  if (text.includes("keyboard")) {
+  if (text.includes("keyboard") || text.includes("keyboards") || text.includes("kbd") || text.includes("krs-83") || text.includes("krs")) {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="4" width="20" height="16" rx="2" ry="2" />
@@ -313,7 +319,7 @@ export const getCategoryIcon = (categoryName?: string, itemName?: string, size =
   }
 
   // Mice / Pointers
-  if (text.includes("mouse") || text.includes("logitech") || text.includes("trackpad") || text.includes("pointer")) {
+  if (text.includes("mouse") || text.includes("mice") || text.includes("mou") || text.includes("op-720") || text.includes("ser01") || text.includes("logitech") || text.includes("trackpad") || text.includes("pointer") || text.includes("a4tech-24ser01")) {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="5" y="2" width="14" height="20" rx="7" />

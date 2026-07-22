@@ -48,100 +48,11 @@ export const ProcurementTab = ({
     }
   }, [sites, currentUser]);
 
-  // Seed local mock data once on mount
+  // Initialize empty local arrays for offline fallback
   useEffect(() => {
-    if (catalogItems.length === 0 || sites.length === 0) return;
-
-    const defaultSite = sites[0];
-    const defaultItem1 = catalogItems[0];
-    const defaultItem2 = catalogItems[1] || defaultItem1;
-
-    const initialPOs = [
-      {
-        id: "mock-po-seeded-1",
-        poNumber: "PO-00001",
-        status: "DRAFT",
-        supplierId: "mock-sup-1",
-        supplier: { name: "Dell Global Ltd." },
-        siteId: defaultSite.id,
-        site: defaultSite,
-        creatorId: currentUser?.id || "mock-admin-id",
-        creator: currentUser || { name: "Super Admin" },
-        items: [
-          {
-            id: "mpoi-1",
-            itemId: defaultItem1.id,
-            item: defaultItem1,
-            quantityOrdered: 5,
-            quantityReceived: 0,
-            unitCost: Number(defaultItem1.unitPrice) || 45000
-          }
-        ],
-        createdAt: new Date(Date.now() - 3600000 * 24 * 3).toISOString(), // 3 days ago
-        updatedAt: new Date(Date.now() - 3600000 * 24 * 3).toISOString()
-      },
-      {
-        id: "mock-po-seeded-2",
-        poNumber: "PO-00002",
-        status: "ORDERED",
-        supplierId: "mock-sup-2",
-        supplier: { name: "Apple Corporate" },
-        siteId: defaultSite.id,
-        site: defaultSite,
-        creatorId: currentUser?.id || "mock-admin-id",
-        creator: currentUser || { name: "Super Admin" },
-        items: [
-          {
-            id: "mpoi-2",
-            itemId: defaultItem2.id,
-            item: defaultItem2,
-            quantityOrdered: 3,
-            quantityReceived: 1,
-            unitCost: Number(defaultItem2.unitPrice) || 85000
-          }
-        ],
-        createdAt: new Date(Date.now() - 3600000 * 24 * 5).toISOString(), // 5 days ago
-        updatedAt: new Date(Date.now() - 3600000 * 24 * 2).toISOString()
-      }
-    ];
-
-    const initialRRs = [
-      {
-        id: "mock-rr-seeded-1",
-        rrNumber: "RR-00001",
-        deliveryNoteRef: "DN-90122",
-        invoiceNumber: "INV-80231",
-        invoiceFileUrl: "/uploads/invoices/inv-80231.pdf",
-        purchaseOrderId: "mock-po-seeded-2",
-        purchaseOrder: { poNumber: "PO-00002" },
-        siteId: defaultSite.id,
-        site: defaultSite,
-        receivedById: currentUser?.id || "mock-admin-id",
-        receivedBy: currentUser || { name: "Super Admin" },
-        receivedItems: [
-          {
-            id: "mrri-1",
-            itemId: defaultItem2.id,
-            item: defaultItem2,
-            quantityReceived: 1
-          }
-        ],
-        assetsIntroduced: [
-          {
-            id: "mass-1",
-            serialNumber: "SN-APP-IPHONE-9012",
-            tagCode: `${defaultSite.prefix}-${defaultItem2.category?.prefix || "EQP"}-0001`,
-            status: "AVAILABLE",
-            condition: "GOOD"
-          }
-        ],
-        createdAt: new Date(Date.now() - 3600000 * 24 * 2).toISOString() // 2 days ago
-      }
-    ];
-
-    setLocalPOs(initialPOs);
-    setLocalRRs(initialRRs);
-  }, [catalogItems, sites]);
+    setLocalPOs([]);
+    setLocalRRs([]);
+  }, []);
 
   const fetchProcurementData = async () => {
     if (!selectedSiteId) return;

@@ -51,145 +51,8 @@ export class RequestsService implements OnModuleInit {
   constructor(private prisma: PrismaService) { }
 
   async onModuleInit() {
-    const count = await this.prisma.request.count();
-    if (count > 0) return;
-
-    console.log('Seeding mock requests into database...');
-
-    // 1. Ensure Sites exist
-    const cebSite = await this.prisma.site.upsert({
-      where: { prefix: 'CEB' },
-      update: {},
-      create: { name: 'Cebu IT Park', prefix: 'CEB' },
-    });
-    const torSite = await this.prisma.site.upsert({
-      where: { prefix: 'TOR' },
-      update: {},
-      create: { name: 'Toronto HQ', prefix: 'TOR' },
-    });
-    const ldnSite = await this.prisma.site.upsert({
-      where: { prefix: 'LDN' },
-      update: {},
-      create: { name: 'London Office', prefix: 'LDN' },
-    });
-
-    // 2. Ensure Users exist
-    const defaultPasswordHash = '$2b$10$q7Jq5HiZdRkZ4lSqvtR4z.JOwjMZME.d8Q8ifcOYywevdb1.PkXn6'; // default dummy (SuperAdmin360!)
-    const elena = await this.prisma.user.upsert({
-      where: { email: 'elena@contactpoint360.com' },
-      update: {},
-      create: {
-        email: 'elena@contactpoint360.com',
-        name: 'Elena Rostova',
-        passwordHash: defaultPasswordHash,
-        role: 'EMPLOYEE',
-        siteId: torSite.id,
-      },
-    });
-    const markus = await this.prisma.user.upsert({
-      where: { email: 'markus@contactpoint360.com' },
-      update: {},
-      create: {
-        email: 'markus@contactpoint360.com',
-        name: 'Markus Chen',
-        passwordHash: defaultPasswordHash,
-        role: 'EMPLOYEE',
-        siteId: cebSite.id,
-      },
-    });
-    const admin = await this.prisma.user.upsert({
-      where: { email: 'superadmin@contactpoint360.com' },
-      update: {},
-      create: {
-        email: 'superadmin@contactpoint360.com',
-        name: 'Super Admin',
-        passwordHash: defaultPasswordHash,
-        role: 'SUPER_ADMIN',
-        siteId: torSite.id,
-      },
-    });
-
-    // 3. Ensure Asset Categories exist
-    const eqpCategory = await this.prisma.assetCategory.upsert({
-      where: { prefix: 'EQP' },
-      update: {},
-      create: { name: 'Equipment', prefix: 'EQP', type: 'NON_CONSUMABLE' },
-    });
-    const cabCategory = await this.prisma.assetCategory.upsert({
-      where: { prefix: 'CAB' },
-      update: {},
-      create: { name: 'Cables', prefix: 'CAB', type: 'CONSUMABLE' },
-    });
-    const accCategory = await this.prisma.assetCategory.upsert({
-      where: { prefix: 'ACC' },
-      update: {},
-      create: { name: 'Accessories', prefix: 'ACC', type: 'NON_CONSUMABLE' },
-    });
-    const monCategory = await this.prisma.assetCategory.upsert({
-      where: { prefix: 'MON' },
-      update: {},
-      create: { name: 'Monitors', prefix: 'MON', type: 'NON_CONSUMABLE' },
-    });
-    const conCategory = await this.prisma.assetCategory.upsert({
-      where: { prefix: 'CON' },
-      update: {},
-      create: { name: 'Consumables', prefix: 'CON', type: 'CONSUMABLE' },
-    });
-
-    // 4. Ensure Catalog Items exist
-    const macbook = await this.prisma.item.upsert({
-      where: { sku: 'IT-MBP-14' },
-      update: {},
-      create: { name: 'MacBook Pro 14" M3', sku: 'IT-MBP-14', categoryId: eqpCategory.id },
-    });
-    const mxmaster = await this.prisma.item.upsert({
-      where: { sku: 'ACC-MXM3S' },
-      update: {},
-      create: { name: 'Logitech MX Master 3S', sku: 'ACC-MXM3S', categoryId: accCategory.id },
-    });
-    const ethernet = await this.prisma.item.upsert({
-      where: { sku: 'CAB-CAT6-10M' },
-      update: {},
-      create: { name: 'CAT6 Ethernet Cable (10m)', sku: 'CAB-CAT6-10M', categoryId: cabCategory.id },
-    });
-    const monitor = await this.prisma.item.upsert({
-      where: { sku: 'MON-DEL27' },
-      update: {},
-      create: { name: 'Dell 27" Monitor U2723QE', sku: 'MON-DEL27', categoryId: monCategory.id },
-    });
-    const jabra = await this.prisma.item.upsert({
-      where: { sku: 'ACC-JAB65' },
-      update: {},
-      create: { name: 'Jabra Evolve2 65 Headset', sku: 'ACC-JAB65', categoryId: accCategory.id },
-    });
-    const batteries = await this.prisma.item.upsert({
-      where: { sku: 'CON-BATT-AA' },
-      update: { categoryId: conCategory.id },
-      create: { name: 'AA Alkaline Batteries (4-pack)', sku: 'CON-BATT-AA', categoryId: conCategory.id },
-    });
-
-    // 5. Create seed Requests (REMOVED to keep request table clean)
-    await this.prisma.siteStock.createMany({
-      data: [
-        { siteId: cebSite.id, itemId: macbook.id, quantity: 10 },
-        { siteId: torSite.id, itemId: macbook.id, quantity: 14 },
-        { siteId: ldnSite.id, itemId: macbook.id, quantity: 5 },
-        { siteId: cebSite.id, itemId: mxmaster.id, quantity: 15 },
-        { siteId: torSite.id, itemId: mxmaster.id, quantity: 20 },
-        { siteId: ldnSite.id, itemId: mxmaster.id, quantity: 8 },
-        { siteId: cebSite.id, itemId: ethernet.id, quantity: 6 },
-        { siteId: torSite.id, itemId: ethernet.id, quantity: 6 },
-        { siteId: ldnSite.id, itemId: ethernet.id, quantity: 12 },
-        { siteId: cebSite.id, itemId: monitor.id, quantity: 1 },
-        { siteId: torSite.id, itemId: monitor.id, quantity: 2 },
-        { siteId: ldnSite.id, itemId: monitor.id, quantity: 3 },
-        { siteId: cebSite.id, itemId: jabra.id, quantity: 5 },
-        { siteId: torSite.id, itemId: jabra.id, quantity: 10 },
-        { siteId: ldnSite.id, itemId: jabra.id, quantity: 4 },
-      ],
-      skipDuplicates: true,
-    });
-    console.log('Site stock levels seeded successfully.');
+    // Auto-seeding disabled to prevent creation of unwanted mock sites and requests
+    return;
   }
 
   private requestInclude = {
@@ -420,17 +283,36 @@ export class RequestsService implements OnModuleInit {
 
     if (fullItem && fullItem.category?.type === 'NON_CONSUMABLE') {
       let availableAsset = fullItem.assets.find(
-        (a) => a.status === 'AVAILABLE' && a.siteId === siteObj.id
+        (a) => a.status === 'AVAILABLE' && a.condition !== 'BAD' && a.condition !== 'DAMAGED' && a.siteId === siteObj.id
       );
       if (!availableAsset) {
-        availableAsset = fullItem.assets.find((a) => a.status === 'AVAILABLE');
+        availableAsset = fullItem.assets.find(
+          (a) => a.status === 'AVAILABLE' && a.condition !== 'BAD' && a.condition !== 'DAMAGED'
+        );
       }
 
       if (!availableAsset) {
         const sitePrefix = siteObj.prefix || 'SK4';
         const catPrefix = fullItem.category?.prefix || 'EQP';
-        const assetCount = await this.prisma.asset.count({ where: { itemId: item.id } });
-        const generatedTagCode = `${sitePrefix}-${catPrefix}-${String(assetCount + 1).padStart(4, '0')}`;
+
+        const allMatchingAssets = await this.prisma.asset.findMany({
+          where: {
+            OR: [
+              { itemId: item.id },
+              { tagCode: { contains: `-${catPrefix}-` } }
+            ]
+          },
+          select: { tagCode: true }
+        });
+
+        const numbers = allMatchingAssets.map((a) => {
+          const parts = a.tagCode.split('-');
+          const numStr = parts[parts.length - 1];
+          const num = parseInt(numStr, 10);
+          return isNaN(num) ? 0 : num;
+        });
+        const nextNum = Math.max(0, ...numbers) + 1;
+        const generatedTagCode = `${sitePrefix}-${catPrefix}-${String(nextNum).padStart(4, '0')}`;
         const generatedSerial = `SN-${uuidv4().substring(0, 8).toUpperCase()}`;
 
         availableAsset = await this.prisma.asset.create({
@@ -438,6 +320,7 @@ export class RequestsService implements OnModuleInit {
             tagCode: generatedTagCode,
             serialNumber: generatedSerial,
             status: 'AVAILABLE',
+            condition: 'GOOD',
             itemId: item.id,
             siteId: siteObj.id,
           }
@@ -465,6 +348,22 @@ export class RequestsService implements OnModuleInit {
             }
           });
         }
+      }
+    }
+
+    if (isDeployment) {
+      const deployQty = dto.quantity || 1;
+      const stock = await this.prisma.siteStock.findFirst({
+        where: {
+          siteId: siteObj.id,
+          itemId: item.id,
+        }
+      });
+      if (stock) {
+        await this.prisma.siteStock.update({
+          where: { id: stock.id },
+          data: { quantity: { decrement: deployQty } }
+        });
       }
     }
 
@@ -1087,7 +986,8 @@ export class RequestsService implements OnModuleInit {
         asset = await tx.asset.findFirst({
           where: {
             itemId: req.itemId,
-            status: 'AVAILABLE'
+            status: 'AVAILABLE',
+            condition: { notIn: ['BAD', 'DAMAGED'] }
           },
           include: { item: true }
         });
@@ -1097,7 +997,8 @@ export class RequestsService implements OnModuleInit {
               item: {
                 categoryId: req.item.categoryId
               },
-              status: 'AVAILABLE'
+              status: 'AVAILABLE',
+              condition: { notIn: ['BAD', 'DAMAGED'] }
             },
             include: { item: true }
           });
@@ -1172,6 +1073,33 @@ export class RequestsService implements OnModuleInit {
         where: { id: asset.id },
         data: { status: 'ASSIGNED', assignedToId: req.requesterId }
       });
+
+      let releaseSiteId = asset.siteId || req.requester?.siteId;
+      if (!releaseSiteId && req.purpose) {
+        try {
+          const parsed = JSON.parse(req.purpose);
+          releaseSiteId = parsed.siteId;
+        } catch {}
+      }
+      if (releaseSiteId) {
+        let relQty = 1;
+        try {
+          if (req.purpose && req.purpose.startsWith('{')) {
+            const parsed = JSON.parse(req.purpose);
+            relQty = parsed.quantity || 1;
+          }
+        } catch {}
+
+        const stock = await tx.siteStock.findFirst({
+          where: { siteId: releaseSiteId, itemId: req.itemId }
+        });
+        if (stock) {
+          await tx.siteStock.update({
+            where: { id: stock.id },
+            data: { quantity: { decrement: relQty } }
+          });
+        }
+      }
 
       const updatedReq = await tx.request.update({
         where: { id },
@@ -1294,14 +1222,26 @@ export class RequestsService implements OnModuleInit {
     });
 
     if (r.assetId) {
+      const commentLower = (returnComment || '').toLowerCase();
+      const isDamaged = commentLower.includes('bad') || commentLower.includes('damaged') || commentLower.includes('missing');
       await this.prisma.asset.update({
         where: { id: r.assetId },
-        data: { status: 'AVAILABLE', assignedToId: null }
+        data: {
+          status: isDamaged ? 'UNDER_MAINTENANCE' : 'AVAILABLE',
+          condition: isDamaged ? 'DAMAGED' : 'GOOD',
+          assignedToId: null
+        }
       });
     }
 
     // Automatically update in the asset catalog (SiteStock level)
-    const siteId = r.asset?.siteId || r.requester?.siteId;
+    let siteId = r.asset?.siteId || r.requester?.siteId;
+    if (!siteId && r.purpose) {
+      try {
+        const parsed = JSON.parse(r.purpose);
+        siteId = parsed.siteId;
+      } catch {}
+    }
     if (siteId) {
       let quantity = 1;
       try {
@@ -1311,12 +1251,10 @@ export class RequestsService implements OnModuleInit {
         }
       } catch {}
 
-      const stock = await this.prisma.siteStock.findUnique({
+      const stock = await this.prisma.siteStock.findFirst({
         where: {
-          siteId_itemId: {
-            siteId: siteId,
-            itemId: r.itemId
-          }
+          siteId: siteId,
+          itemId: r.itemId
         }
       });
 

@@ -320,25 +320,8 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     return matchesSite && matchesDate;
   });
 
-  const activeRequests = requestsList.length > 0 ? requestsList : [
-    { id: "REQ-001", status: "APPROVED", createdAt: new Date().toISOString() },
-    { id: "REQ-002", status: "RELEASED", createdAt: new Date().toISOString() },
-    { id: "REQ-003", status: "COMPLETED", createdAt: new Date().toISOString() },
-    { id: "REQ-004", status: "APPROVED", createdAt: new Date().toISOString() },
-    { id: "REQ-005", status: "RELEASED", createdAt: new Date().toISOString() },
-    { id: "REQ-006", status: "COMPLETED", createdAt: new Date().toISOString() },
-    { id: "REQ-007", status: "REJECTED", createdAt: new Date().toISOString() },
-    { id: "REQ-008", status: "APPROVED", createdAt: new Date().toISOString() },
-    { id: "REQ-009", status: "APPROVED", createdAt: new Date().toISOString() },
-    { id: "REQ-010", status: "PENDING", createdAt: new Date().toISOString() },
-  ];
-
-  const activePOsList = purchaseOrders.length > 0 ? purchaseOrders : [
-    { id: "PO-2026-001", supplier: { name: "ContactPoint Tech" }, site: { name: "Cebu IT Park" }, supplierName: "ContactPoint Tech", siteName: "Cebu IT Park", status: "ORDERED", totalCost: 3500.00, createdAt: new Date().toISOString() },
-    { id: "PO-2026-002", supplier: { name: "Global Office Corp" }, site: { name: "Toronto HQ" }, supplierName: "Global Office Corp", siteName: "Toronto HQ", status: "PARTIALLY_RECEIVED", totalCost: 1200.00, createdAt: new Date().toISOString() },
-    { id: "PO-2026-003", supplier: { name: "Dell Retailer" }, site: { name: "Cebu IT Park" }, supplierName: "Dell Retailer", siteName: "Cebu IT Park", status: "RECEIVED", totalCost: 4500.00, createdAt: new Date().toISOString() },
-    { id: "PO-2026-004", supplier: { name: "ContactPoint Tech" }, site: { name: "Cebu IT Park" }, supplierName: "ContactPoint Tech", siteName: "Cebu IT Park", status: "DRAFT", totalCost: 800.00, createdAt: new Date().toISOString() },
-  ];
+  const activeRequests = requestsList;
+  const activePOsList = purchaseOrders;
 
   // Map POs to virtual logs
   const virtualPOLogs = activePOsList.map(po => ({

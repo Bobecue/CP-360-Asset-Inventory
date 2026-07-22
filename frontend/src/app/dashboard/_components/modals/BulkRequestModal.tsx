@@ -11,7 +11,10 @@ interface SelectedItem {
   sku: string;
   stock: number;
   category?: string;
+  categoryType?: 'CONSUMABLE' | 'NON_CONSUMABLE';
   assetTags?: string[];
+  allExistingTags?: string[];
+  stockLevels?: { siteId: string; quantity: number }[] | null;
 }
 
 interface Site {
@@ -69,7 +72,7 @@ const getCategoryIcon = (category?: string, name?: string) => {
   }
 
   // Keyboards
-  if (text.includes('keyboard')) {
+  if (text.includes('keyboard') || text.includes('keyboards') || text.includes('kbd') || text.includes('krs-83') || text.includes('krs')) {
     return (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="4" width="20" height="16" rx="2" ry="2" />
@@ -87,7 +90,7 @@ const getCategoryIcon = (category?: string, name?: string) => {
   }
 
   // Mice / Pointers
-  if (text.includes('mouse') || text.includes('logitech') || text.includes('trackpad') || text.includes('pointer')) {
+  if (text.includes('mouse') || text.includes('mice') || text.includes('mou') || text.includes('op-720') || text.includes('ser01') || text.includes('logitech') || text.includes('trackpad') || text.includes('pointer') || text.includes('a4tech-24ser01')) {
     return (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="5" y="2" width="14" height="20" rx="7" />
@@ -439,18 +442,41 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', border: '1px solid #e2e8f0', borderRadius: 8, padding: '0.75rem', backgroundColor: '#f8fafc' }}>
                 {selectedItems.map(item => {
                   const qty = quantities[item.id] || 1;
-                  const isExceeded = qty > item.stock;
+                  const selectedSiteObj = sites.find(s => s.name === reqSiteId || s.id === reqSiteId);
+                  const siteStockObj = reqSiteId && item.stockLevels
+                    ? item.stockLevels.find(sl => sl.siteId === reqSiteId || (selectedSiteObj && sl.siteId === selectedSiteObj.id))
+                    : null;
+                  const effectiveStock = siteStockObj ? siteStockObj.quantity : item.stock;
+                  const isExceeded = qty > effectiveStock;
 
-                  // Build dynamic tags list matching requested quantity
+                  const itemCat = (item.category || '').toLowerCase();
+                  const itemNameLower = (item.name || '').toLowerCase();
+                  const itemSkuLower = (item.sku || '').toLowerCase();
+                  const isConsumableItem = item.categoryType === 'CONSUMABLE' ||
+                    itemCat.includes('consumable') || itemCat.includes('keyboard') || itemCat.includes('mice') || itemCat.includes('mouse') ||
+                    itemNameLower.includes('keyboard') || itemNameLower.includes('krs-83') || itemNameLower.includes('ser01') || itemNameLower.includes('op-720') || itemNameLower.includes('mouse') ||
+                    itemSkuLower.includes('kbd') || itemSkuLower.includes('mou');
+
+                  // Build dynamic tags list matching requested quantity using AVAILABLE & GOOD assets only
                   const availableTags = item.assetTags || [];
+                  const knownTags = item.allExistingTags && item.allExistingTags.length > 0 ? item.allExistingTags : availableTags;
                   const displayTags: string[] = [];
+
+                  // Find max tag number across existing assets to avoid colliding with already used asset tags
+                  const allTagNumbers = knownTags.map(t => {
+                    const parts = t.split('-');
+                    const num = parseInt(parts[parts.length - 1], 10);
+                    return isNaN(num) ? 0 : num;
+                  });
+                  let maxTagNum = Math.max(0, ...allTagNumbers);
+
                   for (let i = 0; i < qty; i++) {
                     if (availableTags[i]) {
                       displayTags.push(availableTags[i]);
                     } else {
-                      // Generate clean tag based on SKU or item name prefix
+                      maxTagNum++;
                       const prefix = (item.sku || 'AST').replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase();
-                      const num = String(1001 + i).padStart(4, '0');
+                      const num = String(maxTagNum).padStart(4, '0');
                       displayTags.push(`${prefix}-${num}`);
                     }
                   }
@@ -464,7 +490,7 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
                           </span>
                           <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                             <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{item.name}</span>
-                            <span style={{ fontSize: '0.68rem', color: '#64748b' }}>Stock: {item.stock} | SKU: {item.sku}</span>
+                            <span style={{ fontSize: '0.68rem', color: '#64748b' }}>Stock: {effectiveStock} | SKU: {item.sku}</span>
                             {isExceeded && (
                               <span style={{ fontSize: '0.65rem', color: '#E85D00', fontWeight: 600 }}>
                                 ⚠ Exceeds stock (deployment will be flagged)
@@ -484,31 +510,50 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
                         </div>
                       </div>
 
-                      {/* Dynamic Asset Tags */}
+                      {/* Dynamic Asset Tags or Consumable Label */}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', paddingLeft: '1.75rem' }}>
                         <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 600, alignSelf: 'center', marginRight: '0.2rem' }}>
                           Asset Tag{qty > 1 ? 's' : ''}:
                         </span>
-                        {displayTags.map((tag, idx) => (
+                        {isConsumableItem ? (
                           <span
-                            key={idx}
                             style={{
                               fontSize: '0.68rem',
-                              fontFamily: 'monospace',
-                              fontWeight: 700,
-                              color: '#210cae',
-                              backgroundColor: '#eef2ff',
-                              border: '1px solid #c7d2fe',
+                              color: '#16a34a',
+                              backgroundColor: '#f0fdf4',
+                              border: '1px solid #bbf7d0',
                               borderRadius: '4px',
                               padding: '0.1rem 0.4rem',
+                              fontStyle: 'italic',
+                              fontWeight: 600,
                               display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.2rem'
+                              alignItems: 'center'
                             }}
                           >
-                            🏷️ {tag}
+                            N/A (Bulk Consumable)
                           </span>
-                        ))}
+                        ) : (
+                          displayTags.map((tag, idx) => (
+                            <span
+                              key={idx}
+                              style={{
+                                fontSize: '0.68rem',
+                                fontFamily: 'monospace',
+                                fontWeight: 700,
+                                color: '#210cae',
+                                backgroundColor: '#eef2ff',
+                                border: '1px solid #c7d2fe',
+                                borderRadius: '4px',
+                                padding: '0.1rem 0.4rem',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.2rem'
+                              }}
+                            >
+                              🏷️ {tag}
+                            </span>
+                          ))
+                        )}
                       </div>
                     </div>
                   );

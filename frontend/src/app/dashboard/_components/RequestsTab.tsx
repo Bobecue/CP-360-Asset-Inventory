@@ -225,22 +225,21 @@ export function RequestsTab({
         const json = await res.json();
         const apiData: RequestEntry[] = Array.isArray(json) ? json : (json.data || []);
         
-        setAllRequests(prev => {
-          const apiIds = new Set(apiData.map(r => r.id));
-          const localOnly = prev.filter(r => !apiIds.has(r.id));
-          const merged = [...apiData, ...localOnly]
-            .filter(r => !!r.itemId && r.quantity >= 1)
-            .map(r => {
-              if (r.reason && r.reason.includes("[ASSET DEPLOYMENT]") && r.status !== 'RETURNED') {
-                return { ...r, status: 'RELEASED' as RequestStatus };
-              }
-              if (r.status === ('REJECTED' as any) && r.reviewComment === 'Cancelled by requester.') {
-                return { ...r, status: 'CANCELLED' as RequestStatus };
-              }
-              return r;
-            });
-          return merged;
-        });
+        const normalized = apiData
+          .filter(r => !!r.itemId && r.quantity >= 1)
+          .map(r => {
+            if (r.reason && r.reason.includes("[ASSET DEPLOYMENT]") && r.status !== 'RETURNED') {
+              return { ...r, status: 'RELEASED' as RequestStatus };
+            }
+            if (r.status === ('REJECTED' as any) && r.reviewComment === 'Cancelled by requester.') {
+              return { ...r, status: 'CANCELLED' as RequestStatus };
+            }
+            return r;
+          });
+
+        setAllRequests(normalized);
+        localStorage.setItem('salivio_requests', JSON.stringify(normalized));
+        localStorage.setItem('salivio_requests_v', REQUESTS_CACHE_V);
       }
     } catch {
       // keep existing state

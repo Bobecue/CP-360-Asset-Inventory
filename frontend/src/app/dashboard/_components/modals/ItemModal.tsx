@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState, useEffect } from "react";
 import { CatalogItem } from "@/types/dashboard";
 
 interface ItemModalProps {
@@ -57,6 +58,26 @@ export const ItemModal = ({
   onCancel,
   onSubmit,
 }: ItemModalProps) => {
+  const selectedCategory = categories.find((c) => c.id === itemCategoryId);
+  const isSystemUnit =
+    selectedCategory?.name?.toLowerCase().includes("system unit") ||
+    selectedCategory?.prefix === "SYS";
+
+  const [itemModel, setItemModel] = useState("");
+
+  useEffect(() => {
+    if (editingItem && isSystemUnit && editingItem.description) {
+      const match = editingItem.description.match(/^Model:\s*(.*)/i);
+      if (match) {
+        setItemModel(match[1]);
+      } else {
+        setItemModel(editingItem.description);
+      }
+    } else if (!editingItem) {
+      setItemModel("");
+    }
+  }, [editingItem, isSystemUnit, itemModalOpen]);
+
   if (!itemModalOpen) return null;
 
   return (
@@ -100,6 +121,7 @@ export const ItemModal = ({
             </p>
           </div>
           <button
+            type="button"
             onClick={onCancel}
             style={{
               background: "none", border: "none", cursor: "pointer",
@@ -160,7 +182,7 @@ export const ItemModal = ({
                 <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Location</label>
                 <select
                   disabled={!!editingItem}
-                  value={itemSiteId}
+                  value={itemSiteId || "ALL"}
                   onChange={(e) => setItemSiteId(e.target.value)}
                   style={{
                     width: "100%",
@@ -173,6 +195,7 @@ export const ItemModal = ({
                     outline: "none",
                   }}
                 >
+                  <option value="ALL">🌐 All Sites (Global Allocation)</option>
                   {sites.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name} ({s.prefix})
@@ -182,26 +205,78 @@ export const ItemModal = ({
               </div>
             </div>
 
-            {/* ASSET NAME */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-              <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Asset Name *</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g., MacBook Pro M3 Max 16 inch"
-                value={itemName}
-                onChange={(e) => setItemName(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "0.45rem 0.65rem",
-                  borderRadius: 6,
-                  border: "1px solid #e2e8f0",
-                  fontSize: "0.8rem",
-                  color: "#1e293b",
-                  outline: "none",
-                }}
-              />
-            </div>
+            {/* ASSET NAME & MODEL (SYSTEM UNITS) OR REGULAR ASSET NAME */}
+            {isSystemUnit ? (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                  <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>
+                    Asset Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g., PC-WORKSTATION-01"
+                    value={itemName}
+                    onChange={(e) => setItemName(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "0.45rem 0.65rem",
+                      borderRadius: 6,
+                      border: "1px solid #e2e8f0",
+                      fontSize: "0.8rem",
+                      color: "#1e293b",
+                      outline: "none",
+                    }}
+                  />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                  <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#2563eb" }}>
+                    Model / Specifications *
+                  </label>
+                  <input
+                    type="text"
+                    required={isSystemUnit}
+                    placeholder="e.g., Dell OptiPlex 7090 / i7 / 16GB"
+                    value={itemModel}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setItemModel(val);
+                      setItemDescription(val ? `Model: ${val}` : "");
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "0.45rem 0.65rem",
+                      borderRadius: 6,
+                      border: "1px solid #3b82f6",
+                      fontSize: "0.8rem",
+                      color: "#1e293b",
+                      backgroundColor: "#eff6ff",
+                      outline: "none",
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Asset Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g., MacBook Pro M3 Max 16 inch"
+                  value={itemName}
+                  onChange={(e) => setItemName(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "0.45rem 0.65rem",
+                    borderRadius: 6,
+                    border: "1px solid #e2e8f0",
+                    fontSize: "0.8rem",
+                    color: "#1e293b",
+                    outline: "none",
+                  }}
+                />
+              </div>
+            )}
 
             {/* CATEGORY & QUANTITY & UNIT COST */}
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "0.75rem" }}>

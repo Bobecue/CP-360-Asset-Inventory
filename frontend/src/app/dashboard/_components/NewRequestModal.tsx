@@ -65,7 +65,7 @@ const getCategoryIcon = (category?: string, name?: string) => {
   }
 
   // Keyboards
-  if (text.includes('keyboard')) {
+  if (text.includes('keyboard') || text.includes('keyboards') || text.includes('kbd') || text.includes('krs-83') || text.includes('krs')) {
     return (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="4" width="20" height="16" rx="2" ry="2" />
@@ -83,7 +83,7 @@ const getCategoryIcon = (category?: string, name?: string) => {
   }
 
   // Mice / Pointers
-  if (text.includes('mouse') || text.includes('logitech') || text.includes('trackpad') || text.includes('pointer')) {
+  if (text.includes('mouse') || text.includes('mice') || text.includes('mou') || text.includes('op-720') || text.includes('ser01') || text.includes('logitech') || text.includes('trackpad') || text.includes('pointer') || text.includes('a4tech-24ser01')) {
     return (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="5" y="2" width="14" height="20" rx="7" />

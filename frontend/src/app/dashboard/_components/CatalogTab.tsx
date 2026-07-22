@@ -207,9 +207,9 @@ export const CatalogTab = ({
         if (res.ok) {
           const envelope = await res.json();
           const raw = envelope.data || envelope;
-          if (Array.isArray(raw) && raw.length > 0) {
+          if (Array.isArray(raw)) {
             const filtered = raw.filter((req: any) =>
-              (req.reason && req.reason.includes("[ASSET DEPLOYMENT]")) || req.status === "RELEASED" || req.status === "ITEM_RECEIVED" || req.status === "APPROVED" || req.status === "RETURNED"
+              req.reason && req.reason.includes("[ASSET DEPLOYMENT]")
             ).map((req: any) => {
               const saved = savedReturns[req.id];
               return {
@@ -232,17 +232,15 @@ export const CatalogTab = ({
                 rawRequest: req
               };
             });
-            if (filtered.length > 0) {
-              setDeploymentsList(filtered);
-              return;
-            }
+            setDeploymentsList(filtered);
+            return;
           }
         }
       } catch (err) {
         console.error("Error fetching deployments for CatalogTab:", err);
       }
 
-      // Fallback merge for mockDeployments
+      // Fallback merge for mockDeployments (offline mode only)
       const mergedMocks = mockDeployments.map(dep => {
         const saved = savedReturns[dep.id];
         return saved ? { ...dep, ...saved } : dep;
@@ -515,8 +513,11 @@ export const CatalogTab = ({
             const currentQty = item.quantity ?? 0;
             const newQty = currentQty + qtyReturnedToStock;
 
+            const targetSite = sites.find((s: any) => s.id === dep.siteId || s.name === dep.siteId || s.name === dep.siteLocation);
+            const targetSiteId = targetSite ? targetSite.id : (dep.siteId || selectedSiteId);
+
             const updatedStockLevels = item.stockLevels?.map((sl) => {
-              if (sl.siteId === dep.siteId || sl.siteId === selectedSiteId) {
+              if (sl.siteId === targetSiteId || (targetSite && sl.siteId === targetSite.id)) {
                 return { ...sl, quantity: sl.quantity + qtyReturnedToStock };
               }
               return sl;
@@ -669,9 +670,11 @@ export const CatalogTab = ({
                 title: "Low Stock / Out of Stock",
                 filterStock: "LOW_STOCK",
                 value: catalogItems.filter(it => {
-                  const stock = it.stockLevels?.find(sl => sl.siteId === selectedSiteId);
-                  const qty = stock ? stock.quantity : 0;
-                  const min = stock ? stock.reorderPoint : 5;
+                  const siteStock = (selectedSiteId && selectedSiteId !== "ALL") ? it.stockLevels?.find(sl => sl.siteId === selectedSiteId) : null;
+                  const qty = (selectedSiteId && selectedSiteId !== "ALL")
+                    ? (siteStock ? siteStock.quantity : 0)
+                    : (it.stockLevels && it.stockLevels.length > 0 ? it.stockLevels.reduce((acc, sl) => acc + (sl.quantity || 0), 0) : (it.quantity || 0));
+                  const min = siteStock ? siteStock.reorderPoint : (it.reorderPoint || 5);
                   return qty <= min;
                 }).length,
                 desc: catalogStockFilter === "LOW_STOCK" ? "⚡ Filtering by Low Stock" : "Click to filter list",
@@ -783,7 +786,7 @@ export const CatalogTab = ({
               <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "160px" }}>
                 <label style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Viewing Stock At</label>
                 <select
-                  value={selectedSiteId}
+                  value={selectedSiteId || "ALL"}
                   onChange={(e) => setSelectedSiteId(e.target.value)}
                   style={{
                     padding: "0.45rem 0.65rem",
@@ -795,6 +798,7 @@ export const CatalogTab = ({
                     outline: "none",
                   }}
                 >
+                  <option value="ALL">🌐 All Sites (Global View)</option>
                   {sites.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name} ({s.prefix})
@@ -1354,9 +1358,11 @@ export const CatalogTab = ({
                   </thead>
                   <tbody>
                     {filteredItems.map((it, index) => {
-                      const siteStock = it.stockLevels?.find(sl => sl.siteId === selectedSiteId);
-                      const quantity = siteStock ? siteStock.quantity : 0;
-                      const reorderPt = siteStock ? siteStock.reorderPoint : 5;
+                      const siteStock = (selectedSiteId && selectedSiteId !== "ALL") ? it.stockLevels?.find(sl => sl.siteId === selectedSiteId) : null;
+                      const quantity = (selectedSiteId && selectedSiteId !== "ALL")
+                        ? (siteStock ? siteStock.quantity : 0)
+                        : (it.stockLevels && it.stockLevels.length > 0 ? it.stockLevels.reduce((acc, sl) => acc + (sl.quantity || 0), 0) : (it.quantity || 0));
+                      const reorderPt = siteStock ? siteStock.reorderPoint : (it.reorderPoint || 5);
                       const isSelected = selectedItemIds.includes(it.id);
 
                       let stockColor = "#10b981", bg = "#d1fae5";
@@ -1723,9 +1729,11 @@ export const CatalogTab = ({
                   gap: "1.1rem",
                 }}>
                   {filteredItems.map((it) => {
-                    const siteStock = it.stockLevels?.find(sl => sl.siteId === selectedSiteId);
-                    const quantity = siteStock ? siteStock.quantity : 0;
-                    const reorderPt = siteStock ? siteStock.reorderPoint : 5;
+                    const siteStock = (selectedSiteId && selectedSiteId !== "ALL") ? it.stockLevels?.find(sl => sl.siteId === selectedSiteId) : null;
+                    const quantity = (selectedSiteId && selectedSiteId !== "ALL")
+                      ? (siteStock ? siteStock.quantity : 0)
+                      : (it.stockLevels && it.stockLevels.length > 0 ? it.stockLevels.reduce((acc, sl) => acc + (sl.quantity || 0), 0) : (it.quantity || 0));
+                    const reorderPt = siteStock ? siteStock.reorderPoint : (it.reorderPoint || 5);
                     const isSelected = selectedItemIds.includes(it.id);
                     const fillPct = quantity === 0 ? 0 : Math.min((quantity / Math.max(reorderPt * 2, 10)) * 100, 100);
 

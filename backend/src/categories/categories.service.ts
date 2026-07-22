@@ -1,10 +1,31 @@
-import { Injectable, ConflictException, NotFoundException } from "@nestjs/common";
+import { Injectable, ConflictException, NotFoundException, OnModuleInit } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { CategoryType } from "@prisma/client";
 
 @Injectable()
-export class CategoriesService {
+export class CategoriesService implements OnModuleInit {
   constructor(private prisma: PrismaService) {}
+
+  async onModuleInit() {
+    const defaultCategories = [
+      { name: "Laptops", prefix: "LAP", type: CategoryType.NON_CONSUMABLE, description: "Laptops, MacBooks, and Notebooks" },
+      { name: "Monitors", prefix: "MON", type: CategoryType.NON_CONSUMABLE, description: "Desktop monitors and displays" },
+      { name: "System Units", prefix: "SYS", type: CategoryType.NON_CONSUMABLE, description: "Desktop PCs, System Units, and Workstations" },
+      { name: "RAM", prefix: "RAM", type: CategoryType.NON_CONSUMABLE, description: "Memory modules and RAM sticks" },
+      { name: "SSD / Storage", prefix: "SSD", type: CategoryType.NON_CONSUMABLE, description: "Solid State Drives and hard drives" },
+      { name: "Keyboards", prefix: "KBD", type: CategoryType.CONSUMABLE, description: "Keyboards and keypads" },
+      { name: "Mice", prefix: "MOU", type: CategoryType.CONSUMABLE, description: "Computer mice and pointers" },
+      { name: "Cables", prefix: "CAB", type: CategoryType.CONSUMABLE, description: "Cables, adapters, and power cords" },
+    ];
+
+    for (const cat of defaultCategories) {
+      await this.prisma.assetCategory.upsert({
+        where: { prefix: cat.prefix },
+        update: { type: cat.type, name: cat.name },
+        create: cat,
+      });
+    }
+  }
 
   async findAll() {
     return this.prisma.assetCategory.findMany({

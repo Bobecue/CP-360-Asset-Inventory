@@ -70,10 +70,11 @@ export class ItemsController {
   @Delete(":id")
   async deleteItem(
     @Param("id") id: string,
+    @Query("siteId") siteId: string,
     @Headers("x-user-id") userId: string,
     @Req() req: any,
   ) {
-    return this.itemsService.remove(id, { userId, ipAddress: getClientIp(req) });
+    return this.itemsService.remove(id, { userId, ipAddress: getClientIp(req) }, siteId);
   }
 
   @Get(":id/assets")
