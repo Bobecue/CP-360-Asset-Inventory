@@ -243,29 +243,51 @@ export const CatalogTab = ({
     return matchesSite && matchesStatus && matchesCategoryType && matchesSearch;
   });
 
-  const handleDownloadDeploymentReceipt = (dep: any) => {
+  const handleDownloadDeploymentReceipt = async (dep: any) => {
     const isReturned = dep.status === "RETURNED";
     const cond = dep.returnCondition || "GOOD";
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-    // Header Banner
-    if (isReturned) {
-      if (cond === "DAMAGED") {
-        doc.setFillColor(217, 119, 6); // Amber
-      } else if (cond === "MISSING") {
-        doc.setFillColor(190, 18, 60); // Rose Red
-      } else {
-        doc.setFillColor(5, 150, 105); // Emerald Green
-      }
-    } else {
-      doc.setFillColor(33, 12, 174); // Deep Indigo
-    }
-
+    // Header Banner: Contact Point 360 Brand Theme Color (#210cae)
+    doc.setFillColor(33, 12, 174);
     doc.rect(0, 0, 210, 24, 'F');
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(15);
+    doc.setFontSize(14);
     doc.setTextColor(255, 255, 255);
     doc.text(isReturned ? "HARDWARE ASSET RETURN RECEIPT" : "HARDWARE ASSET DEPLOYMENT RECEIPT", 14, 15);
+
+    // Add Contact Point 360 Logo to top right of header banner
+    try {
+      const loadLogo = (): Promise<HTMLImageElement | null> => {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.crossOrigin = "Anonymous";
+          img.src = "/logo.png";
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
+        });
+      };
+
+      const logoImg = await loadLogo();
+      if (logoImg) {
+        const canvas = document.createElement("canvas");
+        canvas.width = logoImg.width;
+        canvas.height = logoImg.height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(logoImg, 0, 0);
+          const logoDataUrl = canvas.toDataURL("image/png");
+          // White rounded background container pill for logo
+          doc.setFillColor(255, 255, 255);
+          doc.roundedRect(158, 3, 40, 18, 3, 3, 'F');
+          doc.addImage(logoDataUrl, "PNG", 160, 4.5, 36, 15);
+        }
+      }
+    } catch (e) {
+      console.error("Error drawing logo in receipt PDF:", e);
+    }
 
     doc.setFontSize(10);
     doc.setTextColor(50, 50, 50);
