@@ -303,18 +303,10 @@ export class ItemsService {
       throw new ConflictException("Cannot delete item as it has assets that are currently assigned or not available.");
     }
 
-    const poItemsCount = await this.prisma.purchaseOrderItem.count({ where: { itemId: id } });
-    if (poItemsCount > 0) {
-      throw new ConflictException("Cannot delete item as it is currently associated with purchase orders.");
-    }
-
-    const requestsCount = await this.prisma.request.count({ where: { itemId: id } });
-    if (requestsCount > 0) {
-      throw new ConflictException("Cannot delete item as it is currently associated with request orders.");
-    }
-
-    // Delete associated assets and the item inside transaction
+    // Delete associated requests, siteStocks, assets and the item inside transaction
     return this.prisma.$transaction(async (tx) => {
+      await tx.request.deleteMany({ where: { itemId: id } });
+      await tx.siteStock.deleteMany({ where: { itemId: id } });
       await tx.asset.deleteMany({ where: { itemId: id } });
 
       await tx.auditLog.create({
