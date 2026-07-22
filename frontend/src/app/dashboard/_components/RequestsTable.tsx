@@ -215,7 +215,8 @@ export function RequestsTable({
   renderStatusBadge,
   formatRelativeTime,
   currentUserId,
-  currentUserRole
+  currentUserRole,
+  onBulkApprove
 }: RequestsTableProps) {
   const [search, setSearch] = useState('');
   const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
