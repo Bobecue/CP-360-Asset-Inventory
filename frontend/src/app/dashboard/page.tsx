@@ -2400,14 +2400,9 @@ export default function DashboardPage() {
           selectedItems={catalogItems
             .filter((it) => selectedItemIds.includes(it.id))
             .map((it) => {
-              const matchingStock = (selectedSiteId && selectedSiteId !== "ALL")
-                ? it.stockLevels?.find(sl => sl.siteId === selectedSiteId || (sites.find(s => s.id === sl.siteId)?.name === selectedSiteId))
-                : null;
-              const totalQuantity = matchingStock
-                ? matchingStock.quantity
-                : ((it.stockLevels && it.stockLevels.length > 0)
-                    ? it.stockLevels.reduce((sum, sl) => sum + (sl.quantity || 0), 0)
-                    : (it.quantity || 0));
+              const totalQuantity = (it.stockLevels && it.stockLevels.length > 0)
+                ? it.stockLevels.reduce((sum, sl) => sum + (sl.quantity || 0), 0)
+                : (it.quantity || 0);
               const availableAssets = (it.assets || []).filter((a: any) =>
                 a.status === "AVAILABLE" && a.condition !== "BAD" && a.condition !== "DAMAGED"
               );

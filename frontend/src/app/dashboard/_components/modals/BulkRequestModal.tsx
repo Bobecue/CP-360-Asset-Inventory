@@ -442,11 +442,7 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', border: '1px solid #e2e8f0', borderRadius: 8, padding: '0.75rem', backgroundColor: '#f8fafc' }}>
                 {selectedItems.map(item => {
                   const qty = quantities[item.id] || 1;
-                  const selectedSiteObj = sites.find(s => s.name === reqSiteId || s.id === reqSiteId);
-                  const siteStockObj = reqSiteId && item.stockLevels
-                    ? item.stockLevels.find(sl => sl.siteId === reqSiteId || (selectedSiteObj && sl.siteId === selectedSiteObj.id))
-                    : null;
-                  const effectiveStock = siteStockObj ? siteStockObj.quantity : item.stock;
+                  const effectiveStock = item.stock;
                   const isExceeded = qty > effectiveStock;
 
                   const itemCat = (item.category || '').toLowerCase();
