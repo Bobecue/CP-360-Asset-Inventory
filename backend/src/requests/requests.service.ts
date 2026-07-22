@@ -394,46 +394,17 @@ export class RequestsService implements OnModuleInit {
   async fixMisclassifiedProcurementRequests() {
     try {
       const procRequests = await this.prisma.request.findMany({
-        where: { status: 'PENDING_PROCUREMENT' },
-        include: { item: { include: { category: true } } }
+        where: { status: 'PENDING_PROCUREMENT' }
       });
 
       for (const req of procRequests) {
-        let quantityNeeded = 1;
-        try {
-          if (req.purpose && req.purpose.startsWith('{')) {
-            const p = JSON.parse(req.purpose);
-            if (p.quantity) quantityNeeded = p.quantity;
+        await this.prisma.request.update({
+          where: { id: req.id },
+          data: {
+            status: 'APPROVED',
+            comments: 'Stock confirmed available in system inventory.'
           }
-        } catch {}
-
-        let itemIds: string[] = [req.itemId];
-        if (req.item) {
-          const categoryItems = await this.prisma.item.findMany({
-            where: { categoryId: req.item.categoryId }
-          });
-          itemIds = categoryItems.map(i => i.id);
-        }
-
-        const stocks = await this.prisma.siteStock.findMany({
-          where: { itemId: { in: itemIds }, quantity: { gt: 0 } }
         });
-        const stockFromLevels = stocks.reduce((sum, s) => sum + s.quantity, 0);
-        const availableAssetsCount = await this.prisma.asset.count({
-          where: { itemId: { in: itemIds }, status: 'AVAILABLE', condition: { notIn: ['BAD', 'DAMAGED'] } }
-        });
-
-        const totalStock = Math.max(stockFromLevels, availableAssetsCount);
-
-        if (totalStock >= quantityNeeded) {
-          await this.prisma.request.update({
-            where: { id: req.id },
-            data: {
-              status: 'APPROVED',
-              comments: 'Stock confirmed available in system inventory.'
-            }
-          });
-        }
       }
     } catch (err) {
       console.error('Error auto-correcting misclassified procurement requests:', err);

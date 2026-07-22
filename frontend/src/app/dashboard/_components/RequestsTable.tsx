@@ -353,7 +353,7 @@ export function RequestsTable({
   // Actionable requests in current filtered view (Pending, Approved, Ready for pickup)
   const actionableRequestsInView = useMemo(() => {
     return filtered.filter(
-      r => ['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'APPROVED', 'READY_FOR_PICKUP'].includes(r.status as string)
+      r => ['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'APPROVED', 'READY_FOR_PICKUP', 'PENDING_PROCUREMENT'].includes(r.status as string)
     );
   }, [filtered]);
 
@@ -946,7 +946,7 @@ export function RequestsTable({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {canApprove && selectedRequests.some(r => ['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL'].includes(r.status as string)) && (
+            {canApprove && selectedRequests.some(r => ['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'PENDING_PROCUREMENT'].includes(r.status as string)) && (
               <button
                 onClick={handleOpenBulkApproveModal}
                 disabled={isSubmittingBulk}
@@ -970,7 +970,7 @@ export function RequestsTable({
               </button>
             )}
 
-            {canApprove && selectedRequests.some(r => ['APPROVED', 'PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL'].includes(r.status as string)) && (
+            {canApprove && selectedRequests.some(r => ['APPROVED', 'PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'PENDING_PROCUREMENT'].includes(r.status as string)) && (
               <button
                 onClick={handleBulkPreparePickupClick}
                 disabled={isSubmittingBulk}
@@ -994,7 +994,7 @@ export function RequestsTable({
               </button>
             )}
 
-            {canRelease && selectedRequests.some(r => ['READY_FOR_PICKUP', 'APPROVED'].includes(r.status as string)) && (
+            {canRelease && selectedRequests.some(r => ['READY_FOR_PICKUP', 'APPROVED', 'PENDING_PROCUREMENT'].includes(r.status as string)) && (
               <button
                 onClick={handleBulkReleaseClick}
                 disabled={isSubmittingBulk}
