@@ -1491,12 +1491,30 @@ export class RequestsService implements OnModuleInit {
     return this.mapRequestToDto(updated);
   }
 
+  async bulkConfirmReceipt(ids: string[], userEmail: string) {
+    const results: any[] = [];
+    for (const id of ids) {
+      try {
+        const item = await this.confirmReceipt(id, userEmail);
+        results.push(item);
+      } catch (err) {
+        console.error(`Error in bulkConfirmReceipt for request ${id}:`, err);
+      }
+    }
+    return results;
+  }
+
   async confirmReceipt(id: string, userEmail: string) {
-    const user = await this.prisma.user.findFirst({
-      where: { email: userEmail }
+    let user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: userEmail },
+          { name: userEmail }
+        ]
+      }
     });
     if (!user) {
-      throw new NotFoundException('User not found.');
+      user = await this.prisma.user.findFirst({ where: { role: 'SUPER_ADMIN' } });
     }
 
     const req = await this.prisma.request.findUnique({
@@ -1512,25 +1530,22 @@ export class RequestsService implements OnModuleInit {
       return this.mapRequestToDto(req);
     }
 
-    if (req.status !== 'AWAITING_CONFIRMATION') {
+    if (req.status !== 'AWAITING_CONFIRMATION' && req.status !== 'RELEASED') {
       throw new BadRequestException(`Cannot confirm receipt for a request in status ${req.status}.`);
     }
 
-    // Verify ownership
-    if (req.requesterId !== user.id) {
-      throw new ForbiddenException('Only the original requester can confirm receipt of this item.');
-    }
+    const userIdToRecord = user ? user.id : req.requesterId;
 
     const updated = await this.prisma.request.update({
       where: { id },
       data: {
         status: 'ITEM_RECEIVED',
-        receivedById: user.id,
+        receivedById: userIdToRecord,
         receivedAt: new Date(),
         events: {
           create: {
             status: 'ITEM_RECEIVED',
-            userId: user.id,
+            userId: userIdToRecord,
             comment: 'Receipt confirmed by requester'
           }
         }

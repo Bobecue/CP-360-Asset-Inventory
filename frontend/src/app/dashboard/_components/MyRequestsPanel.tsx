@@ -324,23 +324,33 @@ export function MyRequestsPanel({
     if (selectedReqIds.length === 0 || isSubmittingBulk) return;
     setIsSubmittingBulk(true);
     try {
-      const confirmableIds = selectedRequests
-        .filter(r => r.status === 'AWAITING_CONFIRMATION' || r.status === 'RELEASED')
-        .map(r => r.id);
-
-      for (const id of confirmableIds) {
-        try {
+      const userIdentifier = currentUserName || currentUserId || 'superadmin@contactpoint360.com';
+      try {
+        await fetch('http://localhost:3001/requests/bulk-confirm-receipt', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-user': userIdentifier
+          },
+          body: JSON.stringify({ ids: selectedReqIds, userEmail: userIdentifier })
+        });
+      } catch (err) {
+        console.warn('Bulk confirm receipt backend endpoint fallback to loop:', err);
+        for (const id of selectedReqIds) {
           await fetch(`http://localhost:3001/movements/${id}/confirm-receipt`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userEmail: currentUserName || 'superadmin@contactpoint360.com' })
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-user': userIdentifier
+            },
+            body: JSON.stringify({ userEmail: userIdentifier })
           });
-        } catch (err) {
-          console.error(`Error confirming receipt for ${id}:`, err);
         }
       }
       setSelectedReqIds([]);
-      if (typeof window !== 'undefined') window.location.reload();
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
     } catch (err) {
       console.error('Error during bulk confirm receipt:', err);
     } finally {

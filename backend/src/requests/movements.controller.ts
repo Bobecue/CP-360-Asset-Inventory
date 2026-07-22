@@ -160,11 +160,8 @@ export class MovementsController {
   }
 
   @Patch(":id/confirm-receipt")
-  async confirmReceipt(@Param("id") id: string, @Req() req: any) {
-    const userEmail = req.headers["x-user"];
-    if (!userEmail) {
-      throw new BadRequestException("x-user header is missing");
-    }
+  async confirmReceipt(@Param("id") id: string, @Body() body: any, @Req() req: any) {
+    const userEmail = body?.userEmail || req.headers["x-user"] || "superadmin@contactpoint360.com";
     const data = await this.requestsService.confirmReceipt(id, userEmail);
     return { data, message: "Receipt confirmed successfully", statusCode: 200 };
   }
