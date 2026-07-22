@@ -1,5 +1,39 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { CatalogItem } from "@/types/dashboard";
+
+// ── Count-Up Animation Hook for Premium Stats Numbers (matching Reports & Logs) ──
+function useCountUp(target: number, duration = 800, enabled = true) {
+  const [count, setCount] = useState(0);
+  const frameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!enabled || target === 0) {
+      setCount(target);
+      return;
+    }
+    const startTime = performance.now();
+    const tick = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      setCount(Math.round(ease * target));
+      if (progress < 1) {
+        frameRef.current = requestAnimationFrame(tick);
+      }
+    };
+    frameRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    };
+  }, [target, duration, enabled]);
+
+  return count;
+}
+
+function AnimatedNumber({ value }: { value: number }) {
+  const animatedValue = useCountUp(value);
+  return <>{animatedValue}</>;
+}
 
 interface LowStockAlertsTabProps {
   isUsingMockData: boolean;
@@ -259,7 +293,7 @@ export const LowStockAlertsTab = ({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+    <div className="table-container-fade" style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
       {/* Toast Notice */}
       {requestSuccessNotice && (
         <div style={{
@@ -297,7 +331,7 @@ export const LowStockAlertsTab = ({
         >
           <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
             <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Total Low Stock</span>
-            <span style={{ fontSize: "1.65rem", fontWeight: 800, color: "#0f172a" }}>{stats.totalAlerts}</span>
+            <span style={{ fontSize: "1.65rem", fontWeight: 800, color: "#0f172a" }}><AnimatedNumber value={stats.totalAlerts} /></span>
             <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>Items at or below reorder threshold</span>
           </div>
           <div style={{ width: 42, height: 42, borderRadius: 10, backgroundColor: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -322,7 +356,7 @@ export const LowStockAlertsTab = ({
         >
           <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
             <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#be123c", textTransform: "uppercase" }}>Critical Stock Alerts</span>
-            <span style={{ fontSize: "1.65rem", fontWeight: 800, color: "#e11d48" }}>{stats.criticalAlerts}</span>
+            <span style={{ fontSize: "1.65rem", fontWeight: 800, color: "#e11d48" }}><AnimatedNumber value={stats.criticalAlerts} /></span>
             <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>Out of stock or ≤ 50% threshold</span>
           </div>
           <div style={{ width: 42, height: 42, borderRadius: 10, backgroundColor: "#fff1f2", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -347,7 +381,7 @@ export const LowStockAlertsTab = ({
         >
           <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
             <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#b45309", textTransform: "uppercase" }}>Warning Alerts</span>
-            <span style={{ fontSize: "1.65rem", fontWeight: 800, color: "#d97706" }}>{stats.warningAlerts}</span>
+            <span style={{ fontSize: "1.65rem", fontWeight: 800, color: "#d97706" }}><AnimatedNumber value={stats.warningAlerts} /></span>
             <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>Approaching reorder point</span>
           </div>
           <div style={{ width: 42, height: 42, borderRadius: 10, backgroundColor: "#fffbeb", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -367,7 +401,7 @@ export const LowStockAlertsTab = ({
         }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
             <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Items to Reorder</span>
-            <span style={{ fontSize: "1.65rem", fontWeight: 800, color: "#210cae" }}>{stats.totalItemsToReorder}</span>
+            <span style={{ fontSize: "1.65rem", fontWeight: 800, color: "#210cae" }}><AnimatedNumber value={stats.totalItemsToReorder} /></span>
             <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>Units needed for safe buffer</span>
           </div>
           <div style={{ width: 42, height: 42, borderRadius: 10, backgroundColor: "#eef2ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -521,7 +555,7 @@ export const LowStockAlertsTab = ({
                   const percent = Math.min(100, Math.round((item.currentQuantity / Math.max(1, item.reorderPoint)) * 100));
 
                   return (
-                    <tr key={item.id} style={{ transition: "background-color 0.15s ease" }}>
+                    <tr key={item.id} className="table-row-hover" style={{ transition: "background-color 0.15s ease" }}>
                       {/* Item Info */}
                       <td style={{ padding: "0.85rem 1rem" }}>
                         <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.88rem" }}>{item.name}</div>
@@ -674,6 +708,52 @@ export const LowStockAlertsTab = ({
           </div>
         )}
       </div>
+
+      {/* Dynamic Keyframes & Transition Animations Matching Reports & Logs */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        /* 3D Folding Unfolding Entrance animation for table container & views */
+        @keyframes containerEntrance {
+          from {
+            opacity: 0;
+            transform: perspective(1200px) rotateX(-5deg) translateY(12px);
+          }
+          to {
+            opacity: 1;
+            transform: perspective(1200px) rotateX(0deg) translateY(0);
+          }
+        }
+        .table-container-fade {
+          transform-origin: top center;
+          animation: containerEntrance 0.48s cubic-bezier(0.23, 1, 0.32, 1) both;
+        }
+
+        /* Premium sliding lift row hover effect matching Reports & Logs */
+        .table-row-hover {
+          transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1),
+                      box-shadow 0.2s cubic-bezier(0.25, 1, 0.5, 1),
+                      background-color 0.2s ease !important;
+          position: relative;
+        }
+        .table-row-hover:hover {
+          background-color: #f8fafc !important;
+          background: #f8fafc !important;
+          transform: translateY(-2px) scale(1.002);
+          box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05), 0 0 0 1px rgba(77, 201, 230, 0.18) !important;
+          z-index: 5;
+        }
+
+        /* Interactive action button hover effects */
+        .btn-hover-effect {
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        .btn-hover-effect:hover {
+          transform: translateY(-1.5px);
+          box-shadow: 0 4px 12px rgba(33, 12, 174, 0.18);
+        }
+        .btn-hover-effect:active {
+          transform: translateY(0);
+        }
+      ` }} />
     </div>
   );
 };
