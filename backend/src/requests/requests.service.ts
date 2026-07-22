@@ -924,6 +924,153 @@ export class RequestsService implements OnModuleInit {
     return results;
   }
 
+  async bulkPreparePickup(ids: string[], staffEmail: string, comment?: string) {
+    const user = await this.prisma.user.findUnique({ where: { email: staffEmail } });
+    if (!user) throw new NotFoundException('User not found');
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN' && user.role !== 'INVENTORY_STAFF') {
+      throw new ForbiddenException('Unauthorized role for prepare pickup.');
+    }
+
+    const results: any[] = [];
+    for (const id of ids) {
+      try {
+        const req = await this.prisma.request.findUnique({ where: { id } });
+        if (!req) continue;
+        const currentStatus = req.status as string;
+        if (currentStatus === 'APPROVED' || currentStatus === 'PENDING' || currentStatus === 'PENDING_APPROVAL' || currentStatus === 'PENDING_OPS_APPROVAL') {
+          const updated = await this.prisma.request.update({
+            where: { id },
+            data: {
+              status: 'READY_FOR_PICKUP',
+              comments: comment || 'Item staged and ready for pickup',
+              events: {
+                create: {
+                  status: 'READY_FOR_PICKUP',
+                  comment: comment || 'Item staged and ready for pickup',
+                  userId: user.id
+                }
+              }
+            },
+            include: this.requestInclude
+          });
+          results.push(this.mapRequestToDto(updated));
+        }
+      } catch (err) {
+        console.error(`Error in bulkPreparePickup for request ${id}:`, err);
+      }
+    }
+    return results;
+  }
+
+  async bulkRelease(ids: string[], releaserEmail: string, comment?: string) {
+    const user = await this.prisma.user.findUnique({ where: { email: releaserEmail } });
+    if (!user) throw new NotFoundException('Releaser user not found');
+    if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN' && user.role !== 'INVENTORY_STAFF') {
+      throw new ForbiddenException('Unauthorized role for bulk releasing.');
+    }
+
+    const results: any[] = [];
+    for (const id of ids) {
+      try {
+        const req = await this.prisma.request.findUnique({
+          where: { id },
+          include: { item: { include: { category: true } } }
+        });
+        if (!req) continue;
+
+        const isConsumable = req.item?.category?.type === 'CONSUMABLE';
+        if (isConsumable) {
+          const updated = await this.prisma.request.update({
+            where: { id },
+            data: {
+              status: 'AWAITING_CONFIRMATION',
+              releasedById: user.id,
+              releasedAt: new Date(),
+              assetId: null,
+              events: {
+                create: [
+                  { status: 'RELEASED', userId: user.id, comment: comment || 'Bulk released' },
+                  { status: 'AWAITING_CONFIRMATION', comment: 'Awaiting confirmation of receipt by requester' }
+                ]
+              }
+            },
+            include: this.requestInclude
+          });
+          results.push(this.mapRequestToDto(updated));
+        } else {
+          // Find available asset for non-consumable item
+          const availableAsset = await this.prisma.asset.findFirst({
+            where: { itemId: req.itemId, status: 'AVAILABLE' }
+          });
+
+          let assignedAssetId = availableAsset?.id || null;
+          if (availableAsset) {
+            await this.prisma.asset.update({
+              where: { id: availableAsset.id },
+              data: { status: 'ASSIGNED' }
+            });
+          }
+
+          const updated = await this.prisma.request.update({
+            where: { id },
+            data: {
+              status: 'AWAITING_CONFIRMATION',
+              releasedById: user.id,
+              releasedAt: new Date(),
+              assetId: assignedAssetId,
+              events: {
+                create: [
+                  { status: 'RELEASED', userId: user.id, comment: comment || 'Bulk released' },
+                  { status: 'AWAITING_CONFIRMATION', comment: 'Awaiting confirmation of receipt by requester' }
+                ]
+              }
+            },
+            include: this.requestInclude
+          });
+          results.push(this.mapRequestToDto(updated));
+        }
+      } catch (err) {
+        console.error(`Error in bulkRelease for request ${id}:`, err);
+      }
+    }
+    return results;
+  }
+
+  async bulkCancel(ids: string[], userEmail: string, comment?: string) {
+    const user = await this.prisma.user.findUnique({ where: { email: userEmail } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const results: any[] = [];
+    for (const id of ids) {
+      try {
+        const req = await this.prisma.request.findUnique({ where: { id } });
+        if (!req) continue;
+        const currentStatus = req.status as string;
+        if (['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'APPROVED', 'READY_FOR_PICKUP'].includes(currentStatus)) {
+          const updated = await this.prisma.request.update({
+            where: { id },
+            data: {
+              status: 'CANCELLED',
+              comments: comment || 'Cancelled in bulk action',
+              events: {
+                create: {
+                  status: 'CANCELLED',
+                  comment: comment || 'Cancelled in bulk action',
+                  userId: user.id
+                }
+              }
+            },
+            include: this.requestInclude
+          });
+          results.push(this.mapRequestToDto(updated));
+        }
+      } catch (err) {
+        console.error(`Error in bulkCancel for request ${id}:`, err);
+      }
+    }
+    return results;
+  }
+
   async preparePickup(id: string, staffEmail: string, comment?: string) {
     const u = await this.prisma.user.findUnique({ where: { email: staffEmail } });
     if (!u) {

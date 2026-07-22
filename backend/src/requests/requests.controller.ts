@@ -61,6 +61,27 @@ export class RequestsController {
     return { data, message: `Successfully bulk approved ${data.length} request(s)`, statusCode: 200 };
   }
 
+  @Post("bulk-prepare-pickup")
+  async bulkPreparePickup(@Body() body: { ids: string[]; staffEmail?: string; comment?: string }, @ReqCtx() req: any) {
+    const staffEmail = body.staffEmail || req.headers["x-user"] || "superadmin@contactpoint360.com";
+    const data = await this.svc.bulkPreparePickup(body.ids || [], staffEmail, body.comment);
+    return { data, message: `Successfully staged ${data.length} request(s) for pickup`, statusCode: 200 };
+  }
+
+  @Post("bulk-release")
+  async bulkRelease(@Body() body: { ids: string[]; releaserEmail?: string; comment?: string }, @ReqCtx() req: any) {
+    const releaserEmail = body.releaserEmail || req.headers["x-user"] || "superadmin@contactpoint360.com";
+    const data = await this.svc.bulkRelease(body.ids || [], releaserEmail, body.comment);
+    return { data, message: `Successfully bulk released ${data.length} request(s)`, statusCode: 200 };
+  }
+
+  @Post("bulk-cancel")
+  async bulkCancel(@Body() body: { ids: string[]; userEmail?: string; comment?: string }, @ReqCtx() req: any) {
+    const userEmail = body.userEmail || req.headers["x-user"] || "superadmin@contactpoint360.com";
+    const data = await this.svc.bulkCancel(body.ids || [], userEmail, body.comment);
+    return { data, message: `Successfully cancelled ${data.length} request(s)`, statusCode: 200 };
+  }
+
   @Post([":id/approve", ":id/approved", ":id/ready_for_pickup"])
   async approve(@Param("id") id: string, @Body() body: any) {
     const data = await this.svc.approve(id, body.comment, body.approverEmail);

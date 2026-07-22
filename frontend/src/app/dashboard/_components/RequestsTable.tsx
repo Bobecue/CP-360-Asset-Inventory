@@ -71,6 +71,9 @@ interface RequestsTableProps {
   currentUserId?: string;
   currentUserRole: string;
   onBulkApprove?: (selectedIds: string[]) => Promise<void>;
+  onBulkPreparePickup?: (selectedIds: string[]) => Promise<void>;
+  onBulkRelease?: (selectedIds: string[]) => Promise<void>;
+  onBulkCancel?: (selectedIds: string[], comment?: string) => Promise<void>;
 }
 
 const getCategoryIcon = (category?: string, name?: string) => {
@@ -216,7 +219,10 @@ export function RequestsTable({
   formatRelativeTime,
   currentUserId,
   currentUserRole,
-  onBulkApprove
+  onBulkApprove,
+  onBulkPreparePickup,
+  onBulkRelease,
+  onBulkCancel
 }: RequestsTableProps) {
   const [search, setSearch] = useState('');
   const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
@@ -341,10 +347,10 @@ export function RequestsTable({
   const paginated = sorted.slice((page - 1) * itemsPerPage, page * itemsPerPage);
   const totalPages = Math.ceil(sorted.length / itemsPerPage);
 
-  // Approvable requests in current filtered view
-  const approvableRequestsInView = useMemo(() => {
+  // Actionable requests in current filtered view (Pending, Approved, Ready for pickup)
+  const actionableRequestsInView = useMemo(() => {
     return filtered.filter(
-      r => r.status === 'PENDING' || (r.status as string) === 'PENDING_APPROVAL' || r.status === 'PENDING_OPS_APPROVAL'
+      r => ['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'APPROVED', 'READY_FOR_PICKUP'].includes(r.status as string)
     );
   }, [filtered]);
 
@@ -352,8 +358,8 @@ export function RequestsTable({
     return allRequests.filter(r => selectedReqIds.includes(r.id));
   }, [allRequests, selectedReqIds]);
 
-  const isAllApprovableSelected = approvableRequestsInView.length > 0 &&
-    approvableRequestsInView.every(r => selectedReqIds.includes(r.id));
+  const isAllActionableSelected = actionableRequestsInView.length > 0 &&
+    actionableRequestsInView.every(r => selectedReqIds.includes(r.id));
 
   // Determine if all selected items belong to the same employee
   const singleRequesterName = useMemo(() => {
@@ -382,6 +388,63 @@ export function RequestsTable({
       setSelectedReqIds([]);
     } catch (err) {
       console.error('Error during bulk approve:', err);
+    } finally {
+      setIsSubmittingBulk(false);
+    }
+  };
+
+  const handleBulkPreparePickupClick = async () => {
+    if (selectedReqIds.length === 0 || isSubmittingBulk) return;
+    setIsSubmittingBulk(true);
+    try {
+      if (onBulkPreparePickup) {
+        await onBulkPreparePickup(selectedReqIds);
+      } else {
+        for (const id of selectedReqIds) {
+          await onReview(id, 'READY_FOR_PICKUP', 'Bulk staged for pickup');
+        }
+      }
+      setSelectedReqIds([]);
+    } catch (err) {
+      console.error('Error during bulk prepare pickup:', err);
+    } finally {
+      setIsSubmittingBulk(false);
+    }
+  };
+
+  const handleBulkReleaseClick = async () => {
+    if (selectedReqIds.length === 0 || isSubmittingBulk) return;
+    setIsSubmittingBulk(true);
+    try {
+      if (onBulkRelease) {
+        await onBulkRelease(selectedReqIds);
+      } else {
+        for (const id of selectedReqIds) {
+          await onRelease(id, '');
+        }
+      }
+      setSelectedReqIds([]);
+    } catch (err) {
+      console.error('Error during bulk release:', err);
+    } finally {
+      setIsSubmittingBulk(false);
+    }
+  };
+
+  const handleBulkCancelClick = async () => {
+    if (selectedReqIds.length === 0 || isSubmittingBulk) return;
+    setIsSubmittingBulk(true);
+    try {
+      if (onBulkCancel) {
+        await onBulkCancel(selectedReqIds, 'Bulk cancelled');
+      } else {
+        for (const id of selectedReqIds) {
+          await onReview(id, 'REJECTED', 'Bulk cancelled');
+        }
+      }
+      setSelectedReqIds([]);
+    } catch (err) {
+      console.error('Error during bulk cancel:', err);
     } finally {
       setIsSubmittingBulk(false);
     }
@@ -862,8 +925,8 @@ export function RequestsTable({
             )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            {canApprove && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {canApprove && selectedRequests.some(r => ['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL'].includes(r.status as string)) && (
               <button
                 onClick={handleBulkApproveClick}
                 disabled={isSubmittingBulk}
@@ -872,18 +935,90 @@ export function RequestsTable({
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: 8,
-                  padding: '0.45rem 1.1rem',
-                  fontSize: '0.82rem',
+                  padding: '0.45rem 0.95rem',
+                  fontSize: '0.78rem',
                   fontWeight: 700,
                   cursor: isSubmittingBulk ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.4rem',
-                  boxShadow: '0 2px 6px rgba(22, 163, 74, 0.4)',
+                  gap: '0.35rem',
+                  boxShadow: '0 2px 6px rgba(22, 163, 74, 0.3)',
                   transition: 'all 0.2s ease'
                 }}
               >
-                {isSubmittingBulk ? 'Approving...' : `✅ Bulk Approve (${selectedReqIds.length})`}
+                {isSubmittingBulk ? 'Processing...' : `✅ Bulk Approve`}
+              </button>
+            )}
+
+            {canApprove && selectedRequests.some(r => ['APPROVED', 'PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL'].includes(r.status as string)) && (
+              <button
+                onClick={handleBulkPreparePickupClick}
+                disabled={isSubmittingBulk}
+                style={{
+                  backgroundColor: '#7c3aed',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '0.45rem 0.95rem',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: isSubmittingBulk ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  boxShadow: '0 2px 6px rgba(124, 58, 237, 0.3)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {isSubmittingBulk ? 'Processing...' : `📦 Prepare Pickup`}
+              </button>
+            )}
+
+            {canRelease && selectedRequests.some(r => ['READY_FOR_PICKUP', 'APPROVED'].includes(r.status as string)) && (
+              <button
+                onClick={handleBulkReleaseClick}
+                disabled={isSubmittingBulk}
+                style={{
+                  backgroundColor: '#0284c7',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '0.45rem 0.95rem',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: isSubmittingBulk ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  boxShadow: '0 2px 6px rgba(2, 132, 199, 0.3)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {isSubmittingBulk ? 'Processing...' : `🚀 Bulk Release`}
+              </button>
+            )}
+
+            {selectedRequests.some(r => ['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'APPROVED', 'READY_FOR_PICKUP'].includes(r.status as string)) && (
+              <button
+                onClick={handleBulkCancelClick}
+                disabled={isSubmittingBulk}
+                style={{
+                  backgroundColor: '#dc2626',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '0.45rem 0.95rem',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: isSubmittingBulk ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  boxShadow: '0 2px 6px rgba(220, 38, 38, 0.3)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {isSubmittingBulk ? 'Processing...' : `🚫 Cancel Orders`}
               </button>
             )}
 
@@ -894,13 +1029,13 @@ export function RequestsTable({
                 color: '#94a3b8',
                 border: '1px solid #475569',
                 borderRadius: 8,
-                padding: '0.45rem 0.85rem',
-                fontSize: '0.8rem',
+                padding: '0.45rem 0.75rem',
+                fontSize: '0.78rem',
                 fontWeight: 600,
                 cursor: 'pointer'
               }}
             >
-              Clear Selection
+              Deselect
             </button>
           </div>
         </div>
@@ -915,16 +1050,16 @@ export function RequestsTable({
                 <th style={{ width: '40px', padding: '0.85rem 0.5rem', textAlign: 'center' }}>
                   <input
                     type="checkbox"
-                    checked={isAllApprovableSelected}
+                    checked={isAllActionableSelected}
                     onChange={(e) => {
                       if (e.target.checked) {
-                        setSelectedReqIds(approvableRequestsInView.map(r => r.id));
+                        setSelectedReqIds(actionableRequestsInView.map(r => r.id));
                       } else {
                         setSelectedReqIds([]);
                       }
                     }}
                     style={{ cursor: 'pointer', accentColor: '#3b82f6', width: '16px', height: '16px' }}
-                    title="Select all approvable requests"
+                    title="Select all active requests"
                   />
                 </th>
               )}
@@ -995,7 +1130,7 @@ export function RequestsTable({
               >
                 {canApprove && (
                   <td onClick={(e) => e.stopPropagation()} style={{ width: '40px', padding: '0.85rem 0.5rem', textAlign: 'center' }}>
-                    {(req.status === 'PENDING' || (req.status as string) === 'PENDING_APPROVAL' || req.status === 'PENDING_OPS_APPROVAL') ? (
+                    {['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'APPROVED', 'READY_FOR_PICKUP'].includes(req.status as string) ? (
                       <input
                         type="checkbox"
                         checked={selectedReqIds.includes(req.id)}

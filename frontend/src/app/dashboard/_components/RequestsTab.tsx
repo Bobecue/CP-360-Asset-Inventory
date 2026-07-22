@@ -554,6 +554,126 @@ export function RequestsTab({
     }
   };
 
+  // Bulk Prepare Pickup
+  const handleBulkPreparePickup = async (selectedIds: string[]) => {
+    setIsSubmittingReview(true);
+    try {
+      let updatedList: any[] = [];
+      try {
+        const response = await fetch('http://localhost:3001/requests/bulk-prepare-pickup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ids: selectedIds,
+            staffEmail: currentUser.email,
+            comment: 'Bulk staged for pickup'
+          })
+        });
+        if (response.ok) {
+          const json = await response.json();
+          updatedList = json.data || [];
+        }
+      } catch (err) {
+        console.warn('Backend bulk prepare pickup error, fallback loop:', err);
+      }
+
+      if (updatedList.length > 0) {
+        const updatedMap = new Map(updatedList.map(item => [item.id, item]));
+        setAllRequests(prev => prev.map(r => updatedMap.get(r.id) || r));
+      } else {
+        for (const id of selectedIds) {
+          await handleReviewRequest(id, 'READY_FOR_PICKUP', 'Bulk staged for pickup');
+        }
+      }
+
+      setRefreshTrigger(prev => prev + 1);
+      if (onRefreshCatalog) onRefreshCatalog();
+      if (onRefreshNotifications) onRefreshNotifications();
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
+  // Bulk Release
+  const handleBulkRelease = async (selectedIds: string[]) => {
+    setIsSubmittingReview(true);
+    try {
+      let updatedList: any[] = [];
+      try {
+        const response = await fetch('http://localhost:3001/requests/bulk-release', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ids: selectedIds,
+            releaserEmail: currentUser.email,
+            comment: 'Bulk released'
+          })
+        });
+        if (response.ok) {
+          const json = await response.json();
+          updatedList = json.data || [];
+        }
+      } catch (err) {
+        console.warn('Backend bulk release error, fallback loop:', err);
+      }
+
+      if (updatedList.length > 0) {
+        const updatedMap = new Map(updatedList.map(item => [item.id, item]));
+        setAllRequests(prev => prev.map(r => updatedMap.get(r.id) || r));
+      } else {
+        for (const id of selectedIds) {
+          await handleReleaseRequest(id, '');
+        }
+      }
+
+      setRefreshTrigger(prev => prev + 1);
+      if (onRefreshCatalog) onRefreshCatalog();
+      if (onRefreshNotifications) onRefreshNotifications();
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
+  // Bulk Cancel
+  const handleBulkCancel = async (selectedIds: string[], comment?: string) => {
+    setIsSubmittingReview(true);
+    try {
+      let updatedList: any[] = [];
+      try {
+        const response = await fetch('http://localhost:3001/requests/bulk-cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ids: selectedIds,
+            userEmail: currentUser.email,
+            comment: comment || 'Bulk cancelled'
+          })
+        });
+        if (response.ok) {
+          const json = await response.json();
+          updatedList = json.data || [];
+        }
+      } catch (err) {
+        console.warn('Backend bulk cancel error, fallback loop:', err);
+      }
+
+      if (updatedList.length > 0) {
+        const updatedMap = new Map(updatedList.map(item => [item.id, item]));
+        setAllRequests(prev => prev.map(r => updatedMap.get(r.id) || r));
+      } else {
+        for (const id of selectedIds) {
+          await handleReviewRequest(id, 'REJECTED', comment || 'Bulk cancelled');
+        }
+      }
+
+      setRefreshTrigger(prev => prev + 1);
+      if (onRefreshCatalog) onRefreshCatalog();
+      if (onRefreshNotifications) onRefreshNotifications();
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
   // Release Request
   const handleReleaseRequest = async (id: string, assetId: string) => {
     setIsSubmittingReview(true);
@@ -1213,6 +1333,9 @@ export function RequestsTab({
               onReview={handleReviewRequest}
               onRelease={handleReleaseRequest}
               onBulkApprove={handleBulkApprove}
+              onBulkPreparePickup={handleBulkPreparePickup}
+              onBulkRelease={handleBulkRelease}
+              onBulkCancel={handleBulkCancel}
               onExport={handleExportPDF}
               onReturn={handleOpenReturnFromTable}
               onRowClick={(req) => {
