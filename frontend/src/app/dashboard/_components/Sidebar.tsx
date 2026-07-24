@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { RoleBadge, EidBadge } from "@/types/dashboard";
 
 interface SidebarProps {
   activeTab: string;
@@ -126,6 +127,20 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
       title: "System",
       visible: role === "SUPER_ADMIN" || role === "ADMIN" || role === "INVENTORY_STAFF",
       items: [
+        { id: "suppliers", label: "Supplier Module", visible: role === "SUPER_ADMIN" || role === "ADMIN" || role === "INVENTORY_STAFF", icon: (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" fill="url(#brand-grad-sup)" fillOpacity="0.16" stroke="#210cae" strokeWidth="1.8" />
+            <polyline points="3.29 7 12 12 20.71 7" stroke="#4dc9e6" strokeWidth="1.8" />
+            <line x1="12" y1="22" x2="12" y2="12" stroke="#210cae" strokeWidth="1.8" />
+            <circle cx="12" cy="12" r="2.5" fill="#4dc9e6" stroke="#210cae" strokeWidth="1.2" />
+            <defs>
+              <linearGradient id="brand-grad-sup" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#4dc9e6" />
+                <stop offset="100%" stopColor="#210cae" />
+              </linearGradient>
+            </defs>
+          </svg>
+        ) },
         { id: "users", label: "User Management", visible: role === "SUPER_ADMIN", icon: (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M17 21V19C17 16.7909 15.2091 15 13 15H5C2.79086 15 1 16.7909 1 19V21" stroke="#210cae" />
@@ -366,7 +381,12 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
                           onMouseEnter={(e) => { if (activeTab !== "catalog") e.currentTarget.style.backgroundColor = "#f1f5f9"; }}
                           onMouseLeave={(e) => { if (activeTab !== "catalog") e.currentTarget.style.backgroundColor = "transparent"; }}
                         >
-                          <span>📦 Catalog Inventory</span>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                            <line x1="12" y1="22.08" x2="12" y2="12"/>
+                          </svg>
+                          <span>Catalog Inventory</span>
                         </button>
 
                         <button
@@ -382,7 +402,13 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
                           onMouseEnter={(e) => { if (activeTab !== "deployments") e.currentTarget.style.backgroundColor = "#f1f5f9"; }}
                           onMouseLeave={(e) => { if (activeTab !== "deployments") e.currentTarget.style.backgroundColor = "transparent"; }}
                         >
-                          <span>🚀 Asset Deployments</span>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+                            <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-3.05 11a22.35 22.35 0 0 1-3.95 2z"/>
+                            <path d="M9 12l-2 2"/>
+                            <path d="M15 9l-2 2"/>
+                          </svg>
+                          <span>Asset Deployments</span>
                         </button>
                       </div>
                     )}
@@ -466,9 +492,12 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
                 }}
               />
             </div>
-            <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-              <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }}>{name}</span>
-              <span style={{ fontSize: "0.68rem", color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{employeeId} • {getRoleLabel(role)}</span>
+            <div style={{ display: "flex", flexDirection: "column", minWidth: 0, gap: "0.2rem" }}>
+              <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }}>{name}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", flexWrap: "wrap" }}>
+                <RoleBadge role={role} size="sm" />
+                <EidBadge employeeId={employeeId} size="sm" />
+              </div>
             </div>
           </div>
         )}

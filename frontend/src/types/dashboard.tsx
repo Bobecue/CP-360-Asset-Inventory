@@ -1,3 +1,5 @@
+import React from "react";
+
 // ─── Shared types & mock data for the Dashboard ──────────────────────────────
 
 export interface RequestItem {
@@ -39,6 +41,29 @@ export interface SiteStock {
   site?: { id: string; name: string; prefix: string } | null;
 }
 
+export interface Supplier {
+  id: string;
+  supplierId?: string | null;
+  name: string;
+  contactPerson?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  province?: string | null;
+  country?: string | null;
+  leadTimeDays?: number;
+  assets?: any[];
+  items?: any[];
+  _count?: {
+    assets?: number;
+    items?: number;
+    purchaseOrders?: number;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface CatalogItem {
   id: string;
   name: string;
@@ -47,6 +72,8 @@ export interface CatalogItem {
   unitPrice: number;
   leadTimeDays: number;
   categoryId: string;
+  supplierId?: string | null;
+  supplier?: { id: string; name: string; supplierId?: string | null } | null;
   category?: { id: string; name: string; prefix: string; type: "CONSUMABLE" | "NON_CONSUMABLE" } | null;
   stockLevels?: SiteStock[] | null;
   assets?: any[] | null;
@@ -231,20 +258,51 @@ export const mockNotifications: DbNotification[] = [
   },
 ];
 
-// ─── Pure helper functions ────────────────────────────────────────────────────
+// ─── Pure helper functions & Tag Components ─────────────────────────────────
 
 export const getRoleBadgeStyle = (role: string): React.CSSProperties => {
   switch (role) {
     case "SUPER_ADMIN":
-      return { background: "linear-gradient(135deg, #210cae 0%, #4dc9e6 100%)", color: "#ffffff", fontWeight: 700 };
-    case "ADMIN":
-      return { backgroundColor: "#e0e7ff", color: "#4338ca", fontWeight: 600 };
+      return {
+        background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%)",
+        color: "#ffffff",
+        fontWeight: 700,
+        border: "1px solid rgba(165, 180, 252, 0.35)",
+        boxShadow: "0 2px 6px rgba(49, 46, 129, 0.25)",
+      };
+    case "ADMIN": // Ops Manager
+      return {
+        background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)",
+        color: "#3730a3",
+        fontWeight: 700,
+        border: "1px solid #c7d2fe",
+        boxShadow: "0 1px 3px rgba(67, 56, 202, 0.1)",
+      };
     case "INVENTORY_STAFF":
-      return { backgroundColor: "#d1fae5", color: "#065f46", fontWeight: 600 };
+      return {
+        background: "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)",
+        color: "#047857",
+        fontWeight: 700,
+        border: "1px solid #6ee7b7",
+        boxShadow: "0 1px 3px rgba(4, 120, 87, 0.1)",
+      };
     case "TEAM_LEADER":
-      return { backgroundColor: "#e0f2fe", color: "#0369a1", fontWeight: 600 };
+      return {
+        background: "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)",
+        color: "#0369a1",
+        fontWeight: 700,
+        border: "1px solid #7dd3fc",
+        boxShadow: "0 1px 3px rgba(3, 105, 161, 0.1)",
+      };
+    case "EMPLOYEE":
     default:
-      return { backgroundColor: "#f1f5f9", color: "#475569", fontWeight: 500 };
+      return {
+        background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+        color: "#334155",
+        fontWeight: 600,
+        border: "1px solid #cbd5e1",
+        boxShadow: "0 1px 2px rgba(51, 65, 85, 0.05)",
+      };
   }
 };
 
@@ -257,6 +315,262 @@ export const formatRoleName = (role: string): string => {
     case "EMPLOYEE": return "Employee";
     default: return role;
   }
+};
+
+export const RoleBadge = ({ role, size = "md" }: { role: string; size?: "sm" | "md" | "lg" }) => {
+  const iconSize = size === "sm" ? 11 : size === "lg" ? 14 : 12;
+
+  const renderRoleIcon = (r: string) => {
+    switch (r) {
+      case "SUPER_ADMIN":
+        return (
+          <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+          </svg>
+        );
+      case "ADMIN": // Ops Manager
+        return (
+          <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
+        );
+      case "INVENTORY_STAFF":
+        return (
+          <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+            <line x1="12" y1="22.08" x2="12" y2="12" />
+          </svg>
+        );
+      case "TEAM_LEADER":
+        return (
+          <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 12 2" />
+          </svg>
+        );
+      case "EMPLOYEE":
+      default:
+        return (
+          <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+        );
+    }
+  };
+
+  const style = getRoleBadgeStyle(role);
+  const sizeStyles = {
+    sm: { padding: "0.15rem 0.5rem", fontSize: "0.68rem", gap: "0.3rem" },
+    md: { padding: "0.25rem 0.65rem", fontSize: "0.74rem", gap: "0.35rem" },
+    lg: { padding: "0.35rem 0.85rem", fontSize: "0.82rem", gap: "0.45rem" }
+  }[size];
+
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        borderRadius: "9999px",
+        letterSpacing: "0.01em",
+        whiteSpace: "nowrap",
+        userSelect: "none",
+        transition: "all 0.15s ease",
+        ...sizeStyles,
+        ...style,
+      }}
+    >
+      <span style={{ display: "inline-flex", alignItems: "center" }}>
+        {renderRoleIcon(role)}
+      </span>
+      <span>{formatRoleName(role)}</span>
+    </span>
+  );
+};
+
+export const EidBadge = ({ employeeId, size = "md" }: { employeeId?: string | null; size?: "sm" | "md" }) => {
+  if (!employeeId) {
+    return <span style={{ color: "#cbd5e1" }}>—</span>;
+  }
+
+  const padding = size === "sm" ? "0.12rem 0.45rem" : "0.2rem 0.55rem";
+  const fontSize = size === "sm" ? "0.68rem" : "0.74rem";
+
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "0.3rem",
+        padding: padding,
+        borderRadius: "6px",
+        background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
+        color: "#1e293b",
+        border: "1px solid #cbd5e1",
+        fontSize: fontSize,
+        fontWeight: 700,
+        fontFamily: "var(--font-geist-mono), monospace",
+        letterSpacing: "0.03em",
+        boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
+        whiteSpace: "nowrap"
+      }}
+    >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#210cae" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.9 }}>
+        <rect x="3" y="4" width="18" height="16" rx="2" stroke="#210cae" fill="rgba(33, 12, 174, 0.1)" />
+        <circle cx="9" cy="10" r="2" stroke="#210cae" />
+        <line x1="15" y1="9" x2="17" y2="9" stroke="#4dc9e6" strokeWidth="2" />
+        <line x1="15" y1="13" x2="17" y2="13" stroke="#4dc9e6" strokeWidth="2" />
+        <line x1="7" y1="16" x2="17" y2="16" stroke="#210cae" />
+      </svg>
+      <span>{employeeId}</span>
+    </span>
+  );
+};
+
+export const SiteBadge = ({
+  site,
+  siteName,
+  prefix,
+  size = "md"
+}: {
+  site?: { id?: string; name: string; prefix?: string } | null;
+  siteName?: string;
+  prefix?: string;
+  size?: "sm" | "md";
+}) => {
+  const name = site?.name || siteName;
+  const pfx = site?.prefix || prefix;
+  const pinSize = size === "sm" ? 11 : 12;
+
+  if (!name) {
+    return (
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "0.3rem",
+          padding: size === "sm" ? "0.15rem 0.5rem" : "0.2rem 0.6rem",
+          borderRadius: "9999px",
+          background: "#f8fafc",
+          color: "#64748b",
+          border: "1px solid #e2e8f0",
+          fontSize: size === "sm" ? "0.68rem" : "0.74rem",
+          fontWeight: 500,
+          fontStyle: "italic",
+        }}
+      >
+        <svg width={pinSize} height={pinSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="2" y1="12" x2="22" y2="12" />
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+        </svg>
+        <span>Global Scope</span>
+      </span>
+    );
+  }
+
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "0.35rem",
+        padding: size === "sm" ? "0.15rem 0.55rem" : "0.25rem 0.65rem",
+        borderRadius: "9999px",
+        background: "linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%)",
+        border: "1px solid rgba(77, 201, 230, 0.35)",
+        boxShadow: "0 1px 3px rgba(33, 12, 174, 0.05)",
+        fontSize: size === "sm" ? "0.7rem" : "0.76rem",
+        color: "#0f172a",
+        fontWeight: 600,
+        whiteSpace: "nowrap"
+      }}
+    >
+      <svg width={pinSize} height={pinSize} viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+        <circle cx="12" cy="10" r="3" />
+      </svg>
+      {pfx && (
+        <span
+          style={{
+            fontSize: "0.65rem",
+            fontWeight: 800,
+            background: "linear-gradient(135deg, #210cae 0%, #4dc9e6 100%)",
+            color: "#ffffff",
+            padding: "0.08rem 0.4rem",
+            borderRadius: "4px",
+            letterSpacing: "0.04em",
+            boxShadow: "0 1px 2px rgba(33, 12, 174, 0.2)"
+          }}
+        >
+          {pfx}
+        </span>
+      )}
+      <span>{name}</span>
+    </span>
+  );
+};
+
+export const AssetTagBadge = ({
+  tag,
+  size = "md",
+  variant = "default"
+}: {
+  tag?: string | null;
+  size?: "sm" | "md" | "lg";
+  variant?: "default" | "dark" | "outline";
+}) => {
+  if (!tag) return <span style={{ color: "#cbd5e1" }}>—</span>;
+
+  const sizeStyles = {
+    sm: { padding: "0.12rem 0.45rem", fontSize: "0.68rem", gap: "0.25rem" },
+    md: { padding: "0.2rem 0.55rem", fontSize: "0.74rem", gap: "0.3rem" },
+    lg: { padding: "0.3rem 0.75rem", fontSize: "0.82rem", gap: "0.35rem" }
+  }[size];
+
+  const variantStyles = {
+    default: {
+      background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)",
+      color: "#210cae",
+      border: "1px solid #c7d2fe",
+      boxShadow: "0 1px 3px rgba(33, 12, 174, 0.08)"
+    },
+    dark: {
+      background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)",
+      color: "#38bdf8",
+      border: "1px solid rgba(56, 189, 248, 0.3)",
+      boxShadow: "0 2px 6px rgba(15, 23, 42, 0.25)"
+    },
+    outline: {
+      background: "#ffffff",
+      color: "#334155",
+      border: "1px solid #cbd5e1",
+      boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)"
+    }
+  }[variant];
+
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        borderRadius: "6px",
+        fontFamily: "var(--font-geist-mono), monospace",
+        fontWeight: 700,
+        letterSpacing: "0.04em",
+        whiteSpace: "nowrap",
+        userSelect: "none",
+        ...sizeStyles,
+        ...variantStyles
+      }}
+    >
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+        <line x1="7" y1="7" x2="7.01" y2="7" />
+      </svg>
+      <span>{tag}</span>
+    </span>
+  );
 };
 
 export const getGeneratedPassword = (_eid?: string, _firstName?: string, _lastName?: string): string => {
@@ -358,8 +672,19 @@ export const getCategoryIcon = (categoryName?: string, itemName?: string, size =
     );
   }
 
-  // 8. Headsets / Audio
-  if (text.includes("headset") || text.includes("headphone") || text.includes("audio") || text.includes("earphone") || text.includes("jabra") || text.includes("mic")) {
+  // 8. Mice / Pointers
+  if (text.includes("mouse") || text.includes("mice") || text.includes("pointer") || text.includes("trackpad") || text.includes("logitech") || text.includes("op-720")) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="6" y="3" width="12" height="18" rx="6" fill="url(#brand-grad-icon)" fillOpacity="0.15" stroke="#210cae" />
+        <line x1="12" y1="3" x2="12" y2="8" stroke="#4dc9e6" strokeWidth="2.2" />
+        <path d="M6 9h12" stroke="#210cae" strokeWidth="1.5" />
+      </svg>
+    );
+  }
+
+  // 9. Headsets / Audio
+  if (text.includes("headset") || text.includes("headphone") || text.includes("audio") || text.includes("earphone") || text.includes("jabra")) {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 18v-6a9 9 0 0 1 18 0v6" stroke="#210cae" />
@@ -369,7 +694,7 @@ export const getCategoryIcon = (categoryName?: string, itemName?: string, size =
     );
   }
 
-  // 9. Keyboards
+  // 10. Keyboards
   if (text.includes("keyboard") || text.includes("keypad") || text.includes("kbd")) {
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -379,16 +704,6 @@ export const getCategoryIcon = (categoryName?: string, itemName?: string, size =
         <circle cx="14" cy="10" r="0.75" fill="#210cae" stroke="none" />
         <circle cx="18" cy="10" r="0.75" fill="#4dc9e6" stroke="none" />
         <line x1="8" y1="14" x2="16" y2="14" stroke="#4dc9e6" strokeWidth="2" />
-      </svg>
-    );
-  }
-
-  // 10. Mice / Pointers
-  if (text.includes("mouse") || text.includes("mice") || text.includes("pointer") || text.includes("trackpad") || text.includes("logitech")) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="6" y="3" width="12" height="18" rx="6" fill="url(#brand-grad-icon)" fillOpacity="0.12" stroke="#210cae" />
-        <line x1="12" y1="3" x2="12" y2="9" stroke="#4dc9e6" strokeWidth="2" />
       </svg>
     );
   }
@@ -415,6 +730,77 @@ export const getCategoryIcon = (categoryName?: string, itemName?: string, size =
           <stop offset="100%" stopColor="#210cae" />
         </linearGradient>
       </defs>
+    </svg>
+  );
+};
+
+export const getDepartmentIcon = (departmentName?: string, size = 16) => {
+  const n = (departmentName || "").toLowerCase();
+
+  if (n.includes("recruit") || n.includes("hr") || n.includes("talent") || n.includes("people")) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="8.5" cy="7" r="4"/>
+        <line x1="20" y1="8" x2="20" y2="14"/>
+        <line x1="17" y1="11" x2="23" y2="11"/>
+      </svg>
+    );
+  }
+
+  if (n.includes("it") || n.includes("tech") || n.includes("system") || n.includes("information")) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+        <line x1="8" y1="21" x2="16" y2="21"/>
+        <line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+    );
+  }
+
+  if (n.includes("social") || n.includes("media") || n.includes("marketing") || n.includes("design")) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#db2777" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        <circle cx="18" cy="4" r="3" fill="#ec4899" stroke="none"/>
+      </svg>
+    );
+  }
+
+  if (n.includes("engage") || n.includes("success") || n.includes("client") || n.includes("customer")) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#e11d48" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.72-8.72 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+      </svg>
+    );
+  }
+
+  if (n.includes("finance") || n.includes("account") || n.includes("billing")) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="12" y1="1" x2="12" y2="23"/>
+        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
+    );
+  }
+
+  if (n.includes("logistics") || n.includes("inventory") || n.includes("operation") || n.includes("ops")) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+        <line x1="12" y1="22.08" x2="12" y2="12"/>
+      </svg>
+    );
+  }
+
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
     </svg>
   );
 };

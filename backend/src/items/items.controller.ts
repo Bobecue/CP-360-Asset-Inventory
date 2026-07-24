@@ -44,6 +44,7 @@ export class ItemsController {
       categoryId: string;
       siteId?: string;
       quantity?: number;
+      supplierId?: string;
     },
   ) {
     return this.itemsService.create(body, { userId, ipAddress: getClientIp(req) });
@@ -62,6 +63,7 @@ export class ItemsController {
       unitPrice?: number;
       leadTimeDays?: number;
       categoryId?: string;
+      supplierId?: string | null;
     },
   ) {
     return this.itemsService.update(id, body, { userId, ipAddress: getClientIp(req) });

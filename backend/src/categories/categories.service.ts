@@ -13,6 +13,7 @@ export class CategoriesService implements OnModuleInit {
       { name: "System Units", prefix: "SYS", type: CategoryType.NON_CONSUMABLE, description: "Desktop PCs, System Units, and Workstations" },
       { name: "RAM", prefix: "RAM", type: CategoryType.NON_CONSUMABLE, description: "Memory modules and RAM sticks" },
       { name: "SSD / Storage", prefix: "SSD", type: CategoryType.NON_CONSUMABLE, description: "Solid State Drives and hard drives" },
+      { name: "Headsets", prefix: "HDS", type: CategoryType.CONSUMABLE, description: "Audio headsets, earphones, and microphones" },
       { name: "Keyboards", prefix: "KBD", type: CategoryType.CONSUMABLE, description: "Keyboards and keypads" },
       { name: "Mice", prefix: "MOU", type: CategoryType.CONSUMABLE, description: "Computer mice and pointers" },
       { name: "Cables", prefix: "CAB", type: CategoryType.CONSUMABLE, description: "Cables, adapters, and power cords" },

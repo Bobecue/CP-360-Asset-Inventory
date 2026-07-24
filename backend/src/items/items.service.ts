@@ -130,6 +130,7 @@ export class ItemsService {
       include: {
         category: true,
         stockLevels: true,
+        supplier: true,
         assets: {
           include: {
             assignedTo: true,
@@ -150,6 +151,7 @@ export class ItemsService {
       categoryId: string;
       siteId?: string;
       quantity?: number;
+      supplierId?: string;
     },
     meta?: { userId?: string; ipAddress?: string },
   ) {
@@ -167,12 +169,12 @@ export class ItemsService {
     const sites = await this.prisma.site.findMany();
 
     // Single catalog item logic
-    let finalSku = data.sku?.trim().toUpperCase();
+    let finalSku = data.sku?.trim().toUpperCase() || null;
     let nextNum = 1;
     const categoryPrefix = category.prefix || "AST";
     const prefix = `AST-${categoryPrefix.toUpperCase()}-`;
 
-    if (!finalSku) {
+    if (!isConsumable && !finalSku) {
       // Find all matching items to compute true numerical maximum suffix
       const matchingItems = await this.prisma.item.findMany({
         where: { sku: { startsWith: prefix } },
@@ -180,6 +182,7 @@ export class ItemsService {
       });
       if (matchingItems.length > 0) {
         const numbers = matchingItems.map((item) => {
+          if (!item.sku) return 0;
           const parts = item.sku.split("-");
           const numStr = parts[parts.length - 1];
           const num = parseInt(numStr, 10);
@@ -191,11 +194,11 @@ export class ItemsService {
 
     // Create within a transaction with collision checking loop
     return this.prisma.$transaction(async (tx) => {
-      if (!finalSku) {
+      if (!isConsumable && !finalSku) {
         let isUnique = false;
         while (!isUnique) {
           finalSku = `${prefix}${String(nextNum).padStart(4, "0")}`;
-          const duplicate = await tx.item.findUnique({
+          const duplicate = await tx.item.findFirst({
             where: { sku: finalSku },
           });
           if (!duplicate) {
@@ -204,8 +207,8 @@ export class ItemsService {
             nextNum++;
           }
         }
-      } else {
-        const existingSku = await tx.item.findUnique({
+      } else if (finalSku) {
+        const existingSku = await tx.item.findFirst({
           where: { sku: finalSku },
         });
         if (existingSku) {
@@ -286,6 +289,7 @@ export class ItemsService {
                 condition: "GOOD",
                 tagCode,
                 serialNumber,
+                supplierId: data.supplierId || null,
               },
             });
           }
@@ -320,6 +324,7 @@ export class ItemsService {
       unitPrice?: number;
       leadTimeDays?: number;
       categoryId?: string;
+      supplierId?: string | null;
     },
     meta?: { userId?: string; ipAddress?: string },
   ) {
@@ -338,7 +343,7 @@ export class ItemsService {
     }
 
     if (data.sku) {
-      const existingSku = await this.prisma.item.findUnique({
+      const existingSku = await this.prisma.item.findFirst({
         where: { sku: data.sku.toUpperCase() },
       });
       if (existingSku && existingSku.id !== id) {
@@ -355,8 +360,9 @@ export class ItemsService {
         unitPrice: data.unitPrice,
         leadTimeDays: data.leadTimeDays,
         categoryId: data.categoryId,
+        ...(data.supplierId !== undefined ? { supplierId: data.supplierId || null } : {}),
       },
-      include: { category: true, stockLevels: true },
+      include: { category: true, stockLevels: true, supplier: true },
     });
 
     const changes: string[] = [];

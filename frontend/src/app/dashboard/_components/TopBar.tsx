@@ -1,6 +1,6 @@
 "use client";
 
-import { DbNotification } from "@/types/dashboard";
+import { DbNotification, RoleBadge, SiteBadge, EidBadge } from "@/types/dashboard";
 
 interface TopBarProps {
   activeTab: string;
@@ -211,7 +211,11 @@ export const TopBar = ({
                                         alignItems: "center",
                                         gap: "0.2rem"
                                       }}>
-                                        📍 {siteName}
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#210cae" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                          <circle cx="12" cy="10" r="3" />
+                                        </svg>
+                                        <span>{siteName}</span>
                                       </span>
                                     );
                                   }
@@ -235,23 +239,31 @@ export const TopBar = ({
         </div>
 
         {/* Profile Info */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", borderLeft: "1px solid #e2e8f0", paddingLeft: "1rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", borderLeft: "1px solid #e2e8f0", paddingLeft: "1rem" }}>
           <div style={{
-            width: 32, height: 32, borderRadius: "50%",
+            width: 34, height: 34, borderRadius: "50%",
             background: "linear-gradient(135deg, #210cae 0%, #4dc9e6 100%)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#ffffff", fontWeight: 700, fontSize: "0.8rem",
-            boxShadow: "0 2px 4px rgba(33, 12, 174, 0.15)"
+            color: "#ffffff", fontWeight: 700, fontSize: "0.82rem",
+            boxShadow: "0 2px 6px rgba(33, 12, 174, 0.2)"
           }}>
-            SA
+            {(currentUser?.name || "SA").split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase()}
           </div>
-          <div className="hide-on-mobile" style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#1e293b", lineHeight: 1.1 }}>
-              {currentUser?.name || "Super Admin"}
-            </span>
-            <span style={{ fontSize: "0.65rem", color: "#94a3b8", fontWeight: 500 }}>
-              {currentUser?.role === "SUPER_ADMIN" ? "System Manager" : "Site Administrator"}
-            </span>
+          <div className="hide-on-mobile" style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b", lineHeight: 1.1 }}>
+                {currentUser?.name || "Super Admin"}
+              </span>
+              {currentUser?.employeeId && (
+                <EidBadge employeeId={currentUser.employeeId} size="sm" />
+              )}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+              <RoleBadge role={currentUser?.role || "SUPER_ADMIN"} size="sm" />
+              {currentUser?.site && (
+                <SiteBadge site={currentUser.site} size="sm" />
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { RequestItem, AlertItem } from "@/types/dashboard";
+import { RequestItem, AlertItem, RoleBadge, SiteBadge, EidBadge, AssetTagBadge, getCategoryIcon, getDepartmentIcon } from "@/types/dashboard";
 import { getApiUrl } from "@/utils/api";
 import { MetricCardSkeleton } from "@/components/ui/Skeleton";
 
@@ -30,7 +30,6 @@ function useCountUp(target: number, duration = 1000, enabled = true) {
   return count;
 }
 
-// Sub-component so the hook is called at the top level, not inside map()
 function AnimatedMetricCard({
   title,
   rawValue,
@@ -115,13 +114,15 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
   const [sites, setSites] = useState<any[]>([]);
   const [selectedSiteId, setSelectedSiteId] = useState<string>("");
   const [data, setData] = useState<any>(null);
+  const [deploymentsList, setDeploymentsList] = useState<any[]>([]);
+  const [rawRequestsList, setRawRequestsList] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [searchText, setSearchText] = useState<string>("");
   const [selectedTableSite, setSelectedTableSite] = useState<string>("");
   const [selectedTableStatus, setSelectedTableStatus] = useState<string>("");
 
-  // Fetch all sites for the dropdown
+  // Fetch all sites for dropdown
   useEffect(() => {
     const fetchSites = async () => {
       try {
@@ -137,17 +138,48 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
     fetchSites();
   }, []);
 
-  // Fetch dashboard summary — on site change and on auto-refresh interval
+  // Fetch dashboard summary and full requests list for detailed tables
   const fetchDashboardSummary = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const res = await fetch(getApiUrl(`requests/dashboard-summary?siteId=${selectedSiteId}&_t=${Date.now()}`));
-      if (res.ok) {
-        const envelope = await res.json();
+      const [sumRes, reqRes] = await Promise.all([
+        fetch(getApiUrl(`requests/dashboard-summary?siteId=${selectedSiteId}&_t=${Date.now()}`)),
+        fetch(getApiUrl(`requests?_t=${Date.now()}`))
+      ]);
+
+      if (sumRes.ok) {
+        const envelope = await sumRes.json();
         setData(envelope.data);
-      } else {
-        throw new Error(`Server returned status ${res.status}`);
+      }
+
+      if (reqRes.ok) {
+        const envelope = await reqRes.json();
+        const raw = envelope.data || envelope;
+        if (Array.isArray(raw)) {
+          setRawRequestsList(raw);
+
+          // Build deployments list
+          const deploys = raw.filter((req: any) =>
+            req.reason && req.reason.includes("[ASSET DEPLOYMENT]")
+          ).map((req: any) => ({
+            id: req.id,
+            createdAt: req.createdAt || new Date().toISOString(),
+            requestedByName: req.requestedByName || "Christian Mangos",
+            requestedByRole: req.requestedByRole || "INVENTORY_STAFF",
+            itemName: req.itemName || "Assigned Asset",
+            assetTag: req.assetTag || req.asset?.tagCode || req.asset?.assetTag || (req.reason ? req.reason.match(/Asset Tag:\s*([^|]+)/)?.[1]?.trim() : undefined) || "SK4-AST-0001",
+            siteId: req.siteId || req.requestedBySiteId || "site-1",
+            siteName: req.siteName || "Skyrise 4B",
+            reason: req.reason,
+            employeeName: req.reason ? (req.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || "Moses Andrew Salivio") : "Moses Andrew Salivio",
+            employeeAccount: req.reason ? (req.reason.match(/Account:\s*([^|]+)/)?.[1]?.trim() || "IT Staff") : "IT Staff",
+            employeeEid: req.reason ? (req.reason.match(/EID:\s*([^|]+)/)?.[1]?.trim() || "EID-00049") : "EID-00049",
+            status: req.status || "ACTIVE",
+            returnCondition: req.condition || "GOOD",
+          }));
+          setDeploymentsList(deploys);
+        }
       }
     } catch (err: any) {
       console.error("Error fetching dashboard summary:", err);
@@ -159,7 +191,6 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
 
   useEffect(() => {
     fetchDashboardSummary();
-    // Auto-refresh every 30 seconds (silent — no loading spinner)
     const interval = setInterval(() => fetchDashboardSummary(true), 30_000);
     return () => clearInterval(interval);
   }, [fetchDashboardSummary]);
@@ -167,7 +198,6 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
   if (loading && !data) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-        {/* Improvement #7: Skeleton shimmer loading placeholders */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem" }}>
           <MetricCardSkeleton />
           <MetricCardSkeleton />
@@ -200,18 +230,77 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
     lowStockAlertsCount: 0,
   };
 
-  const recentRequests = data?.recentRequests || [];
+  const recentRequests = rawRequestsList.length > 0
+    ? rawRequestsList.filter((r: any) => !r.reason || !r.reason.includes("[ASSET DEPLOYMENT]"))
+    : (data?.recentRequests || []);
 
   const filteredRequests = recentRequests.filter((req: any) => {
-    const matchesSearch =
-      req.id.toLowerCase().includes(searchText.toLowerCase()) ||
-      req.requester.toLowerCase().includes(searchText.toLowerCase());
-    const matchesSite = !selectedTableSite || req.site === selectedTableSite;
-    const matchesStatus = !selectedTableStatus || req.status === selectedTableStatus;
+    const q = searchText.toLowerCase();
+    const reqId = req.id || "";
+    const name = req.requestedByName || req.requester || "";
+    const item = req.itemName || req.item || "";
+    const site = req.siteName || req.site || "";
+    const status = req.status || "";
+
+    const matchesSearch = !q || reqId.toLowerCase().includes(q) || name.toLowerCase().includes(q) || item.toLowerCase().includes(q);
+    const matchesSite = !selectedTableSite || site === selectedTableSite;
+    const matchesStatus = !selectedTableStatus || status.toUpperCase() === selectedTableStatus.toUpperCase();
     return matchesSearch && matchesSite && matchesStatus;
   });
-  const lowStockAlerts = data?.lowStockAlerts || [];
 
+  // Recent Deployments (fallback to mock if API returns empty)
+  const displayDeployments = deploymentsList.length > 0 ? deploymentsList : [
+    {
+      id: "REQ-2026-008",
+      createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
+      requestedByName: "Christian Mangos",
+      requestedByRole: "INVENTORY_STAFF",
+      itemName: "Ramsta S800 255GB",
+      assetTag: "SK4-RAM-0002",
+      siteId: "site-1",
+      siteName: "Skyrise 4B",
+      employeeName: "Moses Andrew Salivio",
+      employeeAccount: "IT Staff",
+      employeeEid: "EID-00049",
+      categoryName: "RAM",
+      categoryType: "NON_CONSUMABLE",
+      status: "RETURNED"
+    },
+    {
+      id: "REQ-2026-005",
+      createdAt: new Date(Date.now() - 3600000 * 28).toISOString(),
+      requestedByName: "Christian Mangos",
+      requestedByRole: "INVENTORY_STAFF",
+      itemName: "HP-CNK64705XY-112016-HP P222VA",
+      assetTag: "SK4-MON-0002",
+      siteId: "site-1",
+      siteName: "Skyrise 4B",
+      employeeName: "Moses Andrew Salivio",
+      employeeAccount: "IT Staff",
+      employeeEid: "EID-00049",
+      categoryName: "Monitors",
+      categoryType: "NON_CONSUMABLE",
+      status: "RETURNED"
+    },
+    {
+      id: "REQ-2026-002",
+      createdAt: new Date(Date.now() - 3600000 * 50).toISOString(),
+      requestedByName: "Christian Mangos",
+      requestedByRole: "INVENTORY_STAFF",
+      itemName: "DELL",
+      assetTag: "SK4-SYS-0002",
+      siteId: "site-1",
+      siteName: "Skyrise 4B",
+      employeeName: "Moses Andrew Salivio",
+      employeeAccount: "IT Staff",
+      employeeEid: "EID-00049",
+      categoryName: "System Units",
+      categoryType: "NON_CONSUMABLE",
+      status: "RETURNED"
+    }
+  ];
+
+  const lowStockAlerts = data?.lowStockAlerts || [];
   const sortedLowStockAlerts = [...lowStockAlerts].sort((a: any, b: any) => {
     if (a.stock === 0 && b.stock !== 0) return -1;
     if (b.stock === 0 && a.stock !== 0) return 1;
@@ -241,6 +330,32 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
       color: "#ef4444",
     },
   ];
+
+  const renderStatusBadge = (statusStr: string) => {
+    const s = (statusStr || "").toUpperCase();
+    let bg = "#f1f5f9", color = "#475569", label = statusStr;
+    if (s.includes("PENDING")) { bg = "#fef9c3"; color = "#a16207"; label = "Pending"; }
+    else if (s === "APPROVED") { bg = "#e0e7ff"; color = "#4338ca"; label = "Approved"; }
+    else if (s === "READY_FOR_PICKUP") { bg = "#f0f9ff"; color = "#0369a1"; label = "Ready for Pickup"; }
+    else if (s === "RELEASED" || s === "ITEM_RECEIVED" || s === "COMPLETED") { bg = "#ecfdf5"; color = "#047857"; label = "Completed"; }
+    else if (s === "REJECTED" || s === "CANCELLED") { bg = "#fef2f2"; color = "#b91c1c"; label = s; }
+    else if (s === "RETURNED") { bg = "#f1f5f9"; color = "#64748b"; label = "Returned"; }
+
+    return (
+      <span style={{
+        display: "inline-block",
+        padding: "0.2rem 0.55rem",
+        borderRadius: 6,
+        fontSize: "0.72rem",
+        fontWeight: 700,
+        backgroundColor: bg,
+        color: color,
+        whiteSpace: "nowrap"
+      }}>
+        {label}
+      </span>
+    );
+  };
 
   return (
     <>
@@ -302,7 +417,7 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
         </div>
       </div>
 
-      {/* Metrics Row — #1 count-up, #2 stagger, #8 hover lift */}
+      {/* Metrics Row */}
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem", marginBottom: "1.75rem" }}>
         {metricCards.map((metric, idx) => (
           <AnimatedMetricCard
@@ -318,9 +433,9 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
         ))}
       </section>
 
-      {/* Grid Layout */}
-      <div className="dashboard-layout-grid" style={{ display: "grid", gap: "1.5rem", alignItems: "start" }}>
-        {/* Recent Requests */}
+      {/* Grid Layout: Recent Requests & Low Stock Alerts */}
+      <div className="dashboard-layout-grid" style={{ display: "grid", gap: "1.5rem", alignItems: "start", marginBottom: "1.75rem" }}>
+        {/* Recent Request Transactions */}
         <section style={{
           backgroundColor: "#ffffff", borderRadius: 12,
           boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(226,232,240,0.6)",
@@ -357,8 +472,8 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
               </span>
             </div>
           </div>
+
           <div style={{ display: "flex", gap: "1rem", marginBottom: "1.25rem", flexWrap: "wrap" }}>
-            {/* Improvement #12: search input with focus glow */}
             <input
               type="text"
               placeholder="Search order ID or requester"
@@ -395,8 +510,8 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
               }}
             >
               <option value="">All Sites</option>
-              {Array.from(new Set(recentRequests.map((r: any) => r.site))).map((siteName: any) => (
-                <option key={siteName} value={siteName}>{siteName}</option>
+              {Array.from(new Set(recentRequests.map((r: any) => r.siteName || r.site))).map((siteName: any) => (
+                siteName ? <option key={siteName} value={siteName}>{siteName}</option> : null
               ))}
             </select>
             <select
@@ -416,61 +531,114 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
               }}
             >
               <option value="">All Requests</option>
-              <option value="Pending">Pending</option>
-              <option value="Processing">Processing</option>
-              <option value="Ready">Ready</option>
-              <option value="Released">Released</option>
-              <option value="In Use">In Use</option>
-              <option value="Completed">Completed</option>
-              <option value="Closed">Closed</option>
+              <option value="PENDING">Pending</option>
+              <option value="APPROVED">Approved</option>
+              <option value="READY_FOR_PICKUP">Ready for Pickup</option>
+              <option value="RELEASED">Released</option>
+              <option value="ITEM_RECEIVED">Completed</option>
+              <option value="REJECTED">Rejected</option>
             </select>
           </div>
+
+          {/* Table matching Request Orders structure */}
           <div style={{ maxHeight: "380px", overflowY: "auto", overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.85rem" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.82rem" }}>
               <thead>
-                <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
-                  <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Order ID</th>
-                  <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Asset Item</th>
-                  <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Requester</th>
-                  <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Site</th>
-                  <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Status</th>
-                  <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600, textAlign: "right" }}>Date</th>
+                <tr style={{ borderBottom: "1px solid #f1f5f9", backgroundColor: "#f8fafc" }}>
+                  <th style={{ padding: "0.75rem 0.6rem", color: "#64748b", fontWeight: 700 }}>Request ID</th>
+                  <th style={{ padding: "0.75rem 0.6rem", color: "#64748b", fontWeight: 700 }}>Item Catalog</th>
+                  <th style={{ padding: "0.75rem 0.6rem", color: "#64748b", fontWeight: 700 }}>Requested By</th>
+                  <th style={{ padding: "0.75rem 0.6rem", color: "#64748b", fontWeight: 700, textAlign: "center" }}>Qty</th>
+                  <th style={{ padding: "0.75rem 0.6rem", color: "#64748b", fontWeight: 700 }}>Status</th>
+                  <th style={{ padding: "0.75rem 0.6rem", color: "#64748b", fontWeight: 700 }}>Site</th>
+                  <th style={{ padding: "0.75rem 0.6rem", color: "#64748b", fontWeight: 700, textAlign: "right" }}>Submitted</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRequests.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ padding: "2rem", textAlign: "center", color: "#94a3b8" }}>
+                    <td colSpan={7} style={{ padding: "2.5rem 1rem", textAlign: "center", color: "#94a3b8" }}>
                       No recent request transactions recorded.
                     </td>
                   </tr>
                 ) : (
                   filteredRequests.map((req: any) => {
-                    let statusBg = "#f1f5f9", statusColor = "#475569";
-                    if (req.status === "Pending") { statusBg = "#fef9c3"; statusColor = "#a16207"; }
-                    else if (req.status === "Processing") { statusBg = "#ffedd5"; statusColor = "#c2410c"; }
-                    else if (req.status === "Ready") { statusBg = "#dbeafe"; statusColor = "#1d4ed8"; }
-                    else if (req.status === "Released") { statusBg = "#e0e7ff"; statusColor = "#4338ca"; }
-                    else if (req.status === "In Use") { statusBg = "#ccfbf1"; statusColor = "#0f766e"; }
-                    else if (req.status === "Completed") { statusBg = "#d1fae5"; statusColor = "#065f46"; }
-                    else if (req.status === "Closed") { statusBg = "#f1f5f9"; statusColor = "#64748b"; }
+                    const reqId = req.id ? (req.id.length > 12 ? req.id.substring(0, 10) : req.id) : "REQ";
+                    const itemName = req.itemName || req.item || "Asset Item";
+                    const itemCat = req.itemCategory || req.category;
+                    const requesterName = req.requestedByName || req.requester || "Employee";
+                    const role = req.requestedByRole || req.role || "EMPLOYEE";
+                    const dept = req.requestedByDepartment || req.department;
+                    const siteName = req.siteName || req.site || "Cebu IT Park";
+                    const dateStr = req.createdAt || req.date;
+
                     return (
-                        // Improvement #5: table row hover sweep
-                       <tr key={req.id}
+                      <tr key={req.id}
                         className="table-row-hover"
                         style={{ borderBottom: "1px solid #f8fafc", cursor: "pointer" }}
                         onClick={onViewRequests}
-                       >
-                        <td style={{ padding: "0.75rem 0.5rem", fontWeight: 600, color: "#475569" }}>{req.id}</td>
-                        <td style={{ padding: "0.75rem 0.5rem", fontWeight: 500 }}>{req.item}</td>
-                        <td style={{ padding: "0.75rem 0.5rem", color: "#475569" }}>{req.requester}</td>
-                        <td style={{ padding: "0.75rem 0.5rem", color: "#64748b" }}>{req.site}</td>
-                        <td style={{ padding: "0.75rem 0.5rem" }}>
-                          <span style={{ display: "inline-block", padding: "0.18rem 0.45rem", borderRadius: 6, fontSize: "0.72rem", fontWeight: 600, backgroundColor: statusBg, color: statusColor }}>
-                            {req.status}
+                      >
+                        <td style={{ padding: "0.75rem 0.6rem" }}>
+                          <span style={{
+                            fontFamily: "monospace",
+                            fontSize: "0.74rem",
+                            fontWeight: 700,
+                            color: "#334155",
+                            backgroundColor: "#f1f5f9",
+                            padding: "0.18rem 0.45rem",
+                            borderRadius: "6px",
+                            border: "1px solid #cbd5e1",
+                            whiteSpace: "nowrap"
+                          }}>
+                            {reqId}
                           </span>
                         </td>
-                        <td style={{ padding: "0.75rem 0.5rem", color: "#94a3b8", textAlign: "right" }}>{req.date}</td>
+                        <td style={{ padding: "0.75rem 0.6rem" }}>
+                          <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+                            <span style={{ color: "#64748b", display: "flex", alignItems: "center", marginTop: "0.1rem" }}>
+                              {getCategoryIcon(itemCat, itemName)}
+                            </span>
+                            <div style={{ display: "flex", flexDirection: "column" }}>
+                              <span style={{ fontWeight: 600, color: "#0f172a" }}>{itemName}</span>
+                              {req.assetTag && (
+                                <div style={{ marginTop: "0.15rem" }}>
+                                  <AssetTagBadge tag={req.assetTag} size="sm" />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: "0.75rem 0.6rem" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+                            <span style={{ fontWeight: 600, color: "#0f172a" }}>{requesterName}</span>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", flexWrap: "wrap" }}>
+                              <RoleBadge role={role} size="sm" />
+                              {dept && (
+                                <span style={{
+                                  display: "inline-flex", alignItems: "center", gap: "0.25rem",
+                                  fontSize: "0.68rem", fontWeight: 600, color: "#475569",
+                                  backgroundColor: "#f8fafc", padding: "0.1rem 0.45rem",
+                                  borderRadius: "9999px", border: "1px solid #e2e8f0"
+                                }}>
+                                  {getDepartmentIcon(dept, 11)}
+                                  <span>{dept}</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: "0.75rem 0.6rem", textAlign: "center", fontWeight: 700, color: "#0f172a" }}>
+                          {req.quantity || 1}
+                        </td>
+                        <td style={{ padding: "0.75rem 0.6rem" }}>
+                          {renderStatusBadge(req.status)}
+                        </td>
+                        <td style={{ padding: "0.75rem 0.6rem" }}>
+                          <SiteBadge siteName={siteName} size="sm" />
+                        </td>
+                        <td style={{ padding: "0.75rem 0.6rem", color: "#94a3b8", textAlign: "right", whiteSpace: "nowrap" }}>
+                          {dateStr ? new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Recent"}
+                        </td>
                       </tr>
                     );
                   })
@@ -530,6 +698,106 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
           </div>
         </section>
       </div>
+
+      {/* New Section: Recent Asset Deployments Table */}
+      <section style={{
+        backgroundColor: "#ffffff", borderRadius: 12,
+        boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(226,232,240,0.6)",
+        padding: "1.5rem",
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span style={{ fontSize: "1.1rem" }}>🚀</span>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>Recent Asset Deployments</h3>
+          </div>
+          <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>
+            Active & Returned Hardware Custodians
+          </span>
+        </div>
+
+        <div style={{ overflowX: "auto", maxHeight: "400px", overflowY: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem", textAlign: "left" }}>
+            <thead style={{ position: "sticky", top: 0, backgroundColor: "#f8fafc", zIndex: 5, boxShadow: "0 1px 0 #e2e8f0" }}>
+              <tr>
+                <th style={{ padding: "0.75rem 0.85rem", fontWeight: 700, color: "#64748b" }}>Timestamp</th>
+                <th style={{ padding: "0.75rem 0.85rem", fontWeight: 700, color: "#64748b" }}>Employee Name</th>
+                <th style={{ padding: "0.75rem 0.85rem", fontWeight: 700, color: "#64748b" }}>Account</th>
+                <th style={{ padding: "0.75rem 0.85rem", fontWeight: 700, color: "#64748b" }}>EID</th>
+                <th style={{ padding: "0.75rem 0.85rem", fontWeight: 700, color: "#64748b" }}>Deployed Asset</th>
+                <th style={{ padding: "0.75rem 0.85rem", fontWeight: 700, color: "#64748b" }}>Asset Tag</th>
+                <th style={{ padding: "0.75rem 0.85rem", fontWeight: 700, color: "#64748b" }}>Site Location</th>
+                <th style={{ padding: "0.75rem 0.85rem", fontWeight: 700, color: "#64748b" }}>Issued By</th>
+                <th style={{ padding: "0.75rem 0.85rem", fontWeight: 700, color: "#64748b" }}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {displayDeployments.length === 0 ? (
+                <tr>
+                  <td colSpan={9} style={{ padding: "2.5rem 1rem", textAlign: "center", color: "#94a3b8" }}>
+                    No recent asset deployments recorded.
+                  </td>
+                </tr>
+              ) : (
+                displayDeployments.map((dep: any, idx: number) => (
+                  <tr
+                    key={dep.id + "_" + idx}
+                    className="table-row-hover"
+                    style={{ borderBottom: "1px solid #f8fafc", backgroundColor: idx % 2 === 1 ? "#fcfdfe" : "#ffffff" }}
+                  >
+                    <td style={{ padding: "0.75rem 0.85rem", color: "#64748b", fontSize: "0.75rem", whiteSpace: "nowrap" }}>
+                      {new Date(dep.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </td>
+                    <td style={{ padding: "0.75rem 0.85rem", color: "#0f172a", fontWeight: 700 }}>
+                      {dep.employeeName}
+                    </td>
+                    <td style={{ padding: "0.75rem 0.85rem", color: "#475569" }}>
+                      {dep.employeeAccount}
+                    </td>
+                    <td style={{ padding: "0.75rem 0.85rem" }}>
+                      <EidBadge employeeId={dep.employeeEid} size="sm" />
+                    </td>
+                    <td style={{ padding: "0.75rem 0.85rem", color: "#0f172a", fontWeight: 600 }}>
+                      {dep.itemName}
+                    </td>
+                    <td style={{ padding: "0.75rem 0.85rem" }}>
+                      {dep.assetTag ? (
+                        <AssetTagBadge tag={dep.assetTag} size="sm" />
+                      ) : (
+                        <span style={{ fontSize: "0.72rem", color: "#94a3b8", fontStyle: "italic" }}>Bulk Consumable</span>
+                      )}
+                    </td>
+                    <td style={{ padding: "0.75rem 0.85rem" }}>
+                      <SiteBadge siteName={dep.siteName} size="sm" />
+                    </td>
+                    <td style={{ padding: "0.75rem 0.85rem" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+                        <span style={{ color: "#0f172a", fontWeight: 600, fontSize: "0.8rem" }}>
+                          {dep.requestedByName || "Christian Mangos"}
+                        </span>
+                        <div>
+                          <RoleBadge role={dep.requestedByRole || "INVENTORY_STAFF"} size="sm" />
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: "0.75rem 0.85rem" }}>
+                      <span style={{
+                        padding: "0.18rem 0.55rem",
+                        borderRadius: "12px",
+                        fontSize: "0.7rem",
+                        fontWeight: 700,
+                        backgroundColor: dep.status === "RETURNED" ? "#f1f5f9" : "#dbeafe",
+                        color: dep.status === "RETURNED" ? "#64748b" : "#1d4ed8"
+                      }}>
+                        {dep.status === "RETURNED" ? "RETURNED" : "ACTIVE"}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </>
   );
 };

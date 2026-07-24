@@ -1,6 +1,6 @@
 "use client";
 
-import { getGeneratedPassword, formatRoleName } from "@/types/dashboard";
+import { getGeneratedPassword, formatRoleName, RoleBadge, EidBadge, SiteBadge } from "@/types/dashboard";
 
 interface AddUserModalProps {
   isAddModalOpen: boolean;
@@ -424,22 +424,36 @@ export const AddUserModal = ({
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                     <span style={{ fontSize: "0.68rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase" }}>System Role</span>
-                    <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>
-                      {formatRoleName(formRole)}
-                    </span>
+                    <div>
+                      <RoleBadge role={formRole} size="sm" />
+                    </div>
                   </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                     <span style={{ fontSize: "0.68rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase" }}>Employee ID</span>
-                    <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>{formEmployeeId || <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Not Specified</span>}</span>
+                    <div>
+                      <EidBadge employeeId={formEmployeeId} size="sm" />
+                    </div>
                   </div>
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
-                  <span style={{ fontSize: "0.68rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase" }}>Department</span>
-                  <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>{formDepartment || <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Not Specified</span>}</span>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                    <span style={{ fontSize: "0.68rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase" }}>Assigned Site</span>
+                    <div>
+                      {(() => {
+                        const selectedSite = sites.find(s => s.id === formSiteId);
+                        return <SiteBadge site={selectedSite} size="sm" />;
+                      })()}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
+                    <span style={{ fontSize: "0.68rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase" }}>Department</span>
+                    <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>{formDepartment || <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Not Specified</span>}</span>
+                  </div>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem", borderTop: "1px dashed #e2e8f0", paddingTop: "0.65rem", marginTop: "0.25rem" }}>

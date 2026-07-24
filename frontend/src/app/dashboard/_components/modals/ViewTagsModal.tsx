@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { CatalogItem } from "@/types/dashboard";
+import { CatalogItem, AssetTagBadge } from "@/types/dashboard";
 import { Barcode } from "../Barcode";
 
 interface ViewTagsModalProps {
@@ -457,21 +457,11 @@ export const ViewTagsModal = ({
                   </div>
 
                   {/* Tag Code Display */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
-                    <span style={{ fontSize: "0.6rem", color: "#94a3b8", fontWeight: 500 }}>TAG CODE</span>
-                    <code style={{
-                      fontSize: "0.85rem",
-                      fontWeight: 700,
-                      color: "#210cae",
-                      backgroundColor: "rgba(33, 12, 174, 0.05)",
-                      padding: "0.2rem 0.5rem",
-                      borderRadius: 6,
-                      alignSelf: "flex-start",
-                      fontFamily: "monospace",
-                      letterSpacing: "0.02em"
-                    }}>
-                      {asset.tagCode}
-                    </code>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+                    <span style={{ fontSize: "0.6rem", color: "#94a3b8", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase" }}>TAG CODE</span>
+                    <div>
+                      <AssetTagBadge tag={asset.tagCode} size="md" />
+                    </div>
                   </div>
 
                   {/* Hidden / SVG container for printing */}

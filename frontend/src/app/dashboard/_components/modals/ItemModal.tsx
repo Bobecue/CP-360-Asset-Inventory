@@ -22,6 +22,9 @@ interface ItemModalProps {
   setItemSiteId: (v: string) => void;
   itemQuantity: string;
   setItemQuantity: (v: string) => void;
+  itemSupplierId?: string;
+  setItemSupplierId?: (v: string) => void;
+  suppliers?: any[];
   itemError: string | null;
   isSubmittingItem: boolean;
   sites: any[];
@@ -50,6 +53,9 @@ export const ItemModal = ({
   setItemSiteId,
   itemQuantity,
   setItemQuantity,
+  itemSupplierId = "",
+  setItemSupplierId,
+  suppliers = [],
   itemError,
   isSubmittingItem,
   sites,
@@ -59,14 +65,11 @@ export const ItemModal = ({
   onSubmit,
 }: ItemModalProps) => {
   const selectedCategory = categories.find((c) => c.id === itemCategoryId);
-  const isSystemUnit =
-    selectedCategory?.name?.toLowerCase().includes("system unit") ||
-    selectedCategory?.prefix === "SYS";
 
   const [itemModel, setItemModel] = useState("");
 
   useEffect(() => {
-    if (editingItem && isSystemUnit && editingItem.description) {
+    if (editingItem && editingItem.description) {
       const match = editingItem.description.match(/^Model:\s*(.*)/i);
       if (match) {
         setItemModel(match[1]);
@@ -76,7 +79,7 @@ export const ItemModal = ({
     } else if (!editingItem) {
       setItemModel("");
     }
-  }, [editingItem, isSystemUnit, itemModalOpen]);
+  }, [editingItem, itemModalOpen]);
 
   if (!itemModalOpen) return null;
 
@@ -195,7 +198,7 @@ export const ItemModal = ({
                     outline: "none",
                   }}
                 >
-                  <option value="ALL">🌐 All Sites (Global Allocation)</option>
+                  <option value="ALL">All Sites (Global Allocation)</option>
                   {sites.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name} ({s.prefix})
@@ -205,64 +208,16 @@ export const ItemModal = ({
               </div>
             </div>
 
-            {/* ASSET NAME & MODEL (SYSTEM UNITS) OR REGULAR ASSET NAME */}
-            {isSystemUnit ? (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-                  <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>
-                    Asset Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g., PC-WORKSTATION-01"
-                    value={itemName}
-                    onChange={(e) => setItemName(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "0.45rem 0.65rem",
-                      borderRadius: 6,
-                      border: "1px solid #e2e8f0",
-                      fontSize: "0.8rem",
-                      color: "#1e293b",
-                      outline: "none",
-                    }}
-                  />
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-                  <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#2563eb" }}>
-                    Model / Specifications *
-                  </label>
-                  <input
-                    type="text"
-                    required={isSystemUnit}
-                    placeholder="e.g., Dell OptiPlex 7090 / i7 / 16GB"
-                    value={itemModel}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setItemModel(val);
-                      setItemDescription(val ? `Model: ${val}` : "");
-                    }}
-                    style={{
-                      width: "100%",
-                      padding: "0.45rem 0.65rem",
-                      borderRadius: 6,
-                      border: "1px solid #3b82f6",
-                      fontSize: "0.8rem",
-                      color: "#1e293b",
-                      backgroundColor: "#eff6ff",
-                      outline: "none",
-                    }}
-                  />
-                </div>
-              </div>
-            ) : (
+            {/* ASSET NAME & BRAND NAME, MODEL/SPECIFICATION */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-                <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Asset Name *</label>
+                <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>
+                  Asset Name *
+                </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g., MacBook Pro M3 Max 16 inch"
+                  placeholder="e.g., PC-WORKSTATION-01"
                   value={itemName}
                   onChange={(e) => setItemName(e.target.value)}
                   style={{
@@ -276,7 +231,32 @@ export const ItemModal = ({
                   }}
                 />
               </div>
-            )}
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#2563eb" }}>
+                  Brand Name, Model/Specification
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Dell OptiPlex 7090 / i7 / 16GB"
+                  value={itemModel}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setItemModel(val);
+                    setItemDescription(val ? `Model: ${val}` : "");
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "0.45rem 0.65rem",
+                    borderRadius: 6,
+                    border: "1px solid #3b82f6",
+                    fontSize: "0.8rem",
+                    color: "#1e293b",
+                    backgroundColor: "#eff6ff",
+                    outline: "none",
+                  }}
+                />
+              </div>
+            </div>
 
             {/* CATEGORY & QUANTITY & UNIT COST */}
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "0.75rem" }}>
@@ -298,7 +278,7 @@ export const ItemModal = ({
                 >
                   <option value="" disabled hidden>Select Category</option>
                   {categories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !c.name.toLowerCase().includes("consumable"))).length > 0 && (
-                    <optgroup label="💻 Non-Consumable">
+                    <optgroup label="Non-Consumable">
                       {categories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !c.name.toLowerCase().includes("consumable"))).map((c) => (
                         <option key={c.id} value={c.id} style={{ color: "#1e293b" }}>
                           {c.name}
@@ -307,7 +287,7 @@ export const ItemModal = ({
                     </optgroup>
                   )}
                   {categories.filter(c => c.type === "CONSUMABLE" || c.name.toLowerCase().includes("consumable")).length > 0 && (
-                    <optgroup label="🟢 Consumable">
+                    <optgroup label="Consumable">
                       {categories.filter(c => c.type === "CONSUMABLE" || c.name.toLowerCase().includes("consumable")).map((c) => (
                         <option key={c.id} value={c.id} style={{ color: "#1e293b" }}>
                           {c.name}
@@ -358,6 +338,32 @@ export const ItemModal = ({
                   }}
                 />
               </div>
+            </div>
+
+            {/* ASSIGNED SUPPLIER */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+              <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Assigned Supplier (Optional)</label>
+              <select
+                value={itemSupplierId}
+                onChange={(e) => setItemSupplierId && setItemSupplierId(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "0.45rem 0.65rem",
+                  borderRadius: 6,
+                  border: "1px solid #e2e8f0",
+                  fontSize: "0.8rem",
+                  color: itemSupplierId ? "#1e293b" : "#94a3b8",
+                  backgroundColor: "#ffffff",
+                  outline: "none",
+                }}
+              >
+                <option value="">No Supplier Assigned</option>
+                {suppliers.map((sup: any) => (
+                  <option key={sup.id} value={sup.id} style={{ color: "#1e293b" }}>
+                    {sup.name} ({sup.supplierId || "No ID"})
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* ASSET TAGS PREVIEW FOR BULK NON-CONSUMABLES */}

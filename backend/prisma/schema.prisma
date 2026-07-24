@@ -106,12 +106,18 @@ model User {
 
 model Supplier {
   id             String          @id @default(uuid())
+  supplierId     String?         @unique // Custom/Auto Supplier Code/ID (e.g. SUP-0001)
   name           String          @unique
-  contactName    String?
+  contactPerson  String?
   email          String?
   phone          String?
   address        String?
+  city           String?
+  province       String?
+  country        String?         @default("Philippines")
   leadTimeDays   Int             @default(7) // Estimated lead time for stock arrivals
+  assets         Asset[]
+  items          Item[]          @relation("ItemSupplier")
   purchaseOrders PurchaseOrder[]
 
   createdAt      DateTime        @default(now())
@@ -138,7 +144,7 @@ model AssetCategory {
 model Item {
   id            String        @id @default(uuid())
   name          String
-  sku           String        @unique // e.g. IT-MBP-14
+  sku           String?       // e.g. IT-MBP-14 for non-consumable items
   description   String?
   unitPrice     Decimal       @default(0.00) @db.Decimal(10, 2) // Track item cost/value
   leadTimeDays  Int           @default(7) // Estimated lead time for this specific item type
@@ -147,7 +153,11 @@ model Item {
   
   categoryId    String
   category      AssetCategory @relation(fields: [categoryId], references: [id])
-  
+
+  // Default supplier for this catalog item
+  supplierId    String?
+  supplier      Supplier?     @relation("ItemSupplier", fields: [supplierId], references: [id])
+
   // Relations
   stockLevels   SiteStock[]
   assets        Asset[]
@@ -195,6 +205,10 @@ model Asset {
   siteId       String
   site         Site        @relation(fields: [siteId], references: [id])
   
+  // Supplier relation
+  supplierId   String?
+  supplier     Supplier?   @relation(fields: [supplierId], references: [id])
+
   // Assigned to which Employee
   assignedToId String?
   assignedTo   User?       @relation("AssetAssignment", fields: [assignedToId], references: [id])

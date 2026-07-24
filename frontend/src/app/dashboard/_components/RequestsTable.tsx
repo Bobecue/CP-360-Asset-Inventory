@@ -76,7 +76,7 @@ interface RequestsTableProps {
   onBulkCancel?: (selectedIds: string[], comment?: string) => Promise<void>;
 }
 
-import { getCategoryIcon } from '@/types/dashboard';
+import { getCategoryIcon, getDepartmentIcon, RoleBadge, SiteBadge, EidBadge, AssetTagBadge } from '@/types/dashboard';
 
 export function RequestsTable({
   allRequests,
@@ -1048,45 +1048,34 @@ export function RequestsTable({
                       {req.assetTag ? (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginTop: '0.25rem' }}>
                           {req.assetTag.split(/,\s*/).map((tag, idx) => (
-                            <span key={idx} style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.2rem',
-                              fontSize: '0.68rem',
-                              background: '#e0f2fe',
-                              border: '1px solid #bae6fd',
-                              padding: '0.1rem 0.45rem',
-                              borderRadius: 4,
-                              color: '#0369a1',
-                              fontWeight: 700,
-                              fontFamily: 'monospace'
-                            }}>
-                              🏷️ {tag}
-                            </span>
+                            <AssetTagBadge key={idx} tag={tag} size="sm" />
                           ))}
                         </div>
                       ) : req.assetId ? (
-                        <span style={{ display: 'inline-block', fontSize: '0.68rem', background: '#e0f2fe', border: '1px solid #bae6fd', padding: '0.1rem 0.4rem', borderRadius: 4, color: '#0369a1', marginTop: '0.25rem', fontWeight: 600 }}>
-                          Asset ID: {req.assetId}
+                        <span style={{ display: 'inline-block', marginTop: '0.25rem' }}>
+                          <AssetTagBadge tag={req.assetId} size="sm" variant="outline" />
                         </span>
                       ) : null}
                     </div>
                   </div>
                 </td>
                 <td style={{ padding: '0.85rem 1rem', fontSize: '0.8rem', color: '#334155', whiteSpace: 'nowrap' }}>
-                  <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    {renderPrefixBadge(req.requestedBySiteId)}
+                  <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#0f172a' }}>
                     <span>{req.requestedByName}</span>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', marginTop: '0.2rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
                     {req.requestedByRole && (
-                      <span style={{ fontSize: '0.68rem', color: '#64748b' }}>
-                        {req.requestedByRole.replace('_', ' ')}
-                      </span>
+                      <RoleBadge role={req.requestedByRole} size="sm" />
                     )}
                     {req.requestedByDepartment && (
-                      <span style={{ fontSize: '0.68rem', color: '#64748b' }}>
-                        {req.requestedByDepartment}
+                      <span style={{
+                        display: "inline-flex", alignItems: "center", gap: "0.25rem",
+                        fontSize: "0.68rem", fontWeight: 600, color: "#475569",
+                        backgroundColor: "#f8fafc", padding: "0.1rem 0.45rem",
+                        borderRadius: "9999px", border: "1px solid #e2e8f0"
+                      }}>
+                        {getDepartmentIcon(req.requestedByDepartment, 11)}
+                        <span>{req.requestedByDepartment}</span>
                       </span>
                     )}
                   </div>
@@ -1138,8 +1127,8 @@ export function RequestsTable({
                     )}
                   </div>
                 </td>
-                <td style={{ padding: '0.85rem 1rem', fontSize: '0.8rem', color: '#475569' }}>
-                  {sites.find(s => s.id === req.siteId)?.name || req.siteName || '—'}
+                <td style={{ padding: '0.85rem 1rem' }}>
+                  <SiteBadge site={sites.find(s => s.id === req.siteId)} siteName={req.siteName} size="sm" />
                 </td>
                 <td style={{ padding: '0.85rem 1rem', fontSize: '0.78rem', color: '#64748b' }} title={new Date(req.createdAt).toLocaleString()}>
                   {formatRelativeTime(req.createdAt)}

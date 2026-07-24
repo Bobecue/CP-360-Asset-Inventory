@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { CatalogItem } from "@/types/dashboard";
-import { getCategoryIcon } from "@/types/dashboard";
+import { CatalogItem, getCategoryIcon, RoleBadge, SiteBadge, EidBadge, AssetTagBadge } from "@/types/dashboard";
 import jsPDF from "jspdf";
 import { RequestTimeline } from "./RequestTimeline";
 import { getApiUrl } from "../../../utils/api";
@@ -796,7 +795,7 @@ export const CatalogTab = ({
                     outline: "none",
                   }}
                 >
-                  <option value="ALL">🌐 All Sites (Global View)</option>
+                  <option value="ALL">All Sites (Global View)</option>
                   {sites.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name} ({s.prefix})
@@ -822,10 +821,10 @@ export const CatalogTab = ({
                   }}
                 >
                   <option value="ALL">All Categories</option>
-                  <option value="NON_CONSUMABLE">💻 All Non-Consumables</option>
-                  <option value="CONSUMABLE">🟢 All Consumables</option>
+                  <option value="NON_CONSUMABLE">All Non-Consumables</option>
+                  <option value="CONSUMABLE">All Consumables</option>
                   {categories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !c.name.toLowerCase().includes("consumable"))).length > 0 && (
-                    <optgroup label="💻 Non-Consumable">
+                    <optgroup label="Non-Consumable">
                       {categories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !c.name.toLowerCase().includes("consumable"))).map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}
@@ -834,7 +833,7 @@ export const CatalogTab = ({
                     </optgroup>
                   )}
                   {categories.filter(c => c.type === "CONSUMABLE" || c.name.toLowerCase().includes("consumable")).length > 0 && (
-                    <optgroup label="🟢 Consumable">
+                    <optgroup label="Consumable">
                       {categories.filter(c => c.type === "CONSUMABLE" || c.name.toLowerCase().includes("consumable")).map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}
@@ -1857,18 +1856,30 @@ export const CatalogTab = ({
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.25rem" }}>
                               <span style={{
-                                padding: "0.12rem 0.45rem", borderRadius: 5,
-                                fontSize: "0.65rem", fontWeight: 700,
-                                backgroundColor: isConsumable ? "#fff3c7" : "#e0f2fe",
-                                color: isConsumable ? "#b45309" : "#0369a1",
+                                padding: "0.18rem 0.55rem", borderRadius: 6,
+                                fontSize: "0.62rem", fontWeight: 800,
+                                letterSpacing: "0.04em",
+                                background: isConsumable 
+                                  ? "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)" 
+                                  : "linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)",
+                                color: isConsumable ? "#92400e" : "#0369a1",
+                                border: isConsumable ? "1px solid #fcd34d" : "1px solid #7dd3fc",
+                                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
                               }}>
                                 {isConsumable ? "CONSUMABLE" : "NON-CONSUMABLE"}
                               </span>
                               <span style={{
-                                padding: "0.12rem 0.45rem", borderRadius: 5,
-                                fontSize: "0.65rem", fontWeight: 700,
-                                backgroundColor: stockBg,
-                                color: stockBadgeColor,
+                                padding: "0.18rem 0.55rem", borderRadius: 6,
+                                fontSize: "0.62rem", fontWeight: 800,
+                                letterSpacing: "0.04em",
+                                background: stockLabel === "In Stock" 
+                                  ? "linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)" 
+                                  : stockLabel === "Low Stock"
+                                  ? "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)"
+                                  : "linear-gradient(135deg, #fee2e2 0%, #fca5a5 100%)",
+                                color: stockLabel === "In Stock" ? "#15803d" : stockLabel === "Low Stock" ? "#b45309" : "#b91c1c",
+                                border: stockLabel === "In Stock" ? "1px solid #86efac" : stockLabel === "Low Stock" ? "1px solid #fcd34d" : "1px solid #fca5a5",
+                                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
                               }}>
                                 {stockLabel}
                               </span>
@@ -1890,17 +1901,72 @@ export const CatalogTab = ({
                         <div style={{ padding: "0.85rem 1.1rem", display: "flex", flexDirection: "column", gap: "0.7rem", flex: 1 }}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {/* SKU */}
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1" /></svg>
-                            <code style={{
-                              fontSize: "0.7rem", color: "#475569", fontFamily: "monospace",
-                              backgroundColor: "#f1f5f9", padding: "0.1rem 0.35rem",
-                              borderRadius: 4, letterSpacing: "0.02em",
-                            }}>
-                              {it.sku}
-                            </code>
-                          </div>
+                          {/* Asset Tag / SKU */}
+                          {it.sku && (
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                                <circle cx="7" cy="7" r="1" />
+                              </svg>
+                              <code style={{
+                                fontSize: "0.72rem",
+                                fontWeight: 800,
+                                color: "#3730a3",
+                                fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                                background: "linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 50%, #e0e7ff 100%)",
+                                border: "1px solid #a5b4fc",
+                                padding: "0.15rem 0.5rem",
+                                borderRadius: 6,
+                                letterSpacing: "0.04em",
+                                boxShadow: "0 1px 3px rgba(79, 70, 229, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.6)",
+                              }}>
+                                {it.sku}
+                              </code>
+                            </div>
+                          )}
+
+                          {/* Supplier Badge */}
+                          {it.supplier && (
+                            <div style={{ display: "flex", alignItems: "center" }}>
+                              <span style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "0.45rem",
+                                fontSize: "0.72rem", fontWeight: 700,
+                                color: "#4c1d95",
+                                background: "linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)",
+                                border: "1px solid #c4b5fd",
+                                padding: "0.25rem 0.65rem",
+                                borderRadius: "9999px",
+                                boxShadow: "0 1px 3px rgba(109, 40, 217, 0.12)",
+                                maxWidth: "100%",
+                              }}>
+                                <span style={{
+                                  width: 22, height: 22, borderRadius: 7,
+                                  background: "linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)",
+                                  color: "#ffffff",
+                                  fontSize: "0.7rem", fontWeight: 800,
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                  flexShrink: 0, boxShadow: "0 2px 4px rgba(124, 58, 237, 0.3)"
+                                }}>
+                                  {it.supplier.name.charAt(0).toUpperCase()}
+                                </span>
+                                <span>{it.supplier.name}</span>
+                                {it.supplier.supplierId && (
+                                  <span style={{
+                                    display: "inline-flex", alignItems: "center", gap: "0.2rem",
+                                    padding: "0.1rem 0.4rem", borderRadius: "9999px",
+                                    backgroundColor: "#ddd6fe", color: "#5b21b6",
+                                    fontSize: "0.62rem", fontWeight: 800,
+                                    fontFamily: "'JetBrains Mono', monospace"
+                                  }}>
+                                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1"/></svg>
+                                    <span>{it.supplier.supplierId}</span>
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                          )}
 
                           {/* Description */}
                           {it.description && (
@@ -2211,8 +2277,8 @@ export const CatalogTab = ({
                   }}
                 >
                   <option value="ALL">All Statuses (Active & Returned)</option>
-                  <option value="ACTIVE">⚡ Active Deployments</option>
-                  <option value="RETURNED">↩️ Returned Assets</option>
+                  <option value="ACTIVE">Active Deployments</option>
+                  <option value="RETURNED">Returned Assets</option>
                 </select>
               </div>
 
@@ -2233,8 +2299,8 @@ export const CatalogTab = ({
                   }}
                 >
                   <option value="ALL">All Categories</option>
-                  <option value="CONSUMABLE">🟢 Consumables</option>
-                  <option value="NON_CONSUMABLE">💻 Non-Consumables</option>
+                  <option value="CONSUMABLE">Consumables</option>
+                  <option value="NON_CONSUMABLE">Non-Consumables</option>
                 </select>
               </div>
             </div>
@@ -2300,8 +2366,8 @@ export const CatalogTab = ({
                         <td style={{ padding: "0.9rem 1.25rem", color: "#475569" }}>
                           {dep.employeeAccount}
                         </td>
-                        <td style={{ padding: "0.9rem 1.25rem", color: "#210cae", fontWeight: 700, fontFamily: "monospace" }}>
-                          {dep.employeeEid}
+                        <td style={{ padding: "0.9rem 1.25rem" }}>
+                          <EidBadge employeeId={dep.employeeEid} size="sm" />
                         </td>
                         <td style={{ padding: "0.9rem 1.25rem", color: "#0f172a", fontWeight: 600 }}>
                           {dep.itemName}
@@ -2351,27 +2417,24 @@ export const CatalogTab = ({
                               );
                             }
 
-                            return (
-                              <span style={{
-                                padding: "0.15rem 0.45rem",
-                                borderRadius: "4px",
-                                fontSize: "0.72rem",
-                                fontFamily: "monospace",
-                                fontWeight: 700,
-                                backgroundColor: "#eef2ff",
-                                color: "#210cae",
-                                border: "1px solid #c7d2fe"
-                              }}>
-                                🏷️ {displayTag}
-                              </span>
-                            );
+                            return <AssetTagBadge tag={displayTag} size="sm" />;
                           })()}
                         </td>
-                        <td style={{ padding: "0.9rem 1.25rem", color: "#475569" }}>
-                          {dep.siteName}
+                        <td style={{ padding: "0.9rem 1.25rem" }}>
+                          <SiteBadge siteName={dep.siteName} size="sm" />
                         </td>
-                        <td style={{ padding: "0.9rem 1.25rem", color: "#64748b" }}>
-                          {dep.requestedByName}
+                        <td style={{ padding: "0.9rem 1.25rem" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                            <span style={{ color: "#0f172a", fontWeight: 600, fontSize: "0.82rem" }}>
+                              {dep.requestedByName || "Inventory Staff"}
+                            </span>
+                            <div>
+                              <RoleBadge
+                                role={dep.requestedByRole || dep.issuerRole || dep.rawRequest?.requestedByRole || (dep.requestedByName?.toLowerCase().includes("ops") || dep.requestedByName?.toLowerCase().includes("admin") ? "ADMIN" : "INVENTORY_STAFF")}
+                                size="sm"
+                              />
+                            </div>
+                          </div>
                         </td>
                         <td style={{ padding: "0.9rem 1.25rem" }}>
                           <span style={{
@@ -2605,8 +2668,14 @@ export const CatalogTab = ({
                   </div>
                   <div>
                     <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Issued By</label>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginTop: '0.15rem' }}>
-                      {selectedDeployment.requestedByName || 'Inventory Staff'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.15rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
+                        {selectedDeployment.requestedByName || 'Inventory Staff'}
+                      </span>
+                      <RoleBadge
+                        role={selectedDeployment.requestedByRole || selectedDeployment.issuerRole || selectedDeployment.rawRequest?.requestedByRole || (selectedDeployment.requestedByName?.toLowerCase().includes("ops") || selectedDeployment.requestedByName?.toLowerCase().includes("admin") ? "ADMIN" : "INVENTORY_STAFF")}
+                        size="sm"
+                      />
                     </div>
                   </div>
                 </div>

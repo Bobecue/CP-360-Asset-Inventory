@@ -160,7 +160,7 @@ export function NewRequestModal({ open, onClose, inventoryItems, sites, onSubmit
                 <option value="">-- Select an Item --</option>
                 {inventoryItems.map(item => (
                   <option key={item.id} value={item.id}>
-                    {item.name} ({item.sku})
+                    {item.name}{item.sku ? ` (${item.sku})` : ""}
                   </option>
                 ))}
               </select>

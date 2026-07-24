@@ -135,17 +135,6 @@ export class PurchaseOrdersService {
   }
 
   async findAllSuppliers() {
-    const count = await this.prisma.supplier.count();
-    if (count === 0) {
-      await this.prisma.supplier.createMany({
-        data: [
-          { name: "Dell Global Ltd.", contactName: "Alice Smith", email: "sales@dell.com", leadTimeDays: 7 },
-          { name: "Apple Corporate", contactName: "Bob Jones", email: "corp-sales@apple.com", leadTimeDays: 10 },
-          { name: "Office Warehouse", contactName: "Charlie Brown", email: "supplies@officewarehouse.com", leadTimeDays: 3 },
-          { name: "Logitech Distributor", contactName: "Diana Prince", email: "partners@logitech.com", leadTimeDays: 5 },
-        ]
-      });
-    }
     return this.prisma.supplier.findMany({
       orderBy: { name: "asc" },
     });

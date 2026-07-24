@@ -27,6 +27,7 @@ import { ScanModal } from "./_components/modals/ScanModal";
 import { ScanOperationsTab } from "./_components/ScanOperationsTab";
 import { OfflineWarningScreen } from "./_components/OfflineWarningScreen";
 import { ProcurementTab } from "./_components/ProcurementTab";
+import { SuppliersTab } from "./_components/SuppliersTab";
 import { RequestsTab } from "./_components/RequestsTab";
 import { LowStockAlertsTab } from "./_components/LowStockAlertsTab";
 
@@ -181,6 +182,8 @@ export default function DashboardPage() {
   const [itemCategoryId, setItemCategoryId] = useState("");
   const [itemSiteId, setItemSiteId] = useState("");
   const [itemQuantity, setItemQuantity] = useState("");
+  const [itemSupplierId, setItemSupplierId] = useState("");
+  const [suppliersList, setSuppliersList] = useState<any[]>([]);
   const [itemError, setItemError] = useState<string | null>(null);
   const [isSubmittingItem, setIsSubmittingItem] = useState(false);
 
@@ -400,8 +403,21 @@ export default function DashboardPage() {
     }
   };
 
+  const fetchSuppliersList = async () => {
+    try {
+      const res = await fetch("http://localhost:3001/suppliers");
+      if (res.ok) {
+        const json = await res.json();
+        const list = Array.isArray(json) ? json : json.data || [];
+        setSuppliersList(list);
+      }
+    } catch (e) {
+      console.error("Backend error fetching suppliers list:", e);
+    }
+  };
+
   const fetchAllMetadata = async () => {
-    await Promise.all([fetchSites(), fetchDepartments(), fetchCategories()]);
+    await Promise.all([fetchSites(), fetchDepartments(), fetchCategories(), fetchSuppliersList()]);
   };
 
   useEffect(() => {
@@ -410,7 +426,7 @@ export default function DashboardPage() {
       fetchAllMetadata();
     } else if (activeTab === "settings") {
       fetchAllMetadata();
-    } else if (activeTab === "catalog" || activeTab === "deployments") {
+    } else if (activeTab === "catalog" || activeTab === "deployments" || activeTab === "suppliers") {
       fetchItems();
       fetchAllMetadata();
     }
@@ -1293,13 +1309,6 @@ export default function DashboardPage() {
   const handleCreateItemSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setItemError(null);
-    const selectedCategory = categories.find(c => c.id === itemCategoryId);
-    const isSystemUnit = selectedCategory?.name?.toLowerCase().includes("system unit") || selectedCategory?.prefix === "SYS";
-    if (isSystemUnit && !itemDescription.trim()) {
-      setItemError("Asset Name and Model / Specifications are required for System Units.");
-      return;
-    }
-
     const priceNum = parseFloat(itemUnitPrice);
     if (isNaN(priceNum) || priceNum < 0) {
       setItemError("Price must be a positive number.");
@@ -1352,6 +1361,7 @@ export default function DashboardPage() {
       unitPrice: priceNum,
       leadTimeDays: leadTimeNum,
       categoryId: itemCategoryId,
+      supplierId: itemSupplierId || undefined,
     };
 
     if (!editingItem) {
@@ -1508,6 +1518,7 @@ export default function DashboardPage() {
         setItemCategoryId("");
         setItemSiteId("");
         setItemQuantity("");
+        setItemSupplierId("");
       } catch (err: any) {
         console.error(err);
         setItemError(err.message || "Failed to save catalog item.");
@@ -1946,6 +1957,7 @@ export default function DashboardPage() {
               setItemCategoryId(it.categoryId);
               setItemSiteId(selectedSiteId);
               setItemQuantity(String(qty));
+              setItemSupplierId(it.supplierId || "");
               setItemError(null);
               setItemModalOpen(true);
             }}
@@ -2083,6 +2095,12 @@ export default function DashboardPage() {
             sites={sites}
             categories={categories}
             catalogItems={catalogItems}
+            currentUser={currentUser}
+          />
+        );
+      case "suppliers":
+        return (
+          <SuppliersTab
             currentUser={currentUser}
           />
         );
@@ -2280,6 +2298,9 @@ export default function DashboardPage() {
         setItemSiteId={setItemSiteId}
         itemQuantity={itemQuantity}
         setItemQuantity={setItemQuantity}
+        itemSupplierId={itemSupplierId}
+        setItemSupplierId={setItemSupplierId}
+        suppliers={suppliersList}
         itemError={itemError}
         isSubmittingItem={isSubmittingItem}
         sites={sites}

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { CatalogItem } from "@/types/dashboard";
+import { CatalogItem, RoleBadge, SiteBadge, EidBadge, AssetTagBadge } from "@/types/dashboard";
 import { Barcode } from "./Barcode";
 import { ScanModal } from "./modals/ScanModal";
 import { getApiUrl } from "../../../utils/api";
@@ -383,9 +383,12 @@ export const ScanOperationsTab = ({
                 <h3 style={{ fontSize: "1.1rem", fontWeight: 800, color: "#0f172a", margin: "0.25rem 0 0.15rem 0" }}>
                   {matchedItem.name}
                 </h3>
-                <span style={{ fontSize: "0.72rem", color: "#64748b", fontFamily: "monospace" }}>
-                  SKU: {matchedItem.sku} | Tag: {matchedAsset.tagCode}
-                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.2rem" }}>
+                  <span style={{ fontSize: "0.72rem", color: "#64748b", fontFamily: "monospace" }}>
+                    SKU: {matchedItem.sku}
+                  </span>
+                  <AssetTagBadge tag={matchedAsset.tagCode} size="sm" />
+                </div>
               </div>
               
               {/* Status Badge */}

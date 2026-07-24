@@ -1,7 +1,6 @@
 "use client";
 
-import { User } from "@/types/dashboard";
-import { getRoleBadgeStyle, formatRoleName } from "@/types/dashboard";
+import { User, RoleBadge, SiteBadge, EidBadge, getDepartmentIcon } from "@/types/dashboard";
 
 interface UsersTabProps {
   users: User[];
@@ -247,12 +246,42 @@ export const UsersTab = ({
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.82rem" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
-                  <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>User Profile</th>
-                  <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Role</th>
-                  <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Status</th>
-                  <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Department</th>
-                  <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Assigned Site</th>
-                  <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Employee ID</th>
+                  <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#210cae" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                      <span>User Profile</span>
+                    </div>
+                  </th>
+                  <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#210cae" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                      <span>Role</span>
+                    </div>
+                  </th>
+                  <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#210cae" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                      <span>Status</span>
+                    </div>
+                  </th>
+                  <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#210cae" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                      <span>Department</span>
+                    </div>
+                  </th>
+                  <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#210cae" strokeWidth="2"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                      <span>Assigned Site</span>
+                    </div>
+                  </th>
+                  <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#210cae" strokeWidth="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="13" y2="12"/></svg>
+                      <span>Employee ID</span>
+                    </div>
+                  </th>
                   <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600, textAlign: "right" }}>Registered On</th>
                   <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600, textAlign: "right" }}>Actions</th>
                 </tr>
@@ -295,15 +324,7 @@ export const UsersTab = ({
 
                       {/* Role */}
                       <td style={{ padding: "0.75rem 0.5rem" }}>
-                        <span style={{
-                          display: "inline-block",
-                          padding: "0.15rem 0.45rem",
-                          borderRadius: 6,
-                          fontSize: "0.7rem",
-                          ...getRoleBadgeStyle(u.role),
-                        }}>
-                          {formatRoleName(u.role)}
-                        </span>
+                        <RoleBadge role={u.role} size="sm" />
                       </td>
 
                       {/* Status */}
@@ -325,36 +346,31 @@ export const UsersTab = ({
                       </td>
 
                       {/* Department */}
-                      <td style={{ padding: "0.75rem 0.5rem", color: "#475569" }}>
-                        {u.department || <span style={{ color: "#cbd5e1" }}>—</span>}
+                      <td style={{ padding: "0.75rem 0.5rem" }}>
+                        {u.department ? (
+                          <span style={{
+                            display: "inline-flex", alignItems: "center", gap: "0.35rem",
+                            padding: "0.18rem 0.55rem", borderRadius: 9999,
+                            fontSize: "0.72rem", fontWeight: 600,
+                            backgroundColor: "#f1f5f9", color: "#334155",
+                            border: "1px solid #e2e8f0"
+                          }}>
+                            {getDepartmentIcon(u.department, 12)}
+                            <span>{u.department}</span>
+                          </span>
+                        ) : (
+                          <span style={{ color: "#cbd5e1" }}>—</span>
+                        )}
                       </td>
 
                       {/* Assigned Site */}
-                      <td style={{ padding: "0.75rem 0.5rem", color: "#1e293b", fontWeight: 500 }}>
-                        {u.site?.name ? (
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem" }}>
-                            <span style={{ fontSize: "0.68rem", backgroundColor: "rgba(33, 12, 174, 0.06)", color: "#210cae", padding: "0.1rem 0.35rem", borderRadius: 4, fontWeight: 700 }}>{u.site.prefix}</span>
-                            {u.site.name}
-                          </span>
-                        ) : (
-                          <span style={{ color: "#94a3b8", fontSize: "0.76rem", fontStyle: "italic" }}>Global Scope</span>
-                        )}
+                      <td style={{ padding: "0.75rem 0.5rem" }}>
+                        <SiteBadge site={u.site} size="sm" />
                       </td>
 
                       {/* Employee ID */}
                       <td style={{ padding: "0.75rem 0.5rem" }}>
-                        {u.employeeId ? (
-                          <code style={{
-                            backgroundColor: "#f1f5f9",
-                            color: "#475569",
-                            padding: "0.1rem 0.35rem",
-                            borderRadius: 4,
-                            fontSize: "0.72rem",
-                            fontWeight: 500,
-                          }}>{u.employeeId}</code>
-                        ) : (
-                          <span style={{ color: "#cbd5e1" }}>—</span>
-                        )}
+                        <EidBadge employeeId={u.employeeId} size="sm" />
                       </td>
 
                       {/* Created Date */}

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { CatalogItem } from "@/types/dashboard";
+import { getApiUrl } from "@/utils/api";
 
 interface POModalProps {
   isOpen: boolean;
@@ -65,12 +66,13 @@ export const POModal = ({
         setIsLoadingSuppliers(false);
       } else {
         try {
-          const res = await fetch("http://localhost:3001/suppliers");
+          const res = await fetch(getApiUrl("/suppliers"));
           if (res.ok) {
-            const data = await res.json();
-            setSuppliers(data);
-            if (data.length > 0) {
-              setSelectedSupplierId(data[0].id);
+            const json = await res.json();
+            const list = Array.isArray(json) ? json : json.data || [];
+            setSuppliers(list);
+            if (list.length > 0) {
+              setSelectedSupplierId(list[0].id);
             }
           } else {
             setSuppliers(mockSuppliers);
