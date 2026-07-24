@@ -7,18 +7,19 @@ import { MetricCardSkeleton } from "@/components/ui/Skeleton";
 
 // ── Improvement #1: Count-Up Animation Hook ──────────────────────────
 function useCountUp(target: number, duration = 1000, enabled = true) {
-  const [count, setCount] = useState(0);
+  const [count, setCount] = useState(target);
   const frameRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!enabled || target === 0) { setCount(target); return; }
     const startTime = performance.now();
+    const startVal = count;
     const tick = (now: number) => {
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
       // Ease-out cubic
       const ease = 1 - Math.pow(1 - progress, 3);
-      setCount(Math.round(ease * target));
+      setCount(Math.round(startVal + ease * (target - startVal)));
       if (progress < 1) {
         frameRef.current = requestAnimationFrame(tick);
       }
@@ -108,11 +109,30 @@ function AnimatedMetricCard({
 
 interface DashboardOverviewProps {
   onViewRequests?: () => void;
+  selectedSiteId?: string;
+  setSelectedSiteId?: (siteId: string) => void;
+  sites?: any[];
 }
 
-export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) => {
-  const [sites, setSites] = useState<any[]>([]);
-  const [selectedSiteId, setSelectedSiteId] = useState<string>("");
+export const DashboardOverview = ({
+  onViewRequests,
+  selectedSiteId: propSelectedSiteId,
+  setSelectedSiteId: propSetSelectedSiteId,
+  sites: propSites,
+}: DashboardOverviewProps) => {
+  const [internalSites, setInternalSites] = useState<any[]>([]);
+  const [internalSelectedSiteId, setInternalSelectedSiteId] = useState<string>("ALL");
+
+  const sites = propSites && propSites.length > 0 ? propSites : internalSites;
+  const selectedSiteId = propSelectedSiteId !== undefined ? propSelectedSiteId : internalSelectedSiteId;
+  const handleSetSelectedSiteId = (id: string) => {
+    if (propSetSelectedSiteId) {
+      propSetSelectedSiteId(id);
+    } else {
+      setInternalSelectedSiteId(id);
+    }
+  };
+
   const [data, setData] = useState<any>(null);
   const [deploymentsList, setDeploymentsList] = useState<any[]>([]);
   const [rawRequestsList, setRawRequestsList] = useState<any[]>([]);
@@ -122,30 +142,32 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
   const [selectedTableSite, setSelectedTableSite] = useState<string>("");
   const [selectedTableStatus, setSelectedTableStatus] = useState<string>("");
 
-  // Fetch all sites for dropdown
+  // Fetch all sites for dropdown if not provided via props
   useEffect(() => {
+    if (propSites && propSites.length > 0) return;
     const fetchSites = async () => {
       try {
         const res = await fetch(getApiUrl("sites"));
         if (res.ok) {
           const sitesData = await res.json();
-          setSites(sitesData);
+          setInternalSites(sitesData);
         }
       } catch (err) {
         console.error("Error fetching sites:", err);
       }
     };
     fetchSites();
-  }, []);
+  }, [propSites]);
 
   // Fetch dashboard summary and full requests list for detailed tables
   const fetchDashboardSummary = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     setError(null);
     try {
+      const siteQuery = (selectedSiteId && selectedSiteId !== "ALL") ? `siteId=${selectedSiteId}` : "";
       const [sumRes, reqRes] = await Promise.all([
-        fetch(getApiUrl(`requests/dashboard-summary?siteId=${selectedSiteId}&_t=${Date.now()}`)),
-        fetch(getApiUrl(`requests?_t=${Date.now()}`))
+        fetch(getApiUrl(`requests/dashboard-summary?${siteQuery}&_t=${Date.now()}`)),
+        fetch(getApiUrl(`requests?${siteQuery}&_t=${Date.now()}`))
       ]);
 
       if (sumRes.ok) {
@@ -230,9 +252,15 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
     lowStockAlertsCount: 0,
   };
 
-  const recentRequests = rawRequestsList.length > 0
+  const recentRequests = (rawRequestsList.length > 0
     ? rawRequestsList.filter((r: any) => !r.reason || !r.reason.includes("[ASSET DEPLOYMENT]"))
-    : (data?.recentRequests || []);
+    : (data?.recentRequests || [])).filter((req: any) => {
+      if (!selectedSiteId || selectedSiteId === "ALL") return true;
+      const targetSiteObj = sites.find(s => s.id === selectedSiteId);
+      const reqSiteId = req.siteId || req.requestedBySiteId || req.site?.id;
+      const reqSiteName = req.siteName || req.site?.name || req.site;
+      return reqSiteId === selectedSiteId || (targetSiteObj && reqSiteName === targetSiteObj.name);
+    });
 
   const filteredRequests = recentRequests.filter((req: any) => {
     const q = searchText.toLowerCase();
@@ -240,65 +268,25 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
     const name = req.requestedByName || req.requester || "";
     const item = req.itemName || req.item || "";
     const site = req.siteName || req.site || "";
+    const reqSiteId = req.siteId || req.requestedBySiteId || "";
     const status = req.status || "";
 
     const matchesSearch = !q || reqId.toLowerCase().includes(q) || name.toLowerCase().includes(q) || item.toLowerCase().includes(q);
-    const matchesSite = !selectedTableSite || site === selectedTableSite;
+    const matchesSite = !selectedTableSite || site === selectedTableSite || reqSiteId === selectedTableSite;
     const matchesStatus = !selectedTableStatus || status.toUpperCase() === selectedTableStatus.toUpperCase();
     return matchesSearch && matchesSite && matchesStatus;
   });
 
-  // Recent Deployments (fallback to mock if API returns empty)
-  const displayDeployments = deploymentsList.length > 0 ? deploymentsList : [
-    {
-      id: "REQ-2026-008",
-      createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
-      requestedByName: "Christian Mangos",
-      requestedByRole: "INVENTORY_STAFF",
-      itemName: "Ramsta S800 255GB",
-      assetTag: "SK4-RAM-0002",
-      siteId: "site-1",
-      siteName: "Skyrise 4B",
-      employeeName: "Moses Andrew Salivio",
-      employeeAccount: "IT Staff",
-      employeeEid: "EID-00049",
-      categoryName: "RAM",
-      categoryType: "NON_CONSUMABLE",
-      status: "RETURNED"
-    },
-    {
-      id: "REQ-2026-005",
-      createdAt: new Date(Date.now() - 3600000 * 28).toISOString(),
-      requestedByName: "Christian Mangos",
-      requestedByRole: "INVENTORY_STAFF",
-      itemName: "HP-CNK64705XY-112016-HP P222VA",
-      assetTag: "SK4-MON-0002",
-      siteId: "site-1",
-      siteName: "Skyrise 4B",
-      employeeName: "Moses Andrew Salivio",
-      employeeAccount: "IT Staff",
-      employeeEid: "EID-00049",
-      categoryName: "Monitors",
-      categoryType: "NON_CONSUMABLE",
-      status: "RETURNED"
-    },
-    {
-      id: "REQ-2026-002",
-      createdAt: new Date(Date.now() - 3600000 * 50).toISOString(),
-      requestedByName: "Christian Mangos",
-      requestedByRole: "INVENTORY_STAFF",
-      itemName: "DELL",
-      assetTag: "SK4-SYS-0002",
-      siteId: "site-1",
-      siteName: "Skyrise 4B",
-      employeeName: "Moses Andrew Salivio",
-      employeeAccount: "IT Staff",
-      employeeEid: "EID-00049",
-      categoryName: "System Units",
-      categoryType: "NON_CONSUMABLE",
-      status: "RETURNED"
-    }
-  ];
+  // Filter deployments list by selected site
+  const filteredDeployments = deploymentsList.filter((dep: any) => {
+    if (!selectedSiteId || selectedSiteId === "ALL") return true;
+    const targetSiteObj = sites.find(s => s.id === selectedSiteId);
+    const depSiteId = dep.siteId || dep.requestedBySiteId;
+    const depSiteName = dep.siteName || dep.site;
+    return depSiteId === selectedSiteId || (targetSiteObj && depSiteName === targetSiteObj.name);
+  });
+
+  const displayDeployments = filteredDeployments;
 
   const lowStockAlerts = data?.lowStockAlerts || [];
   const sortedLowStockAlerts = [...lowStockAlerts].sort((a: any, b: any) => {
@@ -370,8 +358,8 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
           <label htmlFor="site-filter" style={{ fontSize: "0.8rem", fontWeight: 600, color: "#64748b" }}>Site Filter:</label>
           <select
             id="site-filter"
-            value={selectedSiteId}
-            onChange={(e) => setSelectedSiteId(e.target.value)}
+            value={selectedSiteId || "ALL"}
+            onChange={(e) => handleSetSelectedSiteId(e.target.value)}
             style={{
               padding: "0.4rem 1.75rem 0.4rem 0.75rem",
               borderRadius: "8px",
@@ -385,10 +373,10 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
               boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
             }}
           >
-            <option value="">All Sites</option>
+            <option value="ALL">All Sites</option>
             {sites.map((site) => (
-              <option key={site.id} value={site.id}>
-                {site.name}
+              <option key={site.id || site.name} value={site.id || site.name}>
+                {site.name} ({site.prefix || "SITE"})
               </option>
             ))}
           </select>

@@ -545,7 +545,22 @@ export class RequestsService implements OnModuleInit {
   }
 
   async getDashboardSummary(siteId?: string) {
-    const activeSiteId = (siteId && siteId !== 'ALL' && siteId !== 'undefined' && siteId !== 'null' && siteId !== '') ? siteId : undefined;
+    let activeSiteId = (siteId && siteId !== 'ALL' && siteId !== 'undefined' && siteId !== 'null' && siteId !== '') ? siteId : undefined;
+
+    if (activeSiteId) {
+      const siteObj = await this.prisma.site.findFirst({
+        where: {
+          OR: [
+            { id: activeSiteId },
+            { name: { equals: activeSiteId, mode: 'insensitive' } },
+            { prefix: { equals: activeSiteId, mode: 'insensitive' } },
+          ]
+        }
+      });
+      if (siteObj) {
+        activeSiteId = siteObj.id;
+      }
+    }
 
     // 1. Total Cataloged Assets
     const totalAssets = await this.prisma.asset.count({
@@ -636,7 +651,13 @@ export class RequestsService implements OnModuleInit {
 
     // 6. Recent Request Transactions
     const dbRecentRequests = await this.prisma.request.findMany({
-      where: activeSiteId ? { requester: { siteId: activeSiteId } } : {},
+      where: activeSiteId ? {
+        OR: [
+          { requester: { siteId: activeSiteId } },
+          { purpose: { contains: activeSiteId } },
+          { asset: { siteId: activeSiteId } },
+        ]
+      } : {},
       include: {
         item: {
           include: { category: true }

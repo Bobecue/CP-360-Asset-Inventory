@@ -1329,7 +1329,7 @@ export default function DashboardPage() {
 
     setIsSubmittingItem(true);
 
-    let finalSku = itemSku.trim().toUpperCase();
+    let finalSku = (itemSku || "").trim().toUpperCase();
     if (!finalSku) {
       if (isUsingMockData) {
         const category = categories.find(c => c.id === itemCategoryId);
@@ -1355,9 +1355,9 @@ export default function DashboardPage() {
     const effectiveSiteId = itemSiteId || "ALL";
 
     const payload: any = {
-      name: itemName.trim(),
+      name: (itemName || "").trim(),
       sku: finalSku || undefined,
-      description: itemDescription.trim() || null,
+      description: (itemDescription || "").trim() || null,
       unitPrice: priceNum,
       leadTimeDays: leadTimeNum,
       categoryId: itemCategoryId,
@@ -1373,7 +1373,7 @@ export default function DashboardPage() {
       const selectedCategory = categories.find(c => c.id === itemCategoryId);
       if (editingItem) {
         const changes: string[] = [];
-        if (itemName.trim() !== editingItem.name) changes.push(`Name: "${editingItem.name}" -> "${itemName.trim()}"`);
+        if ((itemName || "").trim() !== editingItem.name) changes.push(`Name: "${editingItem.name}" -> "${(itemName || "").trim()}"`);
         if (priceNum !== editingItem.unitPrice) changes.push(`Unit Price: ${editingItem.unitPrice} -> ${priceNum}`);
         if (leadTimeNum !== editingItem.leadTimeDays) changes.push(`Lead Time: ${editingItem.leadTimeDays} -> ${leadTimeNum}`);
         
@@ -1863,7 +1863,14 @@ export default function DashboardPage() {
   const renderActiveTab = () => {
     switch (activeTab) {
       case "dashboard":
-        return <DashboardOverview onViewRequests={() => setActiveTab("requests")} />;
+        return (
+          <DashboardOverview
+            onViewRequests={() => setActiveTab("requests")}
+            selectedSiteId={selectedSiteId}
+            setSelectedSiteId={setSelectedSiteId}
+            sites={sites}
+          />
+        );
       case "users":
         return (
           <UsersTab

@@ -164,7 +164,7 @@ export const ItemModal = ({
                   type="text"
                   disabled={!!editingItem}
                   placeholder="e.g. AST-M3MAX-99"
-                  value={itemSku}
+                  value={itemSku ?? ""}
                   onChange={(e) => setItemSku(e.target.value)}
                   style={{
                     width: "100%",
@@ -218,7 +218,7 @@ export const ItemModal = ({
                   type="text"
                   required
                   placeholder="e.g., PC-WORKSTATION-01"
-                  value={itemName}
+                  value={itemName ?? ""}
                   onChange={(e) => setItemName(e.target.value)}
                   style={{
                     width: "100%",
@@ -238,7 +238,7 @@ export const ItemModal = ({
                 <input
                   type="text"
                   placeholder="e.g., Dell OptiPlex 7090 / i7 / 16GB"
-                  value={itemModel}
+                  value={itemModel ?? ""}
                   onChange={(e) => {
                     const val = e.target.value;
                     setItemModel(val);
@@ -263,7 +263,7 @@ export const ItemModal = ({
               <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                 <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Category *</label>
                 <select
-                  value={itemCategoryId}
+                  value={itemCategoryId ?? ""}
                   onChange={(e) => setItemCategoryId(e.target.value)}
                   style={{
                     width: "100%",
@@ -304,7 +304,7 @@ export const ItemModal = ({
                   required
                   disabled={!!editingItem}
                   placeholder="e.g. 10"
-                  value={itemQuantity}
+                  value={itemQuantity ?? ""}
                   onChange={(e) => setItemQuantity(e.target.value)}
                   style={{
                     width: "100%",
@@ -325,7 +325,7 @@ export const ItemModal = ({
                   step="0.01"
                   required
                   placeholder="e.g. 450.00"
-                  value={itemUnitPrice}
+                  value={itemUnitPrice ?? ""}
                   onChange={(e) => setItemUnitPrice(e.target.value)}
                   style={{
                     width: "100%",
@@ -344,7 +344,7 @@ export const ItemModal = ({
             <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
               <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Assigned Supplier (Optional)</label>
               <select
-                value={itemSupplierId}
+                value={itemSupplierId ?? ""}
                 onChange={(e) => setItemSupplierId && setItemSupplierId(e.target.value)}
                 style={{
                   width: "100%",
@@ -511,7 +511,7 @@ export const ItemModal = ({
               <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Description</label>
               <textarea
                 placeholder="Hardware versions, accessory counts, setup details..."
-                value={itemDescription}
+                value={itemDescription ?? ""}
                 onChange={(e) => setItemDescription(e.target.value)}
                 style={{
                   width: "100%",

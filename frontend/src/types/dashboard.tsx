@@ -226,6 +226,7 @@ export const mockCategories = [
   { id: "cat-8", name: "System Units", prefix: "SYS", type: "NON_CONSUMABLE", description: "Desktop PCs, System Units, and Workstations" },
   { id: "cat-5", name: "RAM", prefix: "RAM", type: "NON_CONSUMABLE", description: "Memory modules and RAM sticks" },
   { id: "cat-6", name: "SSD / Storage", prefix: "SSD", type: "NON_CONSUMABLE", description: "Solid State Drives and hard drives" },
+  { id: "cat-9", name: "Headsets", prefix: "HDS", type: "NON_CONSUMABLE", description: "Audio headsets, earphones, and microphones" },
   { id: "cat-3", name: "Keyboards", prefix: "KBD", type: "CONSUMABLE", description: "Keyboards and keypads" },
   { id: "cat-4", name: "Mice", prefix: "MOU", type: "CONSUMABLE", description: "Computer mice and pointers" },
   { id: "cat-7", name: "Cables", prefix: "CAB", type: "CONSUMABLE", description: "Cables, adapters, and power cords" },

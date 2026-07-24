@@ -228,11 +228,14 @@ export class ItemsService {
       });
 
       if (sites.length > 0) {
-        const isGlobal = data.siteId === "ALL";
+        const isGlobal = data.siteId === "ALL" || !data.siteId;
+        // If site is "ALL", assign the quantity to the primary/first site so total across sites equals qty,
+        // while initializing other sites to 0 stock.
+        const primarySiteId = data.siteId && data.siteId !== "ALL" ? data.siteId : sites[0].id;
         const stockData = sites.map((site) => ({
           siteId: site.id,
           itemId: item.id,
-          quantity: (isGlobal || site.id === data.siteId) ? qty : 0,
+          quantity: site.id === primarySiteId ? qty : 0,
           reorderPoint: 5,
         }));
         await tx.siteStock.createMany({
@@ -242,7 +245,8 @@ export class ItemsService {
 
       // Generate physical assets for NON_CONSUMABLE categories
       if (!isConsumable && sites.length > 0) {
-        const targetSites = (data.siteId === "ALL" || !data.siteId) ? sites : sites.filter(s => s.id === data.siteId);
+        const primarySiteId = data.siteId && data.siteId !== "ALL" ? data.siteId : sites[0].id;
+        const targetSites = sites.filter(s => s.id === primarySiteId);
 
         for (const site of targetSites) {
           const actualSitePrefix = (site.prefix || "SYS").toUpperCase();
