@@ -523,7 +523,28 @@ export const ScanOperationsTab = ({
 
               {/* Maintenance & Decommission toggles */}
               <div style={{ display: "flex", gap: "0.5rem", borderTop: "1px solid #f1f5f9", paddingTop: "0.75rem" }}>
-                {matchedAsset.status !== "UNDER_MAINTENANCE" && (
+                {matchedAsset.status === "UNDER_MAINTENANCE" ? (
+                  <button
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={() => handleQuickStatusUpdate("AVAILABLE")}
+                    style={{
+                      flex: 1,
+                      padding: "0.45rem",
+                      borderRadius: 6,
+                      border: "none",
+                      backgroundColor: "#ecfdf5",
+                      color: "#047857",
+                      fontSize: "0.72rem",
+                      fontWeight: 700,
+                      cursor: "pointer"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#d1fae5"}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#ecfdf5"}
+                  >
+                    ✅ Confirm Repaired / Set Available
+                  </button>
+                ) : (
                   <button
                     type="button"
                     disabled={isSubmitting}

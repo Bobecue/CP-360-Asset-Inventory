@@ -41,31 +41,53 @@ export const TopBar = ({
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
-    <header className="topbar-responsive" style={{
+    <header className="topbar-responsive moving-shine-overlay topbar-brand-bg" style={{
       height: 64,
-      backgroundColor: "#ffffff",
       borderBottom: "1px solid #e2e8f0",
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
       padding: "0 1.5rem",
+      boxShadow: "0 2px 10px rgba(33, 12, 174, 0.03)",
+      position: "relative",
+      zIndex: 20
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
         <button
           onClick={onToggleSidebar}
           style={{
-            background: "none", border: "none", cursor: "pointer",
-            color: "#64748b", display: "flex", alignItems: "center", padding: 4,
-            borderRadius: 4,
+            background: "linear-gradient(135deg, rgba(77,201,230,0.08) 0%, rgba(33,12,174,0.05) 100%)",
+            border: "1px solid rgba(77, 201, 230, 0.2)",
+            cursor: "pointer",
+            color: "#210cae",
+            display: "flex",
+            alignItems: "center",
+            padding: 6,
+            borderRadius: 8,
+            transition: "all 0.2s ease"
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
-          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "#eef2ff";
+            e.currentTarget.style.borderColor = "rgba(77, 201, 230, 0.4)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "transparent";
+            e.currentTarget.style.borderColor = "rgba(77, 201, 230, 0.2)";
+          }}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" />
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12" stroke="#210cae" /><line x1="3" y1="6" x2="21" y2="6" stroke="#4dc9e6" /><line x1="3" y1="18" x2="21" y2="18" stroke="#4dc9e6" />
           </svg>
         </button>
-        <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
+        <h2 style={{
+          fontSize: "1.15rem",
+          fontWeight: 800,
+          background: "linear-gradient(135deg, #0f172a 0%, #210cae 100%)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          margin: 0,
+          letterSpacing: "-0.01em"
+        }}>
           {getPageTitle(activeTab)}
         </h2>
       </div>
@@ -76,12 +98,15 @@ export const TopBar = ({
           <button
             onClick={onToggleNotifications}
             style={{
-              background: "none", border: "none", cursor: "pointer",
-              color: "#64748b", display: "flex", alignItems: "center", padding: 6,
-              borderRadius: 6, position: "relative"
+              background: isNotificationsOpen ? "rgba(33, 12, 174, 0.08)" : "transparent",
+              border: "1px solid rgba(77, 201, 230, 0.2)",
+              cursor: "pointer",
+              color: "#210cae", display: "flex", alignItems: "center", padding: 7,
+              borderRadius: 8, position: "relative",
+              transition: "all 0.15s ease"
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#eef2ff")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = isNotificationsOpen ? "rgba(33, 12, 174, 0.08)" : "transparent")}
           >
             <span
               key={unreadCount > 0 ? "has-unread" : "no-unread"}
@@ -89,16 +114,18 @@ export const TopBar = ({
               style={{ display: "inline-flex", alignItems: "center" }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#210cae"/><path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="#4dc9e6"/>
               </svg>
             </span>
             {unreadCount > 0 && (
               <span style={{
-                position: "absolute", top: 2, right: 2,
-                backgroundColor: "#ef4444", color: "#ffffff",
-                fontSize: "0.6rem", fontWeight: 700,
-                borderRadius: "50%", width: 15, height: 15,
-                display: "flex", alignItems: "center", justifyContent: "center"
+                position: "absolute", top: -2, right: -2,
+                background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                color: "#ffffff",
+                fontSize: "0.62rem", fontWeight: 800,
+                borderRadius: "50%", width: 17, height: 17,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "0 2px 6px rgba(239, 68, 68, 0.4), 0 0 0 2px #ffffff"
               }}>
                 {unreadCount}
               </span>
@@ -107,9 +134,9 @@ export const TopBar = ({
 
           {isNotificationsOpen && (
             <div style={{
-              position: "absolute", right: 0, top: 38, width: "320px",
+              position: "absolute", right: 0, top: 44, width: "320px",
               backgroundColor: "#ffffff", borderRadius: "12px",
-              boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05), 0 0 0 1px rgba(226,232,240,0.8)",
+              boxShadow: "0 12px 30px -4px rgba(33, 12, 174, 0.15), 0 0 0 1px rgba(77, 201, 230, 0.3)",
               zIndex: 200, display: "flex", flexDirection: "column", overflow: "hidden"
             }}>
               <div style={{

@@ -45,32 +45,37 @@ export class NotificationsService {
   async checkAndTriggerLowStockAlert(itemId: string, siteId: string, quantity: number, reorderPoint: number) {
     if (quantity <= reorderPoint) {
       const item = await this.prisma.item.findUnique({ where: { id: itemId } });
-      const site = await this.prisma.site.findUnique({ where: { id: siteId } });
-      if (!item || !site) return;
+      if (!item) return;
 
-      // Find all SUPER_ADMINs, plus site-scoped ADMINs/INVENTORY_STAFF
+      const site = siteId && siteId !== 'ALL' ? await this.prisma.site.findUnique({ where: { id: siteId } }) : null;
+      const siteText = site?.name ? ` at "${site.name}"` : '';
+
       const alertUsers = await this.prisma.user.findMany({
         where: {
-          OR: [
-            { role: "SUPER_ADMIN" },
-            {
-              siteId,
-              role: { in: ["ADMIN", "INVENTORY_STAFF"] },
-            },
-          ],
+          role: { in: ["SUPER_ADMIN", "ADMIN", "INVENTORY_STAFF"] }
         },
       });
 
       const title = "Low Stock Warning";
-      const message = `Stock level for "${item.name}" at "${site.name}" has dropped to ${quantity} (Reorder threshold: ${reorderPoint}).`;
+      const message = `Stock level for "${item.name}"${siteText} has dropped to ${quantity} (Reorder threshold: ${reorderPoint}).`;
 
-      // Create notifications for all these users
       for (const u of alertUsers) {
-        await this.create({
-          title,
-          message,
-          userId: u.id,
+        const existing = await this.prisma.notification.findFirst({
+          where: {
+            userId: u.id,
+            title: "Low Stock Warning",
+            message: { contains: `"${item.name}"` },
+            isRead: false
+          }
         });
+
+        if (!existing) {
+          await this.create({
+            title,
+            message,
+            userId: u.id,
+          });
+        }
       }
     }
   }

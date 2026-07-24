@@ -11,7 +11,108 @@ export class ItemsService {
     private auditLogsService: AuditLogsService,
   ) { }
 
+  async reconcileAssetStatuses() {
+    try {
+      // Find all ACTIVE requests — asset is still in use by requester
+      const activeRequests = await this.prisma.request.findMany({
+        where: {
+          status: {
+            in: [
+              'PENDING_APPROVAL',
+              'PENDING_OPS_APPROVAL',
+              'APPROVED',
+              'READY_FOR_PICKUP',
+              'RELEASED',
+              'AWAITING_CONFIRMATION',
+              'ITEM_RECEIVED',   // asset still with requester, not yet returned
+              'PENDING_PROCUREMENT'
+            ]
+          }
+        },
+        select: { id: true, assetId: true, purpose: true }
+      });
+
+      // SOURCE OF TRUTH: only tag codes recorded in purpose JSON
+      // The request.assetId FK can be stale or point to the wrong asset record
+      const activeTagCodes = new Set<string>();
+
+      activeRequests.forEach(r => {
+        if (r.purpose) {
+          try {
+            const parsed = JSON.parse(r.purpose);
+            if (parsed.assetTag) {
+              parsed.assetTag.split(/,\s*/).forEach((t: string) => {
+                if (t && t.trim()) activeTagCodes.add(t.trim());
+              });
+            }
+            if (Array.isArray(parsed.assetTags)) {
+              parsed.assetTags.forEach((t: string) => {
+                if (t && t.trim()) activeTagCodes.add(t.trim());
+              });
+            }
+          } catch {}
+        }
+        // Only fall back to assetId if there is NO purpose tag at all
+        // (e.g. old records created before purpose JSON was tracked)
+        // We skip this fallback because assetId may be stale
+      });
+
+      // 1. Mark assets ASSIGNED if their tagCode is in an active request
+      if (activeTagCodes.size > 0) {
+        await this.prisma.asset.updateMany({
+          where: {
+            tagCode: { in: Array.from(activeTagCodes) },
+            status: 'AVAILABLE'
+          },
+          data: { status: 'ASSIGNED' }
+        });
+      }
+
+      // 2. Mark assets AVAILABLE if ASSIGNED but NOT referenced by any active purpose tag
+      await this.prisma.asset.updateMany({
+        where: {
+          status: 'ASSIGNED',
+          tagCode: activeTagCodes.size > 0
+            ? { notIn: Array.from(activeTagCodes) }
+            : undefined,
+          condition: { notIn: ['DAMAGED', 'BAD'] }
+        },
+        data: { status: 'AVAILABLE', assignedToId: null }
+      });
+
+      // 3. Self-heal: update request.assetId to point to the correct asset
+      //    when assetId is stale (mismatches the purpose tag)
+      for (const r of activeRequests) {
+        if (!r.purpose) continue;
+        try {
+          const parsed = JSON.parse(r.purpose);
+          const purposeTag: string | undefined = parsed.assetTag
+            ? parsed.assetTag.split(/,\s*/)[0]?.trim()
+            : undefined;
+          if (!purposeTag) continue;
+
+          const correctAsset = await this.prisma.asset.findFirst({
+            where: { tagCode: purposeTag }
+          });
+          if (!correctAsset) continue;
+
+          if (r.assetId !== correctAsset.id) {
+            await this.prisma.request.update({
+              where: { id: r.id },
+              data: { assetId: correctAsset.id }
+            });
+          }
+        } catch {}
+      }
+    } catch (e) {
+      // Ignore non-fatal reconciliation errors
+    }
+  }
+
+
   async findAll(categoryId?: string, search?: string) {
+    await this.reconcileAssetStatuses();
+
     const where: any = {};
     if (categoryId) {
       where.categoryId = categoryId;
@@ -602,73 +703,83 @@ export class ItemsService {
     for (const item of items) {
       if (categoryId && categoryId !== 'ALL' && item.categoryId !== categoryId) continue;
 
+      const isConsumable = item.category?.type === 'CONSUMABLE' || item.category?.name?.toLowerCase().includes('consumable');
       const defaultRP = item.reorderPoint || 5;
-      const stockLevels = item.stockLevels || [];
 
-      for (const stock of stockLevels) {
-        if (siteId && siteId !== 'ALL' && stock.siteId !== siteId) continue;
+      if (siteId && siteId !== 'ALL') {
+        const matchingStock = (item.stockLevels || []).find(s => s.siteId === siteId);
+        let siteStock = 0;
+        let siteRP = matchingStock?.reorderPoint || defaultRP;
 
-        const currentQty = stock.quantity;
-        const rp = stock.reorderPoint || defaultRP;
+        if (matchingStock) {
+          siteStock = matchingStock.quantity || 0;
+        } else if (!isConsumable && item.assets && item.assets.length > 0) {
+          siteStock = item.assets.filter(a => a.siteId === siteId && a.status === 'AVAILABLE' && a.condition !== 'BAD' && a.condition !== 'DAMAGED').length;
+        } else {
+          continue;
+        }
 
-        if (currentQty <= rp) {
-          const isCritical = currentQty === 0 || currentQty <= Math.floor(rp / 2);
+        if (siteStock <= siteRP) {
+          const isCritical = siteStock === 0 || siteStock <= Math.floor(siteRP / 2);
           const itemSeverity = isCritical ? 'CRITICAL' : 'WARNING';
 
           if (!severity || severity === 'ALL' || itemSeverity === severity) {
             alerts.push({
-              id: `${item.id}-${stock.siteId}`,
+              id: `${item.id}-${siteId}`,
               itemId: item.id,
-              siteId: stock.siteId,
-              siteName: stock.site?.name || 'Site Inventory',
-              sitePrefix: stock.site?.prefix || 'SITE',
+              siteId: siteId,
+              siteName: matchingStock?.site?.name || 'Selected Site',
+              sitePrefix: matchingStock?.site?.prefix || 'SITE',
               name: item.name,
               sku: item.sku,
               unitPrice: item.unitPrice,
               leadTimeDays: item.leadTimeDays,
-              reorderPoint: rp,
+              reorderPoint: siteRP,
               reorderQuantity: item.reorderQuantity || 10,
-              currentQuantity: currentQty,
+              currentQuantity: siteStock,
               severity: itemSeverity,
               category: item.category,
               stockLevels: item.stockLevels,
-              daysBelowThreshold: Math.max(1, Math.floor((Date.now() - new Date(stock.updatedAt || item.updatedAt).getTime()) / (1000 * 60 * 60 * 24)))
+              daysBelowThreshold: 1
             });
+            this.notificationsService.checkAndTriggerLowStockAlert(item.id, siteId, siteStock, siteRP).catch(() => {});
           }
         }
-      }
-
-      if (stockLevels.length === 0) {
-        let currentQty = 0;
-        let relevantAssets = (item.assets || []).filter((a: any) => a.status === 'AVAILABLE' || a.status === 'ASSIGNED');
-        if (siteId && siteId !== 'ALL') {
-          relevantAssets = relevantAssets.filter((a: any) => a.siteId === siteId);
+      } else {
+        // All Sites view: aggregate stock matching Asset Catalog
+        let totalStock = 0;
+        if (!isConsumable && item.assets && item.assets.length > 0) {
+          totalStock = item.assets.filter(a => a.status === 'AVAILABLE' && a.condition !== 'BAD' && a.condition !== 'DAMAGED').length;
+        } else if (item.stockLevels && item.stockLevels.length > 0) {
+          totalStock = item.stockLevels.reduce((sum, s) => sum + (s.quantity || 0), 0);
+        } else {
+          totalStock = (item as any).quantity || 0;
         }
-        currentQty = relevantAssets.length;
 
-        if (currentQty <= defaultRP) {
-          const isCritical = currentQty === 0 || currentQty <= Math.floor(defaultRP / 2);
+        if (totalStock <= defaultRP) {
+          const isCritical = totalStock === 0 || totalStock <= Math.floor(defaultRP / 2);
           const itemSeverity = isCritical ? 'CRITICAL' : 'WARNING';
 
           if (!severity || severity === 'ALL' || itemSeverity === severity) {
             alerts.push({
-              id: `${item.id}-global`,
+              id: `${item.id}-all`,
               itemId: item.id,
-              siteId: siteId && siteId !== 'ALL' ? siteId : 'all',
-              siteName: siteId && siteId !== 'ALL' ? 'Selected Site' : 'All Sites',
-              sitePrefix: siteId && siteId !== 'ALL' ? 'SITE' : 'ALL',
+              siteId: 'ALL',
+              siteName: 'All Sites',
+              sitePrefix: 'ALL',
               name: item.name,
               sku: item.sku,
               unitPrice: item.unitPrice,
               leadTimeDays: item.leadTimeDays,
               reorderPoint: defaultRP,
               reorderQuantity: item.reorderQuantity || 10,
-              currentQuantity: currentQty,
+              currentQuantity: totalStock,
               severity: itemSeverity,
               category: item.category,
-              stockLevels: [],
-              daysBelowThreshold: Math.max(1, Math.floor((Date.now() - new Date(item.updatedAt).getTime()) / (1000 * 60 * 60 * 24)))
+              stockLevels: item.stockLevels,
+              daysBelowThreshold: 1
             });
+            this.notificationsService.checkAndTriggerLowStockAlert(item.id, 'ALL', totalStock, defaultRP).catch(() => {});
           }
         }
       }

@@ -597,21 +597,24 @@ export function RequestTimeline({
       {assetTag && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
           <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            {itemCategory === 'Consumables' ? 'Assigned Batch Number' : 'Assigned Asset Tag'}
+            {itemCategory === 'Consumables' ? 'Assigned Batch Number' : (assetTag.includes(',') ? 'Assigned Asset Tags' : 'Assigned Asset Tag')}
           </label>
-          <div style={{
-            alignSelf: 'flex-start',
-            backgroundColor: '#ffffff',
-            border: '1px solid #cbd5e1',
-            borderRadius: '6px',
-            padding: '0.4rem 0.8rem',
-            fontSize: '0.82rem',
-            fontWeight: 700,
-            fontFamily: 'monospace',
-            color: '#334155',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-          }}>
-            {assetTag}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+            {assetTag.split(/,\s*/).map((tag, idx) => (
+              <div key={idx} style={{
+                backgroundColor: '#f8fafc',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                padding: '0.4rem 0.8rem',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                fontFamily: 'monospace',
+                color: '#1e293b',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+              }}>
+                🏷️ {tag}
+              </div>
+            ))}
           </div>
         </div>
       )}

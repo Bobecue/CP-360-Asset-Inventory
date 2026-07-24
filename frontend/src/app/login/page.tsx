@@ -74,7 +74,7 @@ export default function LoginPage() {
 
   return (
     <main
-      className="animate-gradient-shift"
+      className="animate-brand-mesh moving-shine-overlay"
       style={{
         minHeight: "100vh",
         display: "flex",
@@ -83,37 +83,40 @@ export default function LoginPage() {
         position: "relative",
         overflow: "hidden",
         padding: "2rem 1rem",
-        backgroundImage: "linear-gradient(-45deg, #f8fafc, #e2e8f0, #ffffff, #e0e7ff, #f1f5f9)",
-        backgroundSize: "400% 400%",
+        background: "linear-gradient(135deg, #ffffff 0%, #faf8ff 25%, #fff5f5 50%, #f0f7ff 75%, #f8fafc 100%)",
+        backgroundSize: "300% 300%",
       }}
     >
       <InfiniteGridBackground />
 
-      {/* Toned down soft background blobs with highly transparent indigo and sky blue hints */}
+      {/* Vibrant floating background Orbs featuring ContactPoint360 Red, Royal Indigo, and Sky Blue */}
       <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
         <div style={{
-          position: "absolute", top: "-8%", left: "-6%",
-          width: 480, height: 480, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(33,12,174,0.06) 0%, transparent 70%)",
+          position: "absolute", top: "-10%", left: "-5%",
+          width: 500, height: 500, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(255,42,42,0.12) 0%, rgba(33,12,174,0.08) 50%, transparent 75%)",
           animation: "floatA 12s ease-in-out infinite",
+          filter: "blur(20px)",
         }} />
         <div style={{
-          position: "absolute", bottom: "-10%", right: "-6%",
-          width: 420, height: 420, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(77,201,230,0.05) 0%, transparent 70%)",
+          position: "absolute", bottom: "-12%", right: "-5%",
+          width: 450, height: 450, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(77,201,230,0.14) 0%, rgba(33,12,174,0.1) 50%, transparent 75%)",
           animation: "floatB 15s ease-in-out infinite",
+          filter: "blur(20px)",
         }} />
         <div style={{
-          position: "absolute", top: "40%", left: "55%",
-          width: 220, height: 220, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(33,12,174,0.04) 0%, transparent 70%)",
+          position: "absolute", top: "35%", left: "50%",
+          width: 300, height: 300, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(255,42,42,0.08) 0%, rgba(77,201,230,0.08) 60%, transparent 80%)",
           animation: "floatA 10s ease-in-out infinite reverse",
+          filter: "blur(15px)",
         }} />
       </div>
 
       {/* Very subtle dot grid */}
       <div aria-hidden style={{
-        position: "absolute", inset: 0, zIndex: 0, opacity: 0.15,
+        position: "absolute", inset: 0, zIndex: 0, opacity: 0.2,
         backgroundImage: "radial-gradient(circle, #94a3b8 1px, transparent 1px)",
         backgroundSize: "28px 28px",
         pointerEvents: "none",
@@ -121,24 +124,26 @@ export default function LoginPage() {
 
       {/* ── Card ── */}
       <div
-        className="relative z-10 card-shine-effect"
+        className="relative z-10 card-shine-effect polkadot-pattern-bg"
         style={{
           position: "relative", zIndex: 1,
           width: "100%", maxWidth: 440,
-          background: "#ffffff",
           borderRadius: 24,
-          border: "1px solid #e2e8f0",
-          boxShadow: "0 20px 40px -15px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.02)",
+          border: "1px solid rgba(77, 201, 230, 0.3)",
+          boxShadow: "0 20px 50px -10px rgba(33, 12, 174, 0.12), 0 8px 24px -4px rgba(255, 42, 42, 0.08)",
           padding: "3.2rem 2.5rem 2.5rem",
           overflow: "hidden",
         }}
       >
-        {/* Top glowing brand line */}
+        {/* Top glowing multi-brand line */}
         <div style={{
           position: "absolute", top: 0, left: 0, right: 0, height: 5,
-          background: "linear-gradient(90deg, #210cae, #4dc9e6)",
+          background: "linear-gradient(90deg, #4dc9e6 0%, #210cae 35%, #ff2a2a 70%, #4dc9e6 100%)",
+          backgroundSize: "200% 100%",
+          animation: "mesh-gradient-move 4s linear infinite",
           borderTopLeftRadius: 24,
           borderTopRightRadius: 24,
+          boxShadow: "0 2px 10px rgba(255, 42, 42, 0.4)",
         }} />
 
         {/* Logo + brand heading */}

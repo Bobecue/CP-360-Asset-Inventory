@@ -267,14 +267,11 @@ export const UsersTab = ({
                   return (
                     <tr key={u.id} 
                       className="animated-row"
-                      style={{
-                        borderBottom: "1px solid #f8fafc",
-                        transition: "background 0.15s, opacity 0.15s",
-                        opacity: u.isActive === false ? 0.65 : 1,
+                      style={{ 
+                        borderBottom: "1px solid #f8fafc", 
                         animationDelay: `${index * 0.04}s`,
+                        opacity: u.isActive === false ? 0.6 : 1,
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fafafa")}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                     >
                       {/* Profile */}
                       <td style={{ padding: "0.75rem 0.5rem" }}>

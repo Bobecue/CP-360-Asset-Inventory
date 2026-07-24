@@ -40,12 +40,92 @@ body {
   height: 100%;
 }
 
+@keyframes polkadot-move-shine {
+  0% {
+    background-position: 0px 0px, 0% 50%, 100% 50%;
+  }
+  50% {
+    background-position: 28px 28px, 100% 50%, 0% 50%;
+  }
+  100% {
+    background-position: 56px 56px, 0% 50%, 100% 50%;
+  }
+}
+
 body {
-  background: hsl(var(--background));
+  background-image: 
+    radial-gradient(circle, rgba(33, 12, 174, 0.12) 1.25px, transparent 1.25px),
+    radial-gradient(circle at 20% 20%, rgba(225, 29, 72, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(77, 201, 230, 0.08) 0%, transparent 50%),
+    linear-gradient(135deg, #ffffff 0%, #f8fafc 40%, #fff7f7 70%, #f0f7ff 100%);
+  background-size: 28px 28px, 200% 200%, 200% 200%, 300% 300%;
+  animation: polkadot-move-shine 20s linear infinite;
+  background-attachment: fixed;
   color: hsl(var(--foreground));
   font-family: var(--font-inter), 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Card glassmorphism & soft brand border highlight */
+.card-shine-effect,
+.metric-card,
+section,
+.module-container-card {
+  border: 1px solid rgba(226, 232, 240, 0.85) !important;
+  box-shadow: 0 4px 20px -4px rgba(33, 12, 174, 0.04), 0 2px 6px rgba(225, 29, 72, 0.02) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.card-shine-effect:hover,
+.metric-card:hover,
+.module-container-card:hover {
+  border-color: rgba(77, 201, 230, 0.4) !important;
+  box-shadow: 0 10px 25px -4px rgba(33, 12, 174, 0.08), 0 4px 12px rgba(225, 29, 72, 0.04) !important;
+}
+
+/* System-Wide Module Header Banner Accent */
+.module-header-accent {
+  background: linear-gradient(135deg, rgba(225, 29, 72, 0.05) 0%, rgba(77, 201, 230, 0.06) 40%, rgba(33, 12, 174, 0.04) 100%);
+  border-bottom: 1px solid rgba(225, 29, 72, 0.2);
+  padding: 1.25rem 1.5rem;
+  border-radius: 12px 12px 0 0;
+}
+
+/* System-Wide Primary Action Button (Featuring CP360 Red, Indigo, & Sky Blue Gradient with Metallic Silver Glow) */
+.btn-primary-brand {
+  background: linear-gradient(135deg, #e11d48 0%, #210cae 50%, #4dc9e6 100%) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 4px 14px -2px rgba(225, 29, 72, 0.35) !important;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.btn-primary-brand:hover {
+  transform: translateY(-1.5px) scale(1.02) !important;
+  box-shadow: 0 6px 20px -2px rgba(225, 29, 72, 0.5), 0 0 14px rgba(77, 201, 230, 0.4) !important;
+}
+
+.btn-primary-brand:active {
+  transform: translateY(0) scale(0.98) !important;
+}
+
+/* Metallic Silver & Red Gradient Table Header Bar */
+thead tr {
+  background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 35%, #fff1f2 70%, #f0f7ff 100%) !important;
+  border-bottom: 2px solid rgba(225, 29, 72, 0.3) !important;
+}
+
+th {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  font-size: 0.72rem !important;
+  letter-spacing: 0.06em !important;
+  padding: 0.85rem 1rem !important;
+  border-bottom: 2px solid rgba(225, 29, 72, 0.25) !important;
+  background-color: transparent !important;
 }
 
 *:focus-visible {
@@ -261,29 +341,12 @@ body {
   animation: bell-bounce 1.8s ease-in-out 0.5s 1;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   IMPROVEMENT #5 — Table Row Hover Sweep
-   ═══════════════════════════════════════════════════════════ */
-@keyframes row-sweep {
-  from {
-    background-position: -100% 0;
-  }
-
-  to {
-    background-position: 0 0;
-  }
-}
-
 .table-row-hover {
-  transition: background 0.15s ease, border-left-color 0.15s ease;
-  border-left: 2px solid transparent;
+  transition: background-color 0.15s ease;
 }
 
 .table-row-hover:hover {
-  background: linear-gradient(90deg, rgba(77, 201, 230, 0.07) 0%, rgba(33, 12, 174, 0.025) 100%) !important;
-  background-size: 200% 100%;
-  animation: row-sweep 0.3s ease-out forwards;
-  border-left: 2px solid rgba(77, 201, 230, 0.4) !important;
+  background-color: #f8fafc !important;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -435,15 +498,349 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   IMPROVEMENT #8 — Metric Card Hover Lift (utility)
+   IMPROVEMENT #8 — Metric Card Hover Lift & Glass Glow
    ═══════════════════════════════════════════════════════════ */
-.metric-card {
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+.metric-card,
+.card-hover-effect {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.22s ease !important;
 }
 
-.metric-card:hover {
+.metric-card:hover,
+.card-hover-effect:hover {
   transform: translateY(-3px) !important;
-  box-shadow: 0 10px 28px rgba(33, 12, 174, 0.10),
-    0 0 0 1px rgba(77, 201, 230, 0.18) !important;
+  box-shadow: 0 12px 30px -4px rgba(33, 12, 174, 0.10),
+    0 4px 14px -2px rgba(77, 201, 230, 0.18) !important;
+  border-color: rgba(77, 201, 230, 0.4) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   UNIFIED SYSTEM ANIMATIONS — Containers, Tabs, Buttons & Modals
+   ═══════════════════════════════════════════════════════════ */
+@keyframes containerEntrance {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.995);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-container-entrance {
+  animation: containerEntrance 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes tabSwitchFade {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.996);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tab-content-animate {
+  animation: tabSwitchFade 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.btn-interactive {
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.15s ease !important;
+}
+
+.btn-interactive:hover {
+  transform: translateY(-1.5px) scale(1.015) !important;
+  box-shadow: 0 4px 14px -2px rgba(33, 12, 174, 0.18) !important;
+}
+
+.btn-interactive:active {
+  transform: translateY(0) scale(0.975) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CP360 UNIVERSAL BRAND COLOR & METALLIC SHINE SPECIFICATIONS
+   ═══════════════════════════════════════════════════════════ */
+
+/* Sidebar Brand Mesh & Polkadot Background */
+.sidebar-brand-bg {
+  background-image: 
+    radial-gradient(circle, rgba(33, 12, 174, 0.18) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 50% 10%, rgba(225, 29, 72, 0.08) 0%, transparent 60%),
+    linear-gradient(180deg, #ffffff 0%, #f0f7ff 35%, #fff1f2 70%, #f5f3ff 100%) !important;
+  background-size: 24px 24px, 100% 100%, 100% 300% !important;
+  animation: polkadot-move-shine 16s ease infinite !important;
+}
+
+/* TopBar Brand Mesh & Polkadot Background */
+.topbar-brand-bg {
+  background-image: 
+    radial-gradient(circle, rgba(33, 12, 174, 0.18) 1.5px, transparent 1.5px),
+    linear-gradient(90deg, #ffffff 0%, #eff6ff 30%, #fff1f2 65%, #f0fdf4 100%) !important;
+  background-size: 24px 24px, 300% 100% !important;
+  animation: polkadot-move-shine 12s ease infinite !important;
+}
+.card-shine-effect,
+.metric-card,
+.module-container-card,
+div[style*="borderRadius"] {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   UNIVERSAL CURSOR HOVER RED SHINE SPECIFICATIONS (ALL MODULES)
+   ═══════════════════════════════════════════════════════════ */
+
+/* Any Card, Grid Container, Module Block, and Panel shines Red when pointed at */
+.card-shine-effect:hover,
+.metric-card:hover,
+.module-container-card:hover,
+div[style*="borderRadius"]:hover,
+div[style*="background"]:hover,
+article:hover,
+section:hover {
+  border-color: rgba(225, 29, 72, 0.35) !important;
+  box-shadow: 0 6px 20px -2px rgba(225, 29, 72, 0.16), 0 0 12px rgba(225, 29, 72, 0.1) !important;
+}
+
+/* Any Button or Clickable Pill shines Red when pointed at */
+button:hover,
+a:hover,
+span[style*="borderRadius"]:hover {
+  border-color: rgba(225, 29, 72, 0.45) !important;
+  box-shadow: 0 4px 16px -2px rgba(225, 29, 72, 0.25), 0 0 8px rgba(225, 29, 72, 0.15) !important;
+}
+
+/* Inputs, Select Dropdowns, Date Pickers shine Red on Hover & Focus */
+input:hover,
+input:focus,
+select:hover,
+select:focus,
+textarea:hover,
+textarea:focus {
+  border-color: #e11d48 !important;
+  box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.18), 0 0 10px rgba(225, 29, 72, 0.12) !important;
+}
+
+@keyframes card-shine-sweep {
+  0% {
+    transform: translateX(-120%) rotate(25deg);
+  }
+  25%, 100% {
+    transform: translateX(280%) rotate(25deg);
+  }
+}
+
+/* Universal Button Brand Styling & Interactive Glow Sheen */
+button {
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease, background-color 0.15s ease !important;
+  will-change: transform;
+}
+
+button:hover {
+  transform: translateY(-2px) scale(1.02) !important;
+}
+
+button:active {
+  transform: translateY(0) scale(0.96) !important;
+}
+
+/* Floating Card Interactive Lift & Tilt */
+.metric-card,
+.card-shine-effect,
+section {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease !important;
+}
+
+.metric-card:hover,
+.card-shine-effect:hover {
+  transform: translateY(-4px) scale(1.008) !important;
+}
+
+/* Primary Action Buttons across all modules */
+button[style*="210cae"],
+button[style*="4dc9e6"],
+.btn-primary-brand {
+  background: linear-gradient(135deg, #210cae 0%, #3b82f6 50%, #4dc9e6 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 4px 14px -2px rgba(33, 12, 174, 0.35) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+button[style*="210cae"]:hover,
+button[style*="4dc9e6"]:hover,
+.btn-primary-brand:hover {
+  box-shadow: 0 8px 24px -2px rgba(33, 12, 174, 0.45), 0 0 16px rgba(225, 29, 72, 0.35) !important;
+}
+
+/* Interactive Search Inputs & Select Filters Pulse */
+@keyframes input-focus-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(77, 201, 230, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(77, 201, 230, 0.18);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(77, 201, 230, 0.4);
+  }
+}
+
+input[type="text"],
+input[type="search"],
+select {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease !important;
+}
+
+input[type="text"]:focus,
+input[type="search"]:focus,
+select:focus {
+  border-color: #4dc9e6 !important;
+  transform: translateY(-1px) !important;
+  animation: input-focus-pulse 2s infinite !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PREMIUM TABLE COLOR & BADGE SPECIFICATIONS
+   ═══════════════════════════════════════════════════════════ */
+
+/* Table Container Wrapper */
+table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  width: 100% !important;
+}
+
+/* Gradient Table Header Bar */
+thead tr {
+  background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 50%, #eff6ff 100%) !important;
+  border-bottom: 2px solid rgba(77, 201, 230, 0.3) !important;
+}
+
+th {
+  color: #1e293b !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  font-size: 0.72rem !important;
+  letter-spacing: 0.06em !important;
+  padding: 0.85rem 1rem !important;
+  border-bottom: 2px solid rgba(77, 201, 230, 0.25) !important;
+  background-color: transparent !important;
+}
+
+/* Universal Table Row Hover Effect across ALL modules */
+tr,
+tbody tr,
+.table-row-hover {
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+  border-left: 3.5px solid transparent !important;
+  position: relative;
+}
+
+tbody tr:nth-child(even),
+tr:nth-child(even) {
+  background-color: rgba(248, 250, 252, 0.75) !important;
+}
+
+tbody tr:nth-child(odd),
+tr:nth-child(odd) {
+  background-color: #ffffff !important;
+}
+
+tr:hover,
+tbody tr:hover,
+.table-row-hover:hover {
+  background-color: #fff5f5 !important;
+  border-left: 3.5px solid #e11d48 !important;
+  box-shadow: 0 2px 10px -2px rgba(225, 29, 72, 0.12), inset 0 0 6px rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Universal Text & Element Drag Selection Shining Red Highlight Across ENTIRE System */
+*::selection,
+*::-moz-selection,
+::selection,
+::-moz-selection {
+  background-color: #ff1a40 !important;
+  color: #ffffff !important;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.95), 0 0 4px rgba(255, 26, 64, 0.8) !important;
+}
+
+/* Request ID Pills */
+span[style*="req-"],
+code,
+.request-id-badge {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important;
+  color: #210cae !important;
+  border: 1px solid rgba(33, 12, 174, 0.2) !important;
+  font-weight: 700 !important;
+  padding: 0.2rem 0.6rem !important;
+  border-radius: 6px !important;
+  font-family: monospace !important;
+  box-shadow: 0 1px 3px rgba(33, 12, 174, 0.08) !important;
+}
+
+/* Status Chips & Badges Color Enhancements */
+span[style*="Returned"],
+span[style*="returned"] {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important;
+  color: #047857 !important;
+  border: 1px solid #6ee7b7 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.15) !important;
+}
+
+span[style*="Pending"],
+span[style*="pending"] {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
+  color: #b45309 !important;
+  border: 1px solid #fcd34d !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.15) !important;
+}
+
+span[style*="Processing"],
+span[style*="processing"],
+span[style*="In Use"],
+span[style*="Released"] {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
+  color: #1d4ed8 !important;
+  border: 1px solid #93c5fd !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.15) !important;
+}
+
+/* Asset Tag Pills inside tables */
+span[style*="SK4-"],
+span[style*="SKA-"] {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%) !important;
+  color: #0369a1 !important;
+  border: 1px solid #7dd3fc !important;
+  font-weight: 700 !important;
+  padding: 0.15rem 0.5rem !important;
+  border-radius: 6px !important;
+  box-shadow: 0 1px 3px rgba(3, 105, 161, 0.12) !important;
+}
+
+/* Status Chips Pulse Glow */
+@keyframes badge-subtle-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+span[style*="borderRadius"]:hover,
+.badge:hover {
+  animation: badge-subtle-pulse 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.1) !important;
 }

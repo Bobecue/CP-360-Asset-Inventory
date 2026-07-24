@@ -63,31 +63,42 @@ function AnimatedMetricCard({
       className="metric-card stagger-card card-shine-effect"
       style={{
         backgroundColor: "#ffffff",
-        borderRadius: 12,
+        borderRadius: 14,
         padding: "1.25rem 1.5rem",
-        boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(226,232,240,0.6)",
+        boxShadow: "0 4px 16px -2px rgba(33, 12, 174, 0.06), 0 0 0 1px rgba(77, 201, 230, 0.2)",
+        borderTop: "3px solid transparent",
+        borderImage: "linear-gradient(90deg, #4dc9e6 0%, #210cae 100%) 1",
         display: "flex",
         flexDirection: "column",
-        gap: "0.25rem",
+        gap: "0.35rem",
         animationDelay: `${idx * 90}ms`,
+        position: "relative",
       }}
     >
-      <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.02em" }}>
-        {title}
-      </span>
-      <span style={{ fontSize: "1.75rem", fontWeight: 700, color }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          {title}
+        </span>
+        <div className="brand-icon-badge" style={{ width: 28, height: 28 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="#210cae" />
+          </svg>
+        </div>
+      </div>
+      <span style={{ fontSize: "1.85rem", fontWeight: 800, color, letterSpacing: "-0.02em" }}>
         {animated.toLocaleString()}
       </span>
-      <span style={{ fontSize: "0.76rem", color: "#94a3b8", fontWeight: 500 }}>
+      <span style={{ fontSize: "0.76rem", color: "#64748b", fontWeight: 500 }}>
         {desc}
       </span>
       {showProgressBar && (
-        <div style={{ height: 6, width: "100%", backgroundColor: "#f1f5f9", borderRadius: 3, overflow: "hidden", marginTop: "0.5rem" }}>
+        <div style={{ height: 6, width: "100%", backgroundColor: "rgba(77,201,230,0.15)", borderRadius: 3, overflow: "hidden", marginTop: "0.5rem" }}>
           <div style={{
             height: "100%",
             width: `${fillWidth}%`,
-            background: "linear-gradient(90deg, #210cae 0%, #4dc9e6 100%)",
+            background: "linear-gradient(90deg, #4dc9e6 0%, #210cae 100%)",
             borderRadius: 3,
+            boxShadow: "0 0 10px rgba(77, 201, 230, 0.5)",
             transition: "width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
           }} />
         </div>
@@ -126,28 +137,32 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
     fetchSites();
   }, []);
 
-  // Fetch dashboard summary when selected site changes
-  useEffect(() => {
-    const fetchDashboardSummary = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(getApiUrl(`requests/dashboard-summary?siteId=${selectedSiteId}`));
-        if (res.ok) {
-          const envelope = await res.json();
-          setData(envelope.data);
-        } else {
-          throw new Error(`Server returned status ${res.status}`);
-        }
-      } catch (err: any) {
-        console.error("Error fetching dashboard summary:", err);
-        setError(err.message || "Failed to load dashboard summary");
-      } finally {
-        setLoading(false);
+  // Fetch dashboard summary — on site change and on auto-refresh interval
+  const fetchDashboardSummary = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(getApiUrl(`requests/dashboard-summary?siteId=${selectedSiteId}&_t=${Date.now()}`));
+      if (res.ok) {
+        const envelope = await res.json();
+        setData(envelope.data);
+      } else {
+        throw new Error(`Server returned status ${res.status}`);
       }
-    };
-    fetchDashboardSummary();
+    } catch (err: any) {
+      console.error("Error fetching dashboard summary:", err);
+      if (!silent) setError(err.message || "Failed to load dashboard summary");
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, [selectedSiteId]);
+
+  useEffect(() => {
+    fetchDashboardSummary();
+    // Auto-refresh every 30 seconds (silent — no loading spinner)
+    const interval = setInterval(() => fetchDashboardSummary(true), 30_000);
+    return () => clearInterval(interval);
+  }, [fetchDashboardSummary]);
 
   if (loading && !data) {
     return (
@@ -313,13 +328,34 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
             <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>Recent Request Transactions</h3>
-            <span style={{ fontSize: "0.78rem", color: "#94a3b8", cursor: "pointer", fontWeight: 500 }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "#1e293b")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "#94a3b8")}
-              onClick={onViewRequests}
-            >
-              View All Orders →
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+              <button
+                onClick={() => fetchDashboardSummary(false)}
+                title="Refresh dashboard"
+                style={{
+                  padding: "0.3rem 0.65rem",
+                  borderRadius: 6,
+                  border: "1px solid #e2e8f0",
+                  backgroundColor: "#f8fafc",
+                  color: "#475569",
+                  fontSize: "0.72rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.3rem"
+                }}
+              >
+                ↻ Refresh
+              </button>
+              <span style={{ fontSize: "0.78rem", color: "#94a3b8", cursor: "pointer", fontWeight: 500 }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#1e293b")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#94a3b8")}
+                onClick={onViewRequests}
+              >
+                View All Orders →
+              </span>
+            </div>
           </div>
           <div style={{ display: "flex", gap: "1rem", marginBottom: "1.25rem", flexWrap: "wrap" }}>
             {/* Improvement #12: search input with focus glow */}
@@ -384,6 +420,7 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
               <option value="Processing">Processing</option>
               <option value="Ready">Ready</option>
               <option value="Released">Released</option>
+              <option value="In Use">In Use</option>
               <option value="Completed">Completed</option>
               <option value="Closed">Closed</option>
             </select>
@@ -414,6 +451,7 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
                     else if (req.status === "Processing") { statusBg = "#ffedd5"; statusColor = "#c2410c"; }
                     else if (req.status === "Ready") { statusBg = "#dbeafe"; statusColor = "#1d4ed8"; }
                     else if (req.status === "Released") { statusBg = "#e0e7ff"; statusColor = "#4338ca"; }
+                    else if (req.status === "In Use") { statusBg = "#ccfbf1"; statusColor = "#0f766e"; }
                     else if (req.status === "Completed") { statusBg = "#d1fae5"; statusColor = "#065f46"; }
                     else if (req.status === "Closed") { statusBg = "#f1f5f9"; statusColor = "#64748b"; }
                     return (
@@ -484,7 +522,7 @@ export const DashboardOverview = ({ onViewRequests }: DashboardOverviewProps) =>
                     </span>
                   </div>
                   <div style={{ fontSize: "0.72rem", color: "#64748b" }}>
-                    SKU: {alert.sku} · current stock {alert.stock} / min {alert.min}
+                    SKU: {alert.sku} {alert.site ? `· ${alert.site}` : ''} · current stock {alert.stock} / min {alert.min}
                   </div>
                 </div>
               ))

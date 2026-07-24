@@ -263,130 +263,160 @@ export const getGeneratedPassword = (_eid?: string, _firstName?: string, _lastNa
   return "SuperAdmin360!";
 };
 
-export const getCategoryIcon = (categoryName?: string, itemName?: string, size = 20) => {
+export const getCategoryIcon = (categoryName?: string, itemName?: string, size = 18) => {
   const cat = (categoryName || "").toLowerCase();
   const item = (itemName || "").toLowerCase();
   const text = cat + " " + item;
 
-  // Laptops / Computers
-  if (text.includes("laptop") || text.includes("macbook") || text.includes("computer") || text.includes("notebook") || text.includes("desktop") || text.includes("pc")) {
+  // 1. RAM / Memory Modules
+  if (text.includes("ram") || text.includes("memory") || text.includes("ddr") || text.includes("dimm") || text.includes("s800") || text.includes("ramsta")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-        <line x1="2" y1="20" x2="22" y2="20" />
-        <line x1="12" y1="17" x2="12" y2="20" />
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="6" width="20" height="12" rx="2" fill="url(#brand-grad-icon)" fillOpacity="0.15" stroke="#210cae" />
+        <line x1="6" y1="18" x2="6" y2="21" stroke="#4dc9e6" strokeWidth="2" />
+        <line x1="10" y1="18" x2="10" y2="21" stroke="#210cae" strokeWidth="2" />
+        <line x1="14" y1="18" x2="14" y2="21" stroke="#4dc9e6" strokeWidth="2" />
+        <line x1="18" y1="18" x2="18" y2="21" stroke="#210cae" strokeWidth="2" />
+        <circle cx="7" cy="11" r="1.5" fill="#4dc9e6" stroke="none" />
+        <circle cx="17" cy="11" r="1.5" fill="#210cae" stroke="none" />
+        <defs>
+          <linearGradient id="brand-grad-icon" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#4dc9e6" />
+            <stop offset="100%" stopColor="#210cae" />
+          </linearGradient>
+        </defs>
       </svg>
     );
   }
 
-  // Monitors / Screens
+  // 2. SSD / NVMe / Hard Drives / Storage
+  if (text.includes("ssd") || text.includes("nvme") || text.includes("hdd") || text.includes("hard drive") || text.includes("disk") || text.includes("storage") || text.includes("255gb") || text.includes("512gb") || text.includes("1tb")) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="3" width="16" height="18" rx="2" fill="url(#brand-grad-icon)" fillOpacity="0.12" stroke="#210cae" />
+        <circle cx="9" cy="12" r="2.5" stroke="#4dc9e6" strokeWidth="1.8" />
+        <line x1="15" y1="8" x2="17" y2="8" stroke="#210cae" strokeWidth="2" />
+        <line x1="15" y1="12" x2="17" y2="12" stroke="#4dc9e6" strokeWidth="2" />
+        <line x1="15" y1="16" x2="17" y2="16" stroke="#210cae" strokeWidth="2" />
+      </svg>
+    );
+  }
+
+  // 3. Desktop PC / Towers
+  if (text.includes("desktop") || text.includes("system unit") || text.includes("tower") || text.includes("pc") || text.includes("workstation") || text.includes("dell")) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="5" y="2" width="14" height="20" rx="2" fill="url(#brand-grad-icon)" fillOpacity="0.12" stroke="#210cae" />
+        <circle cx="12" cy="6" r="1.25" fill="#4dc9e6" />
+        <line x1="9" y1="11" x2="15" y2="11" stroke="#210cae" />
+        <line x1="9" y1="15" x2="15" y2="15" stroke="#4dc9e6" />
+      </svg>
+    );
+  }
+
+  // 4. Laptops / MacBooks
+  if (text.includes("laptop") || text.includes("notebook") || text.includes("macbook") || text.includes("thinkpad") || text.includes("computer")) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="12" rx="2" fill="url(#brand-grad-icon)" fillOpacity="0.15" stroke="#210cae" />
+        <line x1="2" y1="20" x2="22" y2="20" stroke="#4dc9e6" strokeWidth="2.2" />
+        <line x1="10" y1="16" x2="14" y2="16" stroke="#210cae" strokeWidth="1.8" />
+      </svg>
+    );
+  }
+
+  // 5. Monitors / Displays
   if (text.includes("monitor") || text.includes("display") || text.includes("screen") || text.includes("tv")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="18" height="12" rx="2" ry="2" />
-        <line x1="12" y1="15" x2="12" y2="21" />
-        <line x1="8" y1="21" x2="16" y2="21" />
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2" fill="url(#brand-grad-icon)" fillOpacity="0.12" stroke="#210cae" />
+        <line x1="12" y1="17" x2="12" y2="21" stroke="#4dc9e6" strokeWidth="2" />
+        <line x1="8" y1="21" x2="16" y2="21" stroke="#210cae" strokeWidth="2" />
       </svg>
     );
   }
 
-  // Headsets / Headphones / Jabra
-  if (text.includes("headset") || text.includes("headphones") || text.includes("audio") || text.includes("earphone") || text.includes("jabra")) {
+  // 6. Printers / Scanners
+  if (text.includes("printer") || text.includes("scanner") || text.includes("laserjet") || text.includes("inkjet") || text.includes("copier")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
-        <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="6 9 6 2 18 2 18 9" stroke="#210cae" />
+        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" fill="url(#brand-grad-icon)" fillOpacity="0.12" stroke="#210cae" />
+        <rect x="6" y="14" width="12" height="8" rx="1" stroke="#4dc9e6" strokeWidth="2" />
       </svg>
     );
   }
 
-  // Keyboards
-  if (text.includes("keyboard") || text.includes("keyboards") || text.includes("kbd") || text.includes("krs-83") || text.includes("krs")) {
+  // 7. Networking / Routers / Cables
+  if (text.includes("network") || text.includes("router") || text.includes("switch") || text.includes("cable") || text.includes("ethernet") || text.includes("hdmi") || text.includes("usb")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="4" width="20" height="16" rx="2" ry="2" />
-        <line x1="6" y1="8" x2="6.01" y2="8" />
-        <line x1="10" y1="8" x2="10.01" y2="8" />
-        <line x1="14" y1="8" x2="14.01" y2="8" />
-        <line x1="18" y1="8" x2="18.01" y2="8" />
-        <line x1="6" y1="12" x2="6.01" y2="12" />
-        <line x1="10" y1="12" x2="10.01" y2="12" />
-        <line x1="14" y1="12" x2="14.01" y2="12" />
-        <line x1="18" y1="12" x2="18.01" y2="12" />
-        <line x1="7" y1="16" x2="17" y2="16" />
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2v8M18 12a6 6 0 0 1-6 6M6 12a6 6 0 0 0 6 6M12 18v4" stroke="#210cae" />
+        <rect x="6" y="2" width="4" height="4" rx="1" fill="#4dc9e6" stroke="none" />
+        <rect x="14" y="2" width="4" height="4" rx="1" fill="#210cae" stroke="none" />
       </svg>
     );
   }
 
-  // Mice / Pointers
-  if (text.includes("mouse") || text.includes("mice") || text.includes("mou") || text.includes("op-720") || text.includes("ser01") || text.includes("logitech") || text.includes("trackpad") || text.includes("pointer") || text.includes("a4tech-24ser01")) {
+  // 8. Headsets / Audio
+  if (text.includes("headset") || text.includes("headphone") || text.includes("audio") || text.includes("earphone") || text.includes("jabra") || text.includes("mic")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="5" y="2" width="14" height="20" rx="7" />
-        <path d="M12 2v6" />
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 18v-6a9 9 0 0 1 18 0v6" stroke="#210cae" />
+        <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3v5z" fill="url(#brand-grad-icon)" fillOpacity="0.3" stroke="#210cae" />
+        <path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3v5z" fill="url(#brand-grad-icon)" fillOpacity="0.3" stroke="#4dc9e6" />
       </svg>
     );
   }
 
-  // Cables
-  if (text.includes("cable") || text.includes("wire") || text.includes("ethernet") || text.includes("cat6") || text.includes("hdmi") || text.includes("usb")) {
+  // 9. Keyboards
+  if (text.includes("keyboard") || text.includes("keypad") || text.includes("kbd")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2v8M18 12a6 6 0 0 1-6 6M6 12a6 6 0 0 0 6 6M12 18v4" />
-        <line x1="8" y1="2" x2="8" y2="5" />
-        <line x1="16" y1="2" x2="16" y2="5" />
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="6" width="20" height="12" rx="2" fill="url(#brand-grad-icon)" fillOpacity="0.1" stroke="#210cae" />
+        <circle cx="6" cy="10" r="0.75" fill="#4dc9e6" stroke="none" />
+        <circle cx="10" cy="10" r="0.75" fill="#210cae" stroke="none" />
+        <circle cx="14" cy="10" r="0.75" fill="#210cae" stroke="none" />
+        <circle cx="18" cy="10" r="0.75" fill="#4dc9e6" stroke="none" />
+        <line x1="8" y1="14" x2="16" y2="14" stroke="#4dc9e6" strokeWidth="2" />
       </svg>
     );
   }
 
-  // Batteries & Power
-  if (text.includes("battery") || text.includes("batteries") || text.includes("powerbank") || text.includes("charger") || text.includes("adapter") || text.includes("power")) {
+  // 10. Mice / Pointers
+  if (text.includes("mouse") || text.includes("mice") || text.includes("pointer") || text.includes("trackpad") || text.includes("logitech")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="7" width="16" height="10" rx="2" ry="2" />
-        <line x1="22" y1="11" x2="22" y2="13" />
-        <line x1="6" y1="11" x2="10" y2="11" />
-        <line x1="8" y1="9" x2="8" y2="13" />
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="6" y="3" width="12" height="18" rx="6" fill="url(#brand-grad-icon)" fillOpacity="0.12" stroke="#210cae" />
+        <line x1="12" y1="3" x2="12" y2="9" stroke="#4dc9e6" strokeWidth="2" />
       </svg>
     );
   }
 
-  // Phones & Mobiles
-  if (text.includes("phone") || text.includes("mobile") || text.includes("smartphone") || text.includes("telephone")) {
+  // 11. Office Supplies & Consumables
+  if (text.includes("pen") || text.includes("ink") || text.includes("paper") || text.includes("stationery") || text.includes("office") || text.includes("consumable")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
-        <line x1="12" y1="18" x2="12.01" y2="18" />
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 20h9" stroke="#4dc9e6" strokeWidth="2" />
+        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" fill="url(#brand-grad-icon)" fillOpacity="0.2" stroke="#210cae" />
       </svg>
     );
   }
 
-  // Writing & Paper Stationery / Supplies
-  if (text.includes("pen") || text.includes("pencil") || text.includes("ink") || text.includes("stationery") || text.includes("paper") || text.includes("office") || text.includes("consumable")) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 20h9"/>
-        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-      </svg>
-    );
-  }
-
-  // Accessories (Generic)
-  if (text.includes("peripheral") || text.includes("accessory") || text.includes("accessories")) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="3" />
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-      </svg>
-    );
-  }
-
-  // Default box icon
+  // Default fallback asset box icon with CP360 brand gradient
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-      <line x1="12" y1="22.08" x2="12" y2="12" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 8L12 3L3 8L12 13L21 8Z" fill="url(#brand-grad-default)" fillOpacity="0.2" stroke="#210cae" />
+      <path d="M21 16V8L12 13V21L21 16Z" stroke="#210cae" />
+      <path d="M3 8V16L12 21V13L3 8Z" stroke="#4dc9e6" />
+      <defs>
+        <linearGradient id="brand-grad-default" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#4dc9e6" />
+          <stop offset="100%" stopColor="#210cae" />
+        </linearGradient>
+      </defs>
     </svg>
   );
 };
+
+

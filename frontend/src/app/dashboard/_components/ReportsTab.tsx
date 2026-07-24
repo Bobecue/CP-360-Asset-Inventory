@@ -267,21 +267,61 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     return matchesSite && matchesDate;
   });
 
-  // Calculate real-time Low Stock Alerts from itemsList
-  const lowStockAlerts = itemsList.flatMap(it =>
-    (it.stockLevels || [])
-      .filter((sl: any) => sl.quantity <= sl.reorderPoint)
-      .map((sl: any) => ({
-        itemId: it.id,
-        sku: it.sku || "",
-        name: it.name || "",
-        category: it.category?.name || "Uncategorized",
-        siteId: sl.siteId || "",
-        quantity: sl.quantity || 0,
-        reorderPoint: sl.reorderPoint || 0,
-        status: (sl.quantity || 0) === 0 ? "OUT_OF_STOCK" : "LOW_STOCK"
-      }))
-  );
+  // Calculate real-time Low Stock Alerts from itemsList matching Asset Catalog system
+  const lowStockAlerts = itemsList.filter(it => {
+    const isConsumable = it.category?.type === "CONSUMABLE" || (it.category?.name || "").toLowerCase().includes("consumable");
+    const threshold = it.reorderPoint || (it.stockLevels?.[0]?.reorderPoint ?? 5);
+
+    let totalQty = 0;
+    if (!isConsumable && it.assets && it.assets.length > 0) {
+      let relevantAssets = it.assets.filter((a: any) => a.status === "AVAILABLE" && a.condition !== "BAD" && a.condition !== "DAMAGED");
+      if (siteFilter !== "ALL") {
+        relevantAssets = relevantAssets.filter((a: any) => a.siteId === siteFilter);
+      }
+      totalQty = relevantAssets.length;
+    } else if (it.stockLevels && it.stockLevels.length > 0) {
+      let relevantStocks = it.stockLevels;
+      if (siteFilter !== "ALL") {
+        relevantStocks = relevantStocks.filter((s: any) => s.siteId === siteFilter);
+      }
+      totalQty = relevantStocks.reduce((sum: number, s: any) => sum + (s.quantity || 0), 0);
+    } else {
+      totalQty = it.quantity ?? 0;
+    }
+
+    return totalQty <= threshold;
+  }).map(it => {
+    const isConsumable = it.category?.type === "CONSUMABLE" || (it.category?.name || "").toLowerCase().includes("consumable");
+    const threshold = it.reorderPoint || (it.stockLevels?.[0]?.reorderPoint ?? 5);
+
+    let totalQty = 0;
+    if (!isConsumable && it.assets && it.assets.length > 0) {
+      let relevantAssets = it.assets.filter((a: any) => a.status === "AVAILABLE" && a.condition !== "BAD" && a.condition !== "DAMAGED");
+      if (siteFilter !== "ALL") {
+        relevantAssets = relevantAssets.filter((a: any) => a.siteId === siteFilter);
+      }
+      totalQty = relevantAssets.length;
+    } else if (it.stockLevels && it.stockLevels.length > 0) {
+      let relevantStocks = it.stockLevels;
+      if (siteFilter !== "ALL") {
+        relevantStocks = relevantStocks.filter((s: any) => s.siteId === siteFilter);
+      }
+      totalQty = relevantStocks.reduce((sum: number, s: any) => sum + (s.quantity || 0), 0);
+    } else {
+      totalQty = it.quantity ?? 0;
+    }
+
+    return {
+      itemId: it.id,
+      sku: it.sku || "",
+      name: it.name || "",
+      category: it.category?.name || "Uncategorized",
+      siteId: siteFilter !== "ALL" ? siteFilter : "site-1",
+      quantity: totalQty,
+      reorderPoint: threshold,
+      status: totalQty === 0 ? "OUT_OF_STOCK" : "LOW_STOCK"
+    };
+  });
 
   // Filtered Low Stock Alerts (by siteFilter, tableSiteFilter, and searchQuery)
   const filteredLowStockAlerts = lowStockAlerts.filter(alert => {

@@ -14,6 +14,7 @@ export interface InteractiveModalProps {
   theme?: 'approve' | 'prepare' | 'danger' | 'info';
   defaultValue?: string; // For prompt
   placeholder?: string; // For prompt
+  required?: boolean; // For prompt
   onConfirm: (value?: string) => void;
   onCancel: () => void;
 }
@@ -28,20 +29,28 @@ export function InteractiveModal({
   theme = 'info',
   defaultValue = '',
   placeholder = 'Enter value...',
+  required = false,
   onConfirm,
   onCancel
 }: InteractiveModalProps) {
   const [inputValue, setInputValue] = useState(defaultValue);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setInputValue(defaultValue);
+      setErrorMsg(null);
     }
   }, [isOpen, defaultValue]);
 
   if (!isOpen) return null;
 
   const handleConfirm = () => {
+    if (type === 'prompt' && required && !inputValue.trim()) {
+      setErrorMsg('A review comment is required.');
+      return;
+    }
+    setErrorMsg(null);
     onConfirm(type === 'prompt' ? inputValue : undefined);
   };
 
@@ -138,12 +147,15 @@ export function InteractiveModal({
         </div>
 
         {type === 'prompt' && (
-          <div style={{ marginTop: '0.25rem' }}>
+          <div style={{ marginTop: '0.25rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
             <input
               autoFocus
               type="text"
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={(e) => {
+                setInputValue(e.target.value);
+                if (errorMsg && e.target.value.trim()) setErrorMsg(null);
+              }}
               placeholder={placeholder}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleConfirm();
@@ -152,12 +164,17 @@ export function InteractiveModal({
                 width: '100%',
                 padding: '0.65rem 0.75rem',
                 borderRadius: 8,
-                border: '1px solid #cbd5e1',
+                border: errorMsg ? '1px solid #ef4444' : '1px solid #cbd5e1',
                 fontSize: '0.85rem',
                 outline: 'none',
                 fontFamily: 'inherit'
               }}
             />
+            {errorMsg && (
+              <span style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: 600 }}>
+                {errorMsg}
+              </span>
+            )}
           </div>
         )}
 

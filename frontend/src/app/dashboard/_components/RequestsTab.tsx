@@ -14,6 +14,31 @@ import { InteractiveModal } from '../../../components/ui/InteractiveModal';
 type RequestStatus = 'PENDING' | 'PENDING_OPS_APPROVAL' | 'APPROVED' | 'READY_FOR_PICKUP' | 'PENDING_PROCUREMENT' | 'REJECTED' | 'RETURNED' | 'CANCELLED' | 'RELEASED' | 'AWAITING_CONFIRMATION' | 'ITEM_RECEIVED';
 type UrgencyLevel = 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
 
+export function cleanReason(reason?: string): string {
+  if (!reason) return '';
+  if (reason.startsWith('Bulk asset request for selected items: ')) {
+    return reason.replace('Bulk asset request for selected items: ', '');
+  }
+  if (reason === 'Bulk asset request for selected items') {
+    return 'Request for selected items';
+  }
+  return reason;
+}
+
+export function cleanReviewComment(comment?: string): string {
+  if (!comment) return '';
+  if (comment === 'Bulk staged for pickup') return 'Staged for pickup';
+  if (comment === 'Bulk approved from Request Orders module') return 'Approved from Request Orders module';
+  if (comment === 'Bulk approved') return 'Approved';
+  if (comment === 'Bulk released') return 'Released';
+  if (comment === 'Bulk cancelled') return 'Cancelled';
+  if (comment.startsWith('Bulk ')) {
+    const stripped = comment.slice(5);
+    return stripped.charAt(0).toUpperCase() + stripped.slice(1);
+  }
+  return comment;
+}
+
 interface RequestEntry {
   id: string;
   itemId: string;
@@ -513,7 +538,7 @@ export function RequestsTab({
     setIsSubmittingReview(true);
     try {
       let updatedList: any[] = [];
-      const approvalComment = comment || 'Bulk approved from Request Orders module';
+      const approvalComment = comment || 'Approved from Request Orders module';
       try {
         const response = await fetch('http://localhost:3001/requests/bulk-approve', {
           method: 'POST',
@@ -556,8 +581,9 @@ export function RequestsTab({
   };
 
   // Bulk Prepare Pickup
-  const handleBulkPreparePickup = async (selectedIds: string[]) => {
+  const handleBulkPreparePickup = async (selectedIds: string[], comment?: string) => {
     setIsSubmittingReview(true);
+    const pickupComment = comment || 'Staged for pickup';
     try {
       let updatedList: any[] = [];
       try {
@@ -567,7 +593,7 @@ export function RequestsTab({
           body: JSON.stringify({
             ids: selectedIds,
             staffEmail: currentUser.email,
-            comment: 'Bulk staged for pickup'
+            comment: pickupComment
           })
         });
         if (response.ok) {
@@ -583,7 +609,7 @@ export function RequestsTab({
         setAllRequests(prev => prev.map(r => updatedMap.get(r.id) || r));
       } else {
         for (const id of selectedIds) {
-          await handleReviewRequest(id, 'READY_FOR_PICKUP', 'Bulk staged for pickup');
+          await handleReviewRequest(id, 'READY_FOR_PICKUP', pickupComment);
         }
       }
 
@@ -596,8 +622,9 @@ export function RequestsTab({
   };
 
   // Bulk Release
-  const handleBulkRelease = async (selectedIds: string[]) => {
+  const handleBulkRelease = async (selectedIds: string[], comment?: string) => {
     setIsSubmittingReview(true);
+    const releaseComment = comment || 'Released';
     try {
       let updatedList: any[] = [];
       try {
@@ -607,7 +634,7 @@ export function RequestsTab({
           body: JSON.stringify({
             ids: selectedIds,
             releaserEmail: currentUser.email,
-            comment: 'Bulk released'
+            comment: releaseComment
           })
         });
         if (response.ok) {
@@ -638,6 +665,7 @@ export function RequestsTab({
   // Bulk Cancel
   const handleBulkCancel = async (selectedIds: string[], comment?: string) => {
     setIsSubmittingReview(true);
+    const cancelComment = comment || 'Cancelled';
     try {
       let updatedList: any[] = [];
       try {
@@ -647,7 +675,7 @@ export function RequestsTab({
           body: JSON.stringify({
             ids: selectedIds,
             userEmail: currentUser.email,
-            comment: comment || 'Bulk cancelled'
+            comment: cancelComment
           })
         });
         if (response.ok) {
@@ -663,7 +691,7 @@ export function RequestsTab({
         setAllRequests(prev => prev.map(r => updatedMap.get(r.id) || r));
       } else {
         for (const id of selectedIds) {
-          await handleReviewRequest(id, 'REJECTED', comment || 'Bulk cancelled');
+          await handleReviewRequest(id, 'REJECTED', cancelComment);
         }
       }
 
@@ -835,8 +863,8 @@ export function RequestsTab({
     setSelectedRequest(req);
     setIsDetailDrawerOpen(true);
     setShowDrawerReturnForm(true);
-    // Use same fallback logic as the Asset Tag display in Request Details
-    const resolvedTag = req.assetTag || req.assetId || (req.id ? `AST-${req.id.slice(-4).toUpperCase()}` : 'AST-1001');
+    // Only use a real assigned tag — no fabricated fallback
+    const resolvedTag = req.assetTag || req.assetId || '';
     setReturnAssetTag(resolvedTag);
     setReturnComment('');
     setReturnQuantityStatus('COMPLETE');
@@ -1471,34 +1499,49 @@ export function RequestsTab({
                   <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', marginTop: '0.15rem' }}>{getDisplayName(selectedRequest)}</div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Quantity</label>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#0f172a', marginTop: '0.15rem' }}>{selectedRequest.quantity} units</div>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Asset Tag</label>
-                    <div style={{ marginTop: '0.15rem' }}>
-                      <span style={{
-                        fontSize: '0.78rem',
-                        fontFamily: 'monospace',
-                        fontWeight: 700,
-                        color: '#210cae',
-                        backgroundColor: '#eef2ff',
-                        border: '1px solid #c7d2fe',
-                        borderRadius: '4px',
-                        padding: '0.15rem 0.45rem',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.25rem'
-                      }}>
-                        🏷️ {selectedRequest.assetTag || selectedRequest.assetId || (
-                          selectedRequest.id ? `AST-${selectedRequest.id.slice(-4).toUpperCase()}` : 'AST-1001'
-                        )}
-                      </span>
+                {(() => {
+                  const cat = (selectedRequest.itemCategory || '').toLowerCase();
+                  const itemNameLower = (selectedRequest.itemName || '').toLowerCase();
+                  const isConsumableReq =
+                    cat.includes('consumable') ||
+                    cat.includes('keyboard') || cat.includes('mice') || cat.includes('mouse') ||
+                    itemNameLower.includes('keyboard') || itemNameLower.includes('mouse') ||
+                    itemNameLower.includes('krs-83') || itemNameLower.includes('ser01') || itemNameLower.includes('op-720');
+
+                  const realTag = selectedRequest.assetTag?.trim() || null;
+
+                  return (
+                    <div style={{ display: 'grid', gridTemplateColumns: isConsumableReq || !realTag ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+                      <div>
+                        <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Quantity</label>
+                        <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#0f172a', marginTop: '0.15rem' }}>{selectedRequest.quantity} units</div>
+                      </div>
+                      {!isConsumableReq && realTag && (
+                        <div>
+                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Asset Tag</label>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.35rem' }}>
+                            {realTag.split(/,\s*/).map((tag, idx) => (
+                              <span key={idx} style={{
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                color: '#4338ca',
+                                backgroundColor: '#eef2ff',
+                                border: '1px solid #c7d2fe',
+                                borderRadius: '4px',
+                                padding: '0.15rem 0.45rem',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem'
+                              }}>
+                                🏷️ {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </div>
+                  );
+                })()}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
@@ -1527,7 +1570,7 @@ export function RequestsTab({
                     {selectedRequest.reason && selectedRequest.reason.includes('[ASSET DEPLOYMENT]') ? 'Deployment Notes' : 'Reason for Request'}
                   </label>
                   <div style={{ fontSize: '0.82rem', color: '#475569', lineHeight: 1.5, marginTop: '0.25rem', padding: '0.75rem', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
-                    {selectedRequest.reason}
+                    {cleanReason(selectedRequest.reason)}
                   </div>
                 </div>
 
@@ -1551,7 +1594,7 @@ export function RequestsTab({
                   <div>
                     <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Review Comment</label>
                     <div style={{ fontSize: '0.82rem', color: '#1e293b', lineHeight: 1.5, marginTop: '0.25rem', padding: '0.75rem', background: '#fffbeb', borderRadius: 6, border: '1px solid #fef3c7' }}>
-                      "{selectedRequest.reviewComment}"
+                      "{cleanReviewComment(selectedRequest.reviewComment)}"
                     </div>
                   </div>
                 )}

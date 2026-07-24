@@ -3,6 +3,7 @@ import { CatalogItem } from "@/types/dashboard";
 import { getCategoryIcon } from "@/types/dashboard";
 import jsPDF from "jspdf";
 import { RequestTimeline } from "./RequestTimeline";
+import { getApiUrl } from "../../../utils/api";
 
 // ── Count-Up Animation Hook for Premium Stats Numbers (matching Reports & Logs) ──
 function useCountUp(target: number, duration = 800, enabled = true) {
@@ -456,15 +457,12 @@ export const CatalogTab = ({
 
     try {
       if (!isUsingMockData && dep.id) {
-        await fetch(`http://localhost:3001/requests/${dep.id}/status`, {
-          method: "PATCH",
+        await fetch(getApiUrl(`/requests/${dep.id}/returned`), {
+          method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            status: "RETURNED",
-            condition: returnCondition,
-            missingCount: returnCondition === "MISSING" ? missingCount : 0,
             comment: finalComment,
-            returnedAt: returnedAtStr
+            returnerEmail: currentUser?.email
           })
         });
       }
@@ -1379,12 +1377,9 @@ export const CatalogTab = ({
                           className="animated-row"
                           style={{
                             borderBottom: "1px solid #f8fafc",
-                            transition: "background-color 0.15s",
-                            backgroundColor: isSelected ? "rgba(33, 12, 174, 0.04)" : "transparent",
+                            backgroundColor: isSelected ? "rgba(33, 12, 174, 0.04)" : undefined,
                             animationDelay: `${index * 0.04}s`,
                           }}
-                          onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = "#fafafa"; }}
-                          onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = "transparent"; }}
                         >
                           <td style={{ padding: "0.75rem 0.5rem", textAlign: "center" }}>
                             <button

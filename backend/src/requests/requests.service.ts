@@ -51,8 +51,43 @@ export class RequestsService implements OnModuleInit {
   constructor(private prisma: PrismaService) { }
 
   async onModuleInit() {
-    // Auto-seeding disabled to prevent creation of unwanted mock sites and requests
     return;
+  }
+
+  private async sendRequesterNotification(userId: string | undefined, title: string, message: string) {
+    if (!userId) return;
+    try {
+      await this.prisma.notification.create({
+        data: {
+          userId,
+          title,
+          message,
+          isRead: false
+        }
+      });
+    } catch (err) {
+      console.warn(`Failed to send notification to user ${userId}:`, err);
+    }
+  }
+
+  private async sendStaffNotification(title: string, message: string) {
+    try {
+      const staffUsers = await this.prisma.user.findMany({
+        where: {
+          role: { in: ['SUPER_ADMIN', 'ADMIN', 'INVENTORY_STAFF'] }
+        },
+        select: { id: true }
+      });
+      await Promise.all(
+        staffUsers.map(u =>
+          this.prisma.notification.create({
+            data: { userId: u.id, title, message, isRead: false }
+          }).catch(err => console.warn(`Failed to notify staff ${u.id}:`, err))
+        )
+      );
+    } catch (err) {
+      console.warn('Failed to send staff notifications:', err);
+    }
   }
 
   private requestInclude = {
@@ -171,7 +206,7 @@ export class RequestsService implements OnModuleInit {
       approvedBySiteId: r.approver?.siteId || r.releasedBy?.siteId || undefined,
       createdAt: r.createdAt.toISOString(),
       assetId: r.assetId || undefined,
-      assetTag: r.asset?.tagCode || undefined,
+      assetTag: parsedPurpose.assetTag || (parsedPurpose.assetTags && Array.isArray(parsedPurpose.assetTags) ? parsedPurpose.assetTags.join(', ') : (r.asset?.tagCode || undefined)),
       history: r.events?.map((e: any) => ({
         status: e.status,
         comment: e.comment || undefined,
@@ -257,14 +292,6 @@ export class RequestsService implements OnModuleInit {
     }
     const siteName = siteObj.name;
 
-    const purposeJson = JSON.stringify({
-      reason: dto.reason,
-      urgency: dto.urgency || 'NORMAL',
-      quantity: dto.quantity || 1,
-      siteId: siteObj.id,
-      siteName: siteName
-    });
-
     const isDeployment = dto.reason && dto.reason.includes('[ASSET DEPLOYMENT]');
     const initialStatus = isDeployment ? 'RELEASED' : 'PENDING_APPROVAL';
 
@@ -274,24 +301,37 @@ export class RequestsService implements OnModuleInit {
     }
 
     let assignedAssetId: string | undefined = undefined;
+    const assignedAssets: any[] = [];
+    const targetQty = dto.quantity || 1;
 
-    // Retrieve or assign asset tag for NON_CONSUMABLE items during deployment
+    // Retrieve or assign asset tag for NON_CONSUMABLE items during deployment/request creation
     const fullItem = await this.prisma.item.findUnique({
       where: { id: item.id },
       include: { category: true, assets: true }
     });
 
     if (fullItem && fullItem.category?.type === 'NON_CONSUMABLE') {
-      let availableAsset = fullItem.assets.find(
-        (a) => a.status === 'AVAILABLE' && a.condition !== 'BAD' && a.condition !== 'DAMAGED' && a.siteId === siteObj.id
+      const getTagNum = (t: string) => {
+        if (!t) return 0;
+        const m = t.match(/(\d+)(?=[^\d]*$)/);
+        return m && m[1] ? parseInt(m[1], 10) : 0;
+      };
+      const sortedAssets = [...fullItem.assets].sort((a, b) => {
+        const numA = getTagNum(a.tagCode);
+        const numB = getTagNum(b.tagCode);
+        if (numA !== numB) return numA - numB;
+        return a.tagCode.localeCompare(b.tagCode);
+      });
+
+      const availableAssets = sortedAssets.filter(
+        (a) => a.status === 'AVAILABLE' && a.condition !== 'BAD' && a.condition !== 'DAMAGED'
       );
-      if (!availableAsset) {
-        availableAsset = fullItem.assets.find(
-          (a) => a.status === 'AVAILABLE' && a.condition !== 'BAD' && a.condition !== 'DAMAGED'
-        );
+
+      for (let i = 0; i < availableAssets.length && assignedAssets.length < targetQty; i++) {
+        assignedAssets.push(availableAssets[i]);
       }
 
-      if (!availableAsset) {
+      if (assignedAssets.length < targetQty) {
         const sitePrefix = siteObj.prefix || 'SK4';
         const catPrefix = fullItem.category?.prefix || 'EQP';
 
@@ -311,37 +351,41 @@ export class RequestsService implements OnModuleInit {
           const num = parseInt(numStr, 10);
           return isNaN(num) ? 0 : num;
         });
-        const nextNum = Math.max(0, ...numbers) + 1;
-        const generatedTagCode = `${sitePrefix}-${catPrefix}-${String(nextNum).padStart(4, '0')}`;
-        const generatedSerial = `SN-${uuidv4().substring(0, 8).toUpperCase()}`;
 
-        availableAsset = await this.prisma.asset.create({
-          data: {
-            tagCode: generatedTagCode,
-            serialNumber: generatedSerial,
-            status: 'AVAILABLE',
-            condition: 'GOOD',
-            itemId: item.id,
-            siteId: siteObj.id,
-          }
-        });
-      }
+        let currentNextNum = Math.max(0, ...numbers) + 1;
 
-      if (availableAsset) {
-        assignedAssetId = availableAsset.id;
+        while (assignedAssets.length < targetQty) {
+          const generatedTagCode = `${sitePrefix}-${catPrefix}-${String(currentNextNum).padStart(4, '0')}`;
+          const generatedSerial = `SN-${uuidv4().substring(0, 8).toUpperCase()}`;
+          currentNextNum++;
 
-        if (isDeployment) {
-          await this.prisma.asset.update({
-            where: { id: availableAsset.id },
+          const newAsset = await this.prisma.asset.create({
             data: {
-              status: 'ASSIGNED',
-              assignedToId: requester.id
+              tagCode: generatedTagCode,
+              serialNumber: generatedSerial,
+              status: 'AVAILABLE',
+              condition: 'GOOD',
+              itemId: item.id,
+              siteId: siteObj.id,
             }
           });
+          assignedAssets.push(newAsset);
+        }
+      }
 
+      for (const asset of assignedAssets) {
+        await this.prisma.asset.update({
+          where: { id: asset.id },
+          data: {
+            status: 'ASSIGNED',
+            assignedToId: requester.id
+          }
+        });
+
+        if (isDeployment) {
           await this.prisma.assetEvent.create({
             data: {
-              assetId: availableAsset.id,
+              assetId: asset.id,
               action: 'DEPLOYED',
               details: `Deployed to ${dto.reason || 'Employee'}`,
               userId: requester.id,
@@ -349,7 +393,24 @@ export class RequestsService implements OnModuleInit {
           });
         }
       }
+
+      if (assignedAssets.length > 0) {
+        assignedAssetId = assignedAssets[0].id;
+      }
     }
+
+    const purposeData: any = {
+      reason: dto.reason,
+      urgency: dto.urgency || 'NORMAL',
+      quantity: targetQty,
+      siteId: siteObj.id,
+      siteName: siteName
+    };
+    if (assignedAssets.length > 0) {
+      purposeData.assetTag = assignedAssets.map(a => a.tagCode).join(', ');
+      purposeData.assetTags = assignedAssets.map(a => a.tagCode);
+    }
+    const purposeJson = JSON.stringify(purposeData);
 
     if (isDeployment) {
       const deployQty = dto.quantity || 1;
@@ -387,6 +448,19 @@ export class RequestsService implements OnModuleInit {
       },
       include: this.requestInclude
     });
+
+    if (!isDeployment) {
+      await this.sendRequesterNotification(
+        requester.id,
+        'Request Order Submitted',
+        `Your request order for "${item.name}" (${targetQty} units) has been submitted and is pending Inventory Staff review.`
+      );
+      // Notify all Inventory Staff, Ops Manager, and Super Admin of a new request
+      await this.sendStaffNotification(
+        '📋 New Asset Request Submitted',
+        `${requester.name || requester.email} submitted a new request for "${item.name}" (${targetQty} unit${targetQty > 1 ? 's' : ''}). Please review and process it.`
+      );
+    }
 
     return this.mapRequestToDto(r);
   }
@@ -521,6 +595,14 @@ export class RequestsService implements OnModuleInit {
     });
 
     // 5. Low-Stock Alerts
+    // Get sites that actually have assets (so we don't alert on phantom site-stock records)
+    const sitesWithAssets = await this.prisma.asset.groupBy({
+      by: ['siteId'],
+      where: activeSiteId ? { siteId: activeSiteId } : {},
+      _count: { id: true }
+    });
+    const sitesWithAssetsSet = new Set(sitesWithAssets.map((s: any) => s.siteId).filter(Boolean));
+
     const stocks = await this.prisma.siteStock.findMany({
       where: activeSiteId ? { siteId: activeSiteId } : {},
       include: {
@@ -530,8 +612,17 @@ export class RequestsService implements OnModuleInit {
         site: true
       }
     });
-    
-    const lowStockItems = stocks.filter(s => s.quantity <= s.reorderPoint);
+
+    // Only fire an alert when:
+    //   1. reorderPoint > 0 (the item actually has a threshold set)
+    //   2. quantity < reorderPoint (actually low, not just equal)
+    //   3. The site actually has physical assets for this item OR had quantity > 0 at some point
+    //      (exclude phantom 0-qty records at empty sites that never received stock)
+    const lowStockItems = stocks.filter(s =>
+      s.reorderPoint > 0 &&
+      s.quantity < s.reorderPoint &&
+      (s.quantity > 0 || sitesWithAssetsSet.has(s.siteId))
+    );
     const lowStockAlertsCount = lowStockItems.length;
 
     const lowStockAlerts = lowStockItems.map(s => ({
@@ -539,6 +630,7 @@ export class RequestsService implements OnModuleInit {
       sku: s.item.sku,
       stock: s.quantity,
       min: s.reorderPoint,
+      site: s.site?.name || '',
       category: s.item.category?.type === 'CONSUMABLE' ? 'Consumable' : 'Non-Consumable'
     }));
 
@@ -574,7 +666,7 @@ export class RequestsService implements OnModuleInit {
       else if (dto.status === 'READY_FOR_PICKUP') statusFriendly = 'Ready';
       else if (dto.status === 'RELEASED') statusFriendly = 'Released';
       else if (dto.status === 'AWAITING_CONFIRMATION') statusFriendly = 'Released';
-      else if (dto.status === 'ITEM_RECEIVED') statusFriendly = 'Completed';
+      else if (dto.status === 'ITEM_RECEIVED') statusFriendly = 'In Use';  // still with requester, not returned
       else if (dto.status === 'RETURNED') statusFriendly = 'Completed';
       else if (dto.status === 'REJECTED') statusFriendly = 'Closed';
       else if (dto.status === 'CANCELLED') statusFriendly = 'Closed';
@@ -593,11 +685,15 @@ export class RequestsService implements OnModuleInit {
       };
     });
 
+    // Total cataloged items = number of distinct catalog items (not raw asset tag records)
+    const totalCatalogItems = await this.prisma.item.count();
+
+    // Utilization = assigned assets / total assets at the site
     const utilizationRate = totalAssets > 0 ? Math.round((activeCheckouts / totalAssets) * 100) : 0;
 
     return {
       metrics: {
-        totalAssets,
+        totalAssets: totalCatalogItems,   // catalog items count, not raw tag count
         assetsThisWeek,
         activeCheckouts,
         utilizationRate,
@@ -681,10 +777,18 @@ export class RequestsService implements OnModuleInit {
       },
       include: this.requestInclude,
     });
+    await this.sendRequesterNotification(
+      r.requesterId,
+      'Request Order Rejected',
+      `Your request order (${r.id}) for "${r.item?.name || 'requested asset'}" was rejected.${comment ? ` Reason: ${comment}` : ''}`
+    );
     return this.mapRequestToDto(r);
   }
 
   async approveStaff(id: string, staffEmail: string, comment?: string) {
+    if (!comment || !comment.trim()) {
+      throw new BadRequestException('Approval review comment is required.');
+    }
     const u = await this.prisma.user.findUnique({ where: { email: staffEmail } });
     if (!u) {
       throw new NotFoundException('User not found');
@@ -717,10 +821,18 @@ export class RequestsService implements OnModuleInit {
       },
       include: this.requestInclude,
     });
+    await this.sendRequesterNotification(
+      r.requesterId,
+      'Request Approved by Inventory Staff',
+      `Your request order (${r.id}) for "${r.item?.name || 'requested asset'}" has been approved by Inventory Staff and is awaiting Ops Manager review.`
+    );
     return this.mapRequestToDto(r);
   }
 
   async approveOps(id: string, opsEmail: string, comment?: string) {
+    if (!comment || !comment.trim()) {
+      throw new BadRequestException('Approval review comment is required.');
+    }
     const u = await this.prisma.user.findUnique({ where: { email: opsEmail } });
     if (!u) {
       throw new NotFoundException('User not found');
@@ -916,10 +1028,18 @@ export class RequestsService implements OnModuleInit {
       },
       include: this.requestInclude,
     });
+    await this.sendRequesterNotification(
+      r.requesterId,
+      'Request Approved by Ops Manager',
+      `Your request order (${r.id}) for "${r.item?.name || 'requested asset'}" has been approved by Ops Manager.`
+    );
     return this.mapRequestToDto(r);
   }
 
   async bulkApprove(ids: string[], approverEmail: string, comment?: string) {
+    if (!comment || !comment.trim()) {
+      throw new BadRequestException('Approval review comment is required.');
+    }
     const user = await this.prisma.user.findUnique({ where: { email: approverEmail } });
     if (!user) {
       throw new NotFoundException('Approver user not found');
@@ -937,20 +1057,20 @@ export class RequestsService implements OnModuleInit {
         const currentStatusStr = req.status as string;
         if (currentStatusStr === 'PENDING_APPROVAL' || currentStatusStr === 'PENDING') {
           if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
-            const staffApproved = await this.approveStaff(id, approverEmail, comment || 'Bulk approved').catch(() => null);
+            const staffApproved = await this.approveStaff(id, approverEmail, comment || 'Approved').catch(() => null);
             let finalReq = staffApproved;
             try {
               const opsUser = await this.prisma.user.findFirst({ where: { role: 'ADMIN', id: { not: user.id } } });
               const opsEmailToUse = opsUser ? opsUser.email : 'superadmin@contactpoint360.com';
-              finalReq = await this.approveOps(id, opsEmailToUse, comment || 'Bulk approved').catch(() => staffApproved);
+              finalReq = await this.approveOps(id, opsEmailToUse, comment || 'Approved').catch(() => staffApproved);
             } catch {}
             if (finalReq) results.push(finalReq);
           } else {
-            const staffApproved = await this.approveStaff(id, approverEmail, comment || 'Bulk approved by Inventory Staff');
+            const staffApproved = await this.approveStaff(id, approverEmail, comment || 'Approved by Inventory Staff');
             results.push(staffApproved);
           }
         } else if (currentStatusStr === 'PENDING_OPS_APPROVAL') {
-          const opsApproved = await this.approveOps(id, approverEmail, comment || 'Bulk approved by Ops Manager');
+          const opsApproved = await this.approveOps(id, approverEmail, comment || 'Approved by Ops Manager');
           results.push(opsApproved);
         }
       } catch (err) {
@@ -989,6 +1109,11 @@ export class RequestsService implements OnModuleInit {
             },
             include: this.requestInclude
           });
+          await this.sendRequesterNotification(
+            updated.requesterId,
+            'Asset Ready for Pickup',
+            `Your requested item "${updated.item?.name || 'asset'}" is staged and ready for pickup! Please confirm receipt upon pickup.`
+          );
           results.push(this.mapRequestToDto(updated));
         }
       } catch (err) {
@@ -1025,7 +1150,7 @@ export class RequestsService implements OnModuleInit {
               assetId: null,
               events: {
                 create: [
-                  { status: 'RELEASED', userId: user.id, comment: comment || 'Bulk released' },
+                  { status: 'RELEASED', userId: user.id, comment: comment || 'Released' },
                   { status: 'AWAITING_CONFIRMATION', comment: 'Awaiting confirmation of receipt by requester' }
                 ]
               }
@@ -1034,10 +1159,21 @@ export class RequestsService implements OnModuleInit {
           });
           results.push(this.mapRequestToDto(updated));
         } else {
-          // Find available asset for non-consumable item
-          const availableAsset = await this.prisma.asset.findFirst({
-            where: { itemId: req.itemId, status: 'AVAILABLE' }
+          // Find available asset for non-consumable item, sorted numerically from 0001
+          const rawAvailableAssets = await this.prisma.asset.findMany({
+            where: { itemId: req.itemId, status: 'AVAILABLE', condition: { notIn: ['BAD', 'DAMAGED'] } }
           });
+          const sortedAvailable = [...rawAvailableAssets].sort((a, b) => {
+            const getNum = (tag: string) => {
+              const m = (tag || '').match(/(\d+)(?=[^\d]*$)/);
+              return m && m[1] ? parseInt(m[1], 10) : 0;
+            };
+            const numA = getNum(a.tagCode);
+            const numB = getNum(b.tagCode);
+            if (numA !== numB) return numA - numB;
+            return a.tagCode.localeCompare(b.tagCode);
+          });
+          const availableAsset = sortedAvailable[0] || null;
 
           let assignedAssetId = availableAsset?.id || null;
           if (availableAsset) {
@@ -1056,13 +1192,18 @@ export class RequestsService implements OnModuleInit {
               assetId: assignedAssetId,
               events: {
                 create: [
-                  { status: 'RELEASED', userId: user.id, comment: comment || 'Bulk released' },
+                  { status: 'RELEASED', userId: user.id, comment: comment || 'Released' },
                   { status: 'AWAITING_CONFIRMATION', comment: 'Awaiting confirmation of receipt by requester' }
                 ]
               }
             },
             include: this.requestInclude
           });
+          await this.sendRequesterNotification(
+            updated.requesterId,
+            'Asset Released — Awaiting Your Confirmation',
+            `Your requested asset "${updated.item?.name || 'equipment'}" has been released. Please confirm receipt upon receiving the unit.`
+          );
           results.push(this.mapRequestToDto(updated));
         }
       } catch (err) {
@@ -1087,11 +1228,11 @@ export class RequestsService implements OnModuleInit {
             where: { id },
             data: {
               status: 'CANCELLED',
-              comments: comment || 'Cancelled in bulk action',
+              comments: comment || 'Cancelled',
               events: {
                 create: {
                   status: 'CANCELLED',
-                  comment: comment || 'Cancelled in bulk action',
+                  comment: comment || 'Cancelled',
                   userId: user.id
                 }
               }
@@ -1139,6 +1280,11 @@ export class RequestsService implements OnModuleInit {
       },
       include: this.requestInclude,
     });
+    await this.sendRequesterNotification(
+      r.requesterId,
+      'Asset Ready for Pickup',
+      `Your requested item "${r.item?.name || 'asset'}" is staged and ready for pickup! Please confirm receipt upon pickup.`
+    );
     return this.mapRequestToDto(r);
   }
 
@@ -1354,7 +1500,13 @@ export class RequestsService implements OnModuleInit {
         },
         include: this.requestInclude
       });
-      return this.mapRequestToDto(updatedReq);
+      const dto = this.mapRequestToDto(updatedReq);
+      await this.sendRequesterNotification(
+        updatedReq.requesterId,
+        'Asset Released — Awaiting Your Confirmation',
+        `Your requested asset "${updatedReq.item?.name || 'equipment'}" has been released. Please confirm receipt upon receiving the unit.`
+      );
+      return dto;
     });
   }
 
@@ -1445,9 +1597,10 @@ export class RequestsService implements OnModuleInit {
       include: this.requestInclude,
     });
 
+    const commentLower = (returnComment || '').toLowerCase();
+    const isDamaged = commentLower.includes('bad') || commentLower.includes('damaged') || commentLower.includes('missing');
+
     if (r.assetId) {
-      const commentLower = (returnComment || '').toLowerCase();
-      const isDamaged = commentLower.includes('bad') || commentLower.includes('damaged') || commentLower.includes('missing');
       await this.prisma.asset.update({
         where: { id: r.assetId },
         data: {
@@ -1456,6 +1609,25 @@ export class RequestsService implements OnModuleInit {
           assignedToId: null
         }
       });
+    } else if (r.itemId) {
+      const assignedAsset = await this.prisma.asset.findFirst({
+        where: {
+          itemId: r.itemId,
+          status: 'ASSIGNED',
+          ...(r.requesterId ? { assignedToId: r.requesterId } : {})
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+      if (assignedAsset) {
+        await this.prisma.asset.update({
+          where: { id: assignedAsset.id },
+          data: {
+            status: isDamaged ? 'UNDER_MAINTENANCE' : 'AVAILABLE',
+            condition: isDamaged ? 'DAMAGED' : 'GOOD',
+            assignedToId: null
+          }
+        });
+      }
     }
 
     // Automatically update in the asset catalog (SiteStock level)
@@ -1588,6 +1760,15 @@ export class RequestsService implements OnModuleInit {
       },
       include: this.requestInclude,
     });
+
+    const receiverName = req.requester?.name || user?.name || 'The requester';
+    const itemName = req.item?.name || 'an asset';
+
+    // Notify all staff that the requester has claimed/confirmed receipt
+    await this.sendStaffNotification(
+      '✅ Asset Claimed — Receipt Confirmed',
+      `${receiverName} has confirmed receipt of "${itemName}". The request is now marked as Completed.`
+    );
 
     return this.mapRequestToDto(updated);
   }

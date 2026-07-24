@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
 
 type UrgencyLevel = 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
@@ -34,131 +34,7 @@ interface BulkRequestModalProps {
   onSubmit: (requests: { itemId: string; quantity: number }[], siteId: string, reason: string, urgency: UrgencyLevel) => Promise<boolean>;
 }
 
-const getCategoryIcon = (category?: string, name?: string) => {
-  const cat = (category || '').toLowerCase();
-  const itemName = (name || '').toLowerCase();
-  const text = cat + ' ' + itemName;
-
-  // Laptops / Computers
-  if (text.includes('laptop') || text.includes('macbook') || text.includes('computer') || text.includes('notebook') || text.includes('desktop') || text.includes('pc')) {
-    return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-        <line x1="2" y1="20" x2="22" y2="20" />
-        <line x1="12" y1="17" x2="12" y2="20" />
-      </svg>
-    );
-  }
-
-  // Monitors / Screens
-  if (text.includes('monitor') || text.includes('display') || text.includes('screen') || text.includes('tv')) {
-    return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="18" height="12" rx="2" ry="2" />
-        <line x1="12" y1="15" x2="12" y2="21" />
-        <line x1="8" y1="21" x2="16" y2="21" />
-      </svg>
-    );
-  }
-
-  // Headsets / Headphones / Jabra
-  if (text.includes('headset') || text.includes('headphones') || text.includes('audio') || text.includes('earphone') || text.includes('jabra')) {
-    return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
-        <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
-      </svg>
-    );
-  }
-
-  // Keyboards
-  if (text.includes('keyboard') || text.includes('keyboards') || text.includes('kbd') || text.includes('krs-83') || text.includes('krs')) {
-    return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="4" width="20" height="16" rx="2" ry="2" />
-        <line x1="6" y1="8" x2="6.01" y2="8" />
-        <line x1="10" y1="8" x2="10.01" y2="8" />
-        <line x1="14" y1="8" x2="14.01" y2="8" />
-        <line x1="18" y1="8" x2="18.01" y2="8" />
-        <line x1="6" y1="12" x2="6.01" y2="12" />
-        <line x1="10" y1="12" x2="10.01" y2="12" />
-        <line x1="14" y1="12" x2="14.01" y2="12" />
-        <line x1="18" y1="12" x2="18.01" y2="12" />
-        <line x1="7" y1="16" x2="17" y2="16" />
-      </svg>
-    );
-  }
-
-  // Mice / Pointers
-  if (text.includes('mouse') || text.includes('mice') || text.includes('mou') || text.includes('op-720') || text.includes('ser01') || text.includes('logitech') || text.includes('trackpad') || text.includes('pointer') || text.includes('a4tech-24ser01')) {
-    return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="5" y="2" width="14" height="20" rx="7" />
-        <path d="M12 2v6" />
-      </svg>
-    );
-  }
-
-  // Cables
-  if (text.includes('cable') || text.includes('wire') || text.includes('ethernet') || text.includes('cat6') || text.includes('hdmi') || text.includes('usb')) {
-    return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2v8M18 12a6 6 0 0 1-6 6M6 12a6 6 0 0 0 6 6M12 18v4" />
-        <line x1="8" y1="2" x2="8" y2="5" />
-        <line x1="16" y1="2" x2="16" y2="5" />
-      </svg>
-    );
-  }
-
-  // Batteries & Power
-  if (text.includes('battery') || text.includes('batteries') || text.includes('powerbank') || text.includes('charger') || text.includes('adapter') || text.includes('power')) {
-    return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="7" width="16" height="10" rx="2" ry="2" />
-        <line x1="22" y1="11" x2="22" y2="13" />
-        <line x1="6" y1="11" x2="10" y2="11" />
-        <line x1="8" y1="9" x2="8" y2="13" />
-      </svg>
-    );
-  }
-
-  // Phones & Mobiles
-  if (text.includes('phone') || text.includes('mobile') || text.includes('smartphone') || text.includes('telephone')) {
-    return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
-        <line x1="12" y1="18" x2="12.01" y2="18" />
-      </svg>
-    );
-  }
-
-  // Writing & Paper Stationery / Supplies
-  if (text.includes('pen') || text.includes('pencil') || text.includes('ink') || text.includes('stationery') || text.includes('paper') || text.includes('office') || text.includes('consumable')) {
-    return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 20h9"/>
-        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-      </svg>
-    );
-  }
-
-  // Accessories (Generic)
-  if (text.includes('peripheral') || text.includes('accessory') || text.includes('accessories')) {
-    return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="3" />
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-      </svg>
-    );
-  }
-
-  // Default box icon
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-    </svg>
-  );
-};
+import { getCategoryIcon } from '@/types/dashboard';
 
 export function BulkRequestModal({ open, onClose, selectedItems, sites, currentUser, initialMode, onSubmit }: BulkRequestModalProps) {
   const canDeploy = !currentUser || currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'INVENTORY_STAFF' || currentUser?.role === 'OPS_MANAGER' || currentUser?.role === 'ADMIN';
@@ -182,6 +58,54 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reqFormError, setReqFormError] = useState<string | null>(null);
+  const [liveTagsMap, setLiveTagsMap] = useState<Record<string, { availableTags: string[]; allExistingTags: string[] }>>({});
+
+  useEffect(() => {
+    if (!open || selectedItems.length === 0) return;
+    const fetchLiveAssets = async () => {
+      try {
+        const res = await fetch('http://localhost:3001/items');
+        if (res.ok) {
+          const itemsData = await res.json();
+          const newMap: Record<string, { availableTags: string[]; allExistingTags: string[] }> = {};
+          
+          itemsData.forEach((it: any) => {
+            const getNum = (t: string) => {
+              const m = (t || '').match(/(\d+)(?=[^\d]*$)/);
+              return m && m[1] ? parseInt(m[1], 10) : 0;
+            };
+
+            const availableAssets = (it.assets || [])
+              .filter((a: any) => a.status === 'AVAILABLE' && a.condition !== 'BAD' && a.condition !== 'DAMAGED')
+              .sort((a: any, b: any) => {
+                const tagA = a.tagCode || a.assetTag || a.serialNumber || '';
+                const tagB = b.tagCode || b.assetTag || b.serialNumber || '';
+                const numA = getNum(tagA);
+                const numB = getNum(tagB);
+                if (numA !== numB) return numA - numB;
+                return tagA.localeCompare(tagB);
+              });
+
+            const tags = availableAssets.map((a: any) => a.tagCode || a.assetTag || a.serialNumber).filter(Boolean);
+            const allTags = (it.assets || [])
+              .map((a: any) => a.tagCode || a.assetTag || a.serialNumber)
+              .filter(Boolean);
+
+            newMap[it.id] = {
+              availableTags: tags,
+              allExistingTags: allTags
+            };
+          });
+
+          setLiveTagsMap(newMap);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch live asset tags in modal:', err);
+      }
+    };
+
+    fetchLiveAssets();
+  }, [open, selectedItems]);
 
   if (!open) return null;
 
@@ -226,7 +150,7 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
 
       const deploymentReason = isDeployMode
         ? `[ASSET DEPLOYMENT] Deploy to: ${employeeName.trim()} | Account: ${employeeAccount.trim()} | EID: ${employeeEid.trim()}${deploymentNotes.trim() ? ` | Notes: ${deploymentNotes.trim()}` : ''}`
-        : `Bulk asset request for selected items${deploymentNotes.trim() ? `: ${deploymentNotes.trim()}` : ''}`;
+        : (deploymentNotes.trim() || 'Request for selected items');
 
       const success = await onSubmit(requestsToSend, siteIdToSend, deploymentReason, 'NORMAL');
       if (success) {
@@ -454,25 +378,43 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
                     itemSkuLower.includes('kbd') || itemSkuLower.includes('mou');
 
                   // Build dynamic tags list matching requested quantity using AVAILABLE & GOOD assets only
-                  const availableTags = item.assetTags || [];
-                  const knownTags = item.allExistingTags && item.allExistingTags.length > 0 ? item.allExistingTags : availableTags;
-                  const displayTags: string[] = [];
+                  const getTagNum = (t: string) => {
+                    const m = (t || '').match(/(\d+)(?=[^\d]*$)/);
+                    return m && m[1] ? parseInt(m[1], 10) : 0;
+                  };
 
-                  // Find max tag number across existing assets to avoid colliding with already used asset tags
-                  const allTagNumbers = knownTags.map(t => {
-                    const parts = t.split('-');
-                    const num = parseInt(parts[parts.length - 1], 10);
-                    return isNaN(num) ? 0 : num;
+                  const liveItem = liveTagsMap[item.id];
+                  const rawAvailable = liveItem ? liveItem.availableTags : (item.assetTags || []);
+                  const rawKnown = liveItem ? liveItem.allExistingTags : (item.allExistingTags && item.allExistingTags.length > 0 ? item.allExistingTags : rawAvailable);
+
+                  const availableTags = [...rawAvailable].sort((a, b) => {
+                    const numA = getTagNum(a);
+                    const numB = getTagNum(b);
+                    if (numA !== numB) return numA - numB;
+                    return a.localeCompare(b);
                   });
-                  let maxTagNum = Math.max(0, ...allTagNumbers);
+
+                  const knownTags = [...rawKnown].sort((a, b) => {
+                    const numA = getTagNum(a);
+                    const numB = getTagNum(b);
+                    if (numA !== numB) return numA - numB;
+                    return a.localeCompare(b);
+                  });
+
+                  const displayTags: string[] = [];
+                  const usedNumbers = new Set(knownTags.map(t => getTagNum(t)).filter(n => n > 0));
+                  let nextTagNum = 1;
 
                   for (let i = 0; i < qty; i++) {
                     if (availableTags[i]) {
                       displayTags.push(availableTags[i]);
                     } else {
-                      maxTagNum++;
+                      while (usedNumbers.has(nextTagNum)) {
+                        nextTagNum++;
+                      }
+                      usedNumbers.add(nextTagNum);
                       const prefix = (item.sku || 'AST').replace(/[^a-zA-Z0-9]/g, '').slice(0, 4).toUpperCase();
-                      const num = String(maxTagNum).padStart(4, '0');
+                      const num = String(nextTagNum).padStart(4, '0');
                       displayTags.push(`${prefix}-${num}`);
                     }
                   }

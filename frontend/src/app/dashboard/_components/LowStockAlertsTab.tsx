@@ -141,34 +141,31 @@ export const LowStockAlertsTab = ({
     // Fallback computation from catalogItems
     const computedAlerts: any[] = [];
     catalogItems.forEach((item) => {
-      const itemCatType = item.category?.type || (item.category?.name?.toLowerCase().includes("consumable") ? "CONSUMABLE" : "NON_CONSUMABLE");
+      const isConsumable = item.category?.type === "CONSUMABLE" || item.category?.name?.toLowerCase().includes("consumable");
+      const itemCatType = isConsumable ? "CONSUMABLE" : "NON_CONSUMABLE";
+
       if (categoryFilter === "NON_CONSUMABLE" && itemCatType !== "NON_CONSUMABLE") return;
       if (categoryFilter === "CONSUMABLE" && itemCatType !== "CONSUMABLE") return;
       if (categoryFilter !== "ALL" && categoryFilter !== "NON_CONSUMABLE" && categoryFilter !== "CONSUMABLE" && item.categoryId !== categoryFilter) return;
 
-      let stockQty = 0;
-      let relevantStocks = item.stockLevels || [];
-      if (siteFilter !== "ALL") {
-        relevantStocks = relevantStocks.filter((s) => s.siteId === siteFilter);
-      }
-      if (relevantStocks.length > 0) {
-        stockQty = relevantStocks.reduce((sum, s) => sum + (s.quantity || 0), 0);
-      }
-
-      let assetQty = 0;
-      let relevantAssets = (item.assets || []).filter((a: any) => a.status === "AVAILABLE" || a.status === "ASSIGNED");
-      if (siteFilter !== "ALL") {
-        relevantAssets = relevantAssets.filter((a: any) => a.siteId === siteFilter);
-      }
-      assetQty = relevantAssets.length;
-
-      const totalQty = (item.stockLevels && item.stockLevels.length > 0)
-        ? stockQty
-        : (item.assets && item.assets.length > 0)
-          ? assetQty
-          : (item.quantity ?? 0);
-
       const threshold = item.reorderPoint || (item.stockLevels?.[0]?.reorderPoint ?? 5);
+      let totalQty = 0;
+
+      if (!isConsumable && item.assets && item.assets.length > 0) {
+        let relevantAssets = item.assets.filter((a: any) => a.status === "AVAILABLE" && a.condition !== "BAD" && a.condition !== "DAMAGED");
+        if (siteFilter !== "ALL") {
+          relevantAssets = relevantAssets.filter((a: any) => a.siteId === siteFilter);
+        }
+        totalQty = relevantAssets.length;
+      } else if (item.stockLevels && item.stockLevels.length > 0) {
+        let relevantStocks = item.stockLevels;
+        if (siteFilter !== "ALL") {
+          relevantStocks = relevantStocks.filter((s) => s.siteId === siteFilter);
+        }
+        totalQty = relevantStocks.reduce((sum, s) => sum + (s.quantity || 0), 0);
+      } else {
+        totalQty = item.quantity ?? 0;
+      }
 
       if (totalQty <= threshold) {
         const isCritical = totalQty === 0 || totalQty <= Math.floor(threshold / 2);
@@ -188,7 +185,7 @@ export const LowStockAlertsTab = ({
             severity,
             category: item.category,
             stockLevels: item.stockLevels,
-            daysBelowThreshold: 3,
+            daysBelowThreshold: 1,
           });
         }
       }

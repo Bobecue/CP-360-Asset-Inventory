@@ -2153,11 +2153,12 @@ export default function DashboardPage() {
       )}
 
       {/* Main Body */}
-      <div style={{
+      <div className="animated-mesh-background" style={{
         flex: 1,
         display: "flex",
         flexDirection: "column",
-        minWidth: 0,
+        minHeight: 0,
+        overflow: "hidden"
       }}>
         {/* Header TopBar */}
         <TopBar
@@ -2172,13 +2173,17 @@ export default function DashboardPage() {
           currentUser={currentUser}
         />
 
-        {/* Dynamic Inner Tab View */}
+        {/* Main Content Area */}
         <main className="main-responsive" style={{
           flex: 1,
-          padding: "1.5rem 1.75rem",
+          padding: "1.5rem 2rem",
           overflowY: "auto",
+          backgroundColor: "transparent",
+          display: "flex",
+          flexDirection: "column",
+          gap: "1.5rem",
         }}>
-          <div key={activeTab} className="animate-module-flip" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          <div className="tab-content-animate" key={activeTab}>
             {renderActiveTab()}
           </div>
         </main>
@@ -2403,11 +2408,30 @@ export default function DashboardPage() {
               const totalQuantity = (it.stockLevels && it.stockLevels.length > 0)
                 ? it.stockLevels.reduce((sum, sl) => sum + (sl.quantity || 0), 0)
                 : (it.quantity || 0);
-              const availableAssets = (it.assets || []).filter((a: any) =>
-                a.status === "AVAILABLE" && a.condition !== "BAD" && a.condition !== "DAMAGED"
-              );
+              const getNum = (t: string) => {
+                const m = (t || '').match(/(\d+)(?=[^\d]*$)/);
+                return m && m[1] ? parseInt(m[1], 10) : 0;
+              };
+              const availableAssets = (it.assets || [])
+                .filter((a: any) => a.status === "AVAILABLE" && a.condition !== "BAD" && a.condition !== "DAMAGED")
+                .sort((a: any, b: any) => {
+                  const tagA = a.assetTag || a.serialNumber || a.tagCode || '';
+                  const tagB = b.assetTag || b.serialNumber || b.tagCode || '';
+                  const numA = getNum(tagA);
+                  const numB = getNum(tagB);
+                  if (numA !== numB) return numA - numB;
+                  return tagA.localeCompare(tagB);
+                });
               const tags = availableAssets.map((a: any) => a.assetTag || a.serialNumber || a.tagCode).filter(Boolean);
-              const allTags = (it.assets || []).map((a: any) => a.assetTag || a.serialNumber || a.tagCode).filter(Boolean);
+              const allTags = [...(it.assets || [])]
+                .map((a: any) => a.assetTag || a.serialNumber || a.tagCode)
+                .filter(Boolean)
+                .sort((a: string, b: string) => {
+                  const numA = getNum(a);
+                  const numB = getNum(b);
+                  if (numA !== numB) return numA - numB;
+                  return a.localeCompare(b);
+                });
               return {
                 id: it.id,
                 name: it.name,
