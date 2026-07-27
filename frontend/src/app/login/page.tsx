@@ -114,17 +114,9 @@ export default function LoginPage() {
         }} />
       </div>
 
-      {/* Very subtle dot grid */}
-      <div aria-hidden style={{
-        position: "absolute", inset: 0, zIndex: 0, opacity: 0.2,
-        backgroundImage: "radial-gradient(circle, #94a3b8 1px, transparent 1px)",
-        backgroundSize: "28px 28px",
-        pointerEvents: "none",
-      }} />
-
       {/* ── Card ── */}
       <div
-        className="relative z-10 card-shine-effect polkadot-pattern-bg"
+        className="relative z-10 card-shine-effect"
         style={{
           position: "relative", zIndex: 1,
           width: "100%", maxWidth: 440,
@@ -146,22 +138,21 @@ export default function LoginPage() {
           boxShadow: "0 2px 10px rgba(255, 42, 42, 0.4)",
         }} />
 
-        {/* Logo + brand heading */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "2rem" }}>
+        {/* Brand heading + Logo */}
+        <div className="no-card logo-header-clean" style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "1.6rem", background: "transparent" }}>
           <img 
             src="/logo.png" 
             alt="Contact Point 360 Logo" 
             style={{
-              height: "180px",
+              height: "65px",
               width: "auto",
               objectFit: "contain",
-              marginTop: "-40px",
-              marginBottom: "-40px",
+              marginBottom: "1rem",
+              filter: "drop-shadow(0 2px 8px rgba(33, 12, 174, 0.08))",
             }} 
           />
-
           <h1 style={{
-            fontSize: "1.35rem", fontWeight: 700,
+            fontSize: "1.4rem", fontWeight: 800,
             color: "#1e293b", letterSpacing: "-0.02em",
             margin: 0, marginBottom: "0.3rem",
           }}>
@@ -340,20 +331,23 @@ export default function LoginPage() {
             style={{
               width: "100%",
               padding: "0.8rem 1rem",
-              borderRadius: 8,
-              border: "none",
-              backgroundColor: isLoading ? "rgba(33,12,174,0.55)" : undefined,
+              borderRadius: 10,
+              border: "1px solid rgba(255, 255, 255, 0.6)",
+              backgroundColor: isLoading ? "rgba(33,12,174,0.15)" : "rgba(255, 255, 255, 0.25)",
               backgroundImage: isLoading
                 ? "none"
-                : "linear-gradient(135deg, #210cae 0%, #4dc9e6 50%, #210cae 100%)",
+                : "linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(225, 29, 72, 0.20) 50%, rgba(77, 201, 230, 0.25) 100%)",
               backgroundSize: "200% 200%",
-              color: "#ffffff",
-              fontSize: "0.93rem",
-              fontWeight: 600,
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+              color: "#1e293b",
+              fontSize: "0.95rem",
+              fontWeight: 700,
               cursor: isLoading ? "not-allowed" : "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
-              boxShadow: isLoading ? "none" : "0 4px 14px rgba(33,12,174,0.18)",
+              boxShadow: "0 4px 16px rgba(33,12,174,0.1), 0 0 10px rgba(59,130,246,0.15)",
               letterSpacing: "0.01em",
+              transition: "all 0.2s ease",
             }}
           >
             {isLoading ? (

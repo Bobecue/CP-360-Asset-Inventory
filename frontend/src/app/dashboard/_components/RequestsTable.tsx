@@ -1343,35 +1343,70 @@ export function RequestsTable({
                             onClick={() => onReturn && onReturn(req)}
                             style={{
                               fontSize: '0.72rem',
-                              color: '#059669',
-                              fontWeight: 600,
-                              backgroundColor: '#ffffff',
-                              border: '1px solid #a7f3d0',
+                              color: '#be123c',
+                              fontWeight: 700,
+                              background: 'linear-gradient(135deg, #ffffff 0%, #fff1f2 60%, rgba(225, 29, 72, 0.12) 100%)',
+                              border: '1px solid rgba(225, 29, 72, 0.40)',
                               padding: '0.25rem 0.5rem',
-                              borderRadius: 4,
+                              borderRadius: 6,
                               cursor: 'pointer',
+                              boxShadow: '0 1px 3px rgba(225, 29, 72, 0.10)',
                               transition: 'all 0.15s ease'
                             }}
-                            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#ecfdf5'; }}
+                            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#ffe4e6'; }}
                             onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#ffffff'; }}
                           >
                             Return
                           </button>
                           <button
                             onClick={() => onRowClick(req)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '0.75rem', fontWeight: 600 }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = '#E85D00'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
+                            style={{
+                              padding: '0.25rem 0.6rem',
+                              borderRadius: 6,
+                              border: '1px solid rgba(225, 29, 72, 0.35)',
+                              background: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.08) 100%)',
+                              color: '#be123c',
+                              fontSize: '0.74rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = 'rgba(225, 29, 72, 0.60)';
+                              e.currentTarget.style.color = '#e11d48';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = 'rgba(225, 29, 72, 0.35)';
+                              e.currentTarget.style.color = '#be123c';
+                            }}
                           >
-                            View →
+                            View Drawer →
                           </button>
                         </div>
                     ) : (
                       <button
                         onClick={() => onRowClick(req)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '0.75rem', fontWeight: 600 }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = '#E85D00'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
+                        style={{
+                          padding: '0.25rem 0.6rem',
+                          borderRadius: 6,
+                          border: '1px solid rgba(225, 29, 72, 0.35)',
+                          background: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.08) 100%)',
+                          color: '#be123c',
+                          fontSize: '0.74rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = 'rgba(225, 29, 72, 0.60)';
+                          e.currentTarget.style.color = '#e11d48';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = 'rgba(225, 29, 72, 0.35)';
+                          e.currentTarget.style.color = '#be123c';
+                        }}
                       >
                         View Drawer →
                       </button>

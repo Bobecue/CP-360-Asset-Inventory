@@ -224,6 +224,7 @@ export class ItemsService {
           unitPrice: data.unitPrice,
           leadTimeDays: data.leadTimeDays,
           categoryId: data.categoryId,
+          supplierId: data.supplierId || null,
         },
       });
 

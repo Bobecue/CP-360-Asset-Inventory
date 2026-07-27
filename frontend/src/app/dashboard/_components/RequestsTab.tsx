@@ -198,29 +198,31 @@ export function RequestsTab({
       return (
         <span style={{
           display: 'inline-flex', alignItems: 'center', padding: '0.25rem 0.65rem',
-          borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 600,
-          backgroundColor: '#e0e7ff', color: '#4338ca', border: '1px solid #c7d2fe'
+          borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 700,
+          background: "linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.12) 100%)",
+          color: "#be123c", border: "1px solid rgba(225, 29, 72, 0.40)",
+          boxShadow: "0 1px 3px rgba(225, 29, 72, 0.10)"
         }}>
           Deployed
         </span>
       );
     }
     const conf: Record<RequestStatus, { bg: string; color: string; border: string; label: string }> = {
-      PENDING: { bg: '#fef9c3', color: '#a16207', border: '#fef08a', label: 'Pending Staff Approval' },
-      PENDING_OPS_APPROVAL: { bg: '#ffedd5', color: '#c2410c', border: '#fed7aa', label: 'Pending Ops Approval' },
-      APPROVED: { bg: '#dbeafe', color: '#1d4ed8', border: '#bfdbfe', label: 'Approved' },
-      READY_FOR_PICKUP: { bg: '#dbeafe', color: '#1d4ed8', border: '#bfdbfe', label: 'Ready for Pickup' },
-      PENDING_PROCUREMENT: { bg: '#fce7f3', color: '#be185d', border: '#fbcfe8', label: 'Pending Procurement' },
-      RELEASED: { bg: '#e0e7ff', color: '#4338ca', border: '#c7d2fe', label: 'Released' },
-      AWAITING_CONFIRMATION: { bg: '#ffedd5', color: '#d97706', border: '#fde68a', label: 'Awaiting Confirmation' },
-      ITEM_RECEIVED: { bg: '#dcfce7', color: '#16a34a', border: '#bbf7d0', label: 'Item Received' },
-      REJECTED: { bg: '#fef2f2', color: '#b91c1c', border: '#fecaca', label: 'Rejected' },
-      RETURNED: { bg: '#d1fae5', color: '#065f46', border: 'rgba(6,95,70,0.25)', label: 'Returned' },
-      CANCELLED: { bg: '#f1f5f9', color: '#475569', border: 'rgba(100,116,139,0.3)', label: 'Cancelled' },
+      PENDING: { bg: 'linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)', color: '#9f1239', border: 'rgba(225, 29, 72, 0.40)', label: 'Pending Staff Approval' },
+      PENDING_OPS_APPROVAL: { bg: 'linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)', color: '#881337', border: 'rgba(225, 29, 72, 0.45)', label: 'Pending Ops Approval' },
+      APPROVED: { bg: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.12) 100%)', color: '#be123c', border: 'rgba(225, 29, 72, 0.35)', label: 'Approved' },
+      READY_FOR_PICKUP: { bg: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.15) 100%)', color: '#e11d48', border: 'rgba(225, 29, 72, 0.40)', label: 'Ready for Pickup' },
+      PENDING_PROCUREMENT: { bg: 'linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)', color: '#9f1239', border: 'rgba(225, 29, 72, 0.40)', label: 'Pending Procurement' },
+      RELEASED: { bg: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.12) 100%)', color: '#be123c', border: 'rgba(225, 29, 72, 0.35)', label: 'Released' },
+      AWAITING_CONFIRMATION: { bg: 'linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)', color: '#9f1239', border: 'rgba(225, 29, 72, 0.40)', label: 'Awaiting Confirmation' },
+      ITEM_RECEIVED: { bg: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.10) 100%)', color: '#be123c', border: 'rgba(225, 29, 72, 0.35)', label: 'Item Received' },
+      REJECTED: { bg: 'linear-gradient(135deg, #fff1f2 0%, #fecaca 100%)', color: '#881337', border: 'rgba(225, 29, 72, 0.60)', label: 'Rejected' },
+      RETURNED: { bg: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.12) 100%)', color: '#be123c', border: 'rgba(225, 29, 72, 0.35)', label: 'Returned' },
+      CANCELLED: { bg: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)', color: '#475569', border: 'rgba(148, 163, 184, 0.45)', label: 'Cancelled' },
     };
     const s = conf[status];
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0.2rem 0.65rem', borderRadius: 999, backgroundColor: s.bg, color: s.color, border: `1px solid ${s.border}`, fontSize: '0.72rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0.25rem 0.65rem', borderRadius: 999, background: s.bg, color: s.color, border: `1px solid ${s.border}`, fontSize: '0.72rem', fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
         {s.label}
       </span>
     );

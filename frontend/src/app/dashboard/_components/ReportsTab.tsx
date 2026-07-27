@@ -983,15 +983,17 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   return (
     <div key={siteFilter + "_" + dateFilter} className="animate-module-flip" style={{ display: "flex", flexDirection: "column", gap: "1.5rem", width: "100%" }}>
       {/* Header Panel */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        backgroundColor: "#ffffff",
-        borderRadius: "12px",
-        padding: "1.25rem 1.5rem",
-        boxShadow: "0 1px 3px rgba(15,23,42,0.03), 0 0 0 1px rgba(226,232,240,0.8)",
-      }}>
+      <div
+        className="animated-mesh-background"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderRadius: "12px",
+          padding: "1.25rem 1.5rem",
+          boxShadow: "0 1px 3px rgba(15,23,42,0.03), 0 0 0 1px rgba(77,201,230,0.3)",
+        }}
+      >
         <div>
           <h1 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", margin: 0, letterSpacing: "-0.02em" }}>
             Reports and system logs
@@ -1092,7 +1094,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           boxShadow: '0 2px 10px rgba(15,23,42,0.02)',
           padding: isOverviewExpanded ? '1.25rem' : '0.85rem 1.25rem',
           transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-          maxHeight: isOverviewExpanded ? '200px' : '48px',
+          maxHeight: isOverviewExpanded ? '220px' : '48px',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
@@ -1123,7 +1125,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           )}
         </div>
 
-        {/* Expanded Content: The 4 clickable overview cards */}
+        {/* Clickable overview cards */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
@@ -1290,12 +1292,11 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
       }}>
         {/* Line Chart Card */}
         <div
-          className="stagger-card"
+          className="stagger-card animated-mesh-background"
           style={{
-            backgroundColor: "#ffffff",
             borderRadius: "12px",
             padding: "1.5rem",
-            boxShadow: "0 1px 2px rgba(15,23,42,0.02), 0 0 0 1px rgba(226,232,240,0.8)",
+            boxShadow: "0 1px 2px rgba(15,23,42,0.02), 0 0 0 1px rgba(77,201,230,0.3)",
             flex: "2 1 450px",
             display: "flex",
             flexDirection: "column",
@@ -1743,12 +1744,11 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
 
         {/* Doughnut Chart Card */}
         <div
-          className="stagger-card"
+          className="stagger-card animated-mesh-background"
           style={{
-            backgroundColor: "#ffffff",
             borderRadius: "12px",
             padding: "1.5rem",
-            boxShadow: "0 1px 2px rgba(15,23,42,0.02), 0 0 0 1px rgba(226,232,240,0.8)",
+            boxShadow: "0 1px 2px rgba(15,23,42,0.02), 0 0 0 1px rgba(77,201,230,0.3)",
             flex: "1 1 250px",
             display: "flex",
             flexDirection: "column",
@@ -1844,12 +1844,11 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
 
         {/* Graph: Activity by Category */}
         <div
-          className="stagger-card"
+          className="stagger-card animated-mesh-background"
           style={{
-            backgroundColor: "#ffffff",
             borderRadius: "12px",
             padding: "1.5rem",
-            boxShadow: "0 1px 2px rgba(15,23,42,0.02), 0 0 0 1px rgba(226,232,240,0.8)",
+            boxShadow: "0 1px 2px rgba(15,23,42,0.02), 0 0 0 1px rgba(77,201,230,0.3)",
             flex: "1 1 250px",
             display: "flex",
             flexDirection: "column",

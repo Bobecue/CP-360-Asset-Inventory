@@ -21,6 +21,7 @@ const getPageTitle = (activeTab: string) => {
     case "catalog": return "Asset Catalog";
     case "requests": return "Request Orders";
     case "alerts": return "Low-Stock Alerts";
+    case "suppliers": return "Supplier Module";
     case "reports": return "Reports & Logs";
     case "settings": return "System Settings";
     default: return "System Dashboard";
@@ -56,10 +57,10 @@ export const TopBar = ({
         <button
           onClick={onToggleSidebar}
           style={{
-            background: "linear-gradient(135deg, rgba(77,201,230,0.08) 0%, rgba(33,12,174,0.05) 100%)",
-            border: "1px solid rgba(77, 201, 230, 0.2)",
+            background: "linear-gradient(135deg, rgba(225, 29, 72, 0.08) 0%, rgba(148, 163, 184, 0.1) 100%)",
+            border: "1px solid rgba(225, 29, 72, 0.25)",
             cursor: "pointer",
-            color: "#210cae",
+            color: "#e11d48",
             display: "flex",
             alignItems: "center",
             padding: 6,
@@ -67,24 +68,22 @@ export const TopBar = ({
             transition: "all 0.2s ease"
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "#eef2ff";
-            e.currentTarget.style.borderColor = "rgba(77, 201, 230, 0.4)";
+            e.currentTarget.style.backgroundColor = "#fff1f2";
+            e.currentTarget.style.borderColor = "rgba(225, 29, 72, 0.45)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = "transparent";
-            e.currentTarget.style.borderColor = "rgba(77, 201, 230, 0.2)";
+            e.currentTarget.style.borderColor = "rgba(225, 29, 72, 0.25)";
           }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="3" y1="12" x2="21" y2="12" stroke="#210cae" /><line x1="3" y1="6" x2="21" y2="6" stroke="#4dc9e6" /><line x1="3" y1="18" x2="21" y2="18" stroke="#4dc9e6" />
+            <line x1="3" y1="12" x2="21" y2="12" stroke="#e11d48" /><line x1="3" y1="6" x2="21" y2="6" stroke="#be123c" /><line x1="3" y1="18" x2="21" y2="18" stroke="#be123c" />
           </svg>
         </button>
         <h2 style={{
           fontSize: "1.15rem",
           fontWeight: 800,
-          background: "linear-gradient(135deg, #0f172a 0%, #210cae 100%)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
+          color: "#0f172a",
           margin: 0,
           letterSpacing: "-0.01em"
         }}>
@@ -98,15 +97,15 @@ export const TopBar = ({
           <button
             onClick={onToggleNotifications}
             style={{
-              background: isNotificationsOpen ? "rgba(33, 12, 174, 0.08)" : "transparent",
-              border: "1px solid rgba(77, 201, 230, 0.2)",
+              background: isNotificationsOpen ? "rgba(225, 29, 72, 0.12)" : "transparent",
+              border: "1px solid rgba(225, 29, 72, 0.25)",
               cursor: "pointer",
-              color: "#210cae", display: "flex", alignItems: "center", padding: 7,
+              color: "#e11d48", display: "flex", alignItems: "center", padding: 7,
               borderRadius: 8, position: "relative",
               transition: "all 0.15s ease"
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#eef2ff")}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = isNotificationsOpen ? "rgba(33, 12, 174, 0.08)" : "transparent")}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fff1f2")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = isNotificationsOpen ? "rgba(225, 29, 72, 0.12)" : "transparent")}
           >
             <span
               key={unreadCount > 0 ? "has-unread" : "no-unread"}
@@ -114,7 +113,7 @@ export const TopBar = ({
               style={{ display: "inline-flex", alignItems: "center" }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#210cae"/><path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="#4dc9e6"/>
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#e11d48"/><path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="#be123c"/>
               </svg>
             </span>
             {unreadCount > 0 && (

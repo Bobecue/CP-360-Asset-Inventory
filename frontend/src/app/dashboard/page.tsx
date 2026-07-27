@@ -421,6 +421,10 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
+    fetchAllMetadata();
+  }, []);
+
+  useEffect(() => {
     if (activeTab === "users") {
       fetchUsers();
       fetchAllMetadata();
@@ -668,9 +672,9 @@ export default function DashboardPage() {
       case "ADMIN":
       case "OPS_MANAGER":
       case "OPERATIONS_MANAGER":
-        return ["dashboard", "catalog", "deployments", "requests", "procurement", "alerts", "scan-ops", "reports"].includes(tab);
+        return ["dashboard", "catalog", "deployments", "requests", "procurement", "suppliers", "alerts", "scan-ops", "reports"].includes(tab);
       case "INVENTORY_STAFF":
-        return ["catalog", "deployments", "requests", "procurement", "alerts", "scan-ops", "reports"].includes(tab);
+        return ["catalog", "deployments", "requests", "procurement", "suppliers", "alerts", "scan-ops", "reports"].includes(tab);
       case "TEAM_LEADER":
         return ["catalog", "requests"].includes(tab);
       case "EMPLOYEE":
@@ -1391,6 +1395,8 @@ export default function DashboardPage() {
           setMockAuditLogs(prev => [newLog, ...prev]);
         }
 
+        const selectedSupplier = suppliersList.find(s => s.id === itemSupplierId);
+
         setCatalogItems((prev) =>
           prev.map((it) =>
             it.id === editingItem.id
@@ -1399,6 +1405,7 @@ export default function DashboardPage() {
                   ...payload,
                   sku: finalSku,
                   category: selectedCategory || it.category,
+                  supplier: selectedSupplier || (itemSupplierId ? { id: itemSupplierId, name: "Assigned Supplier" } : null),
                 }
               : it
           )
@@ -1455,11 +1462,14 @@ export default function DashboardPage() {
           }
         }
 
+        const selectedSupplier = suppliersList.find(s => s.id === itemSupplierId);
+
         const newItem: CatalogItem = {
           id: newItemId,
           ...payload,
           sku: finalSku || `AST-${selectedCategory?.prefix || "AST"}-0001`,
           category: selectedCategory || null,
+          supplier: selectedSupplier || (itemSupplierId ? { id: itemSupplierId, name: "Assigned Supplier" } : null),
           stockLevels: mockStocks,
           assets: mockAssets.length > 0 ? mockAssets : undefined,
         };
@@ -1947,6 +1957,7 @@ export default function DashboardPage() {
               setItemCategoryId("");
               setItemSiteId(selectedSiteId);
               setItemQuantity("");
+              setItemSupplierId("");
               setItemError(null);
               setItemModalOpen(true);
             }}
@@ -2157,7 +2168,8 @@ export default function DashboardPage() {
   return (
     <div style={{
       display: "flex",
-      minHeight: "100vh",
+      height: "100vh",
+      overflow: "hidden",
       backgroundColor: "#f8fafc",
       fontFamily: "Inter, system-ui, sans-serif",
     }}>
@@ -2182,7 +2194,7 @@ export default function DashboardPage() {
         flex: 1,
         display: "flex",
         flexDirection: "column",
-        minHeight: 0,
+        height: "100vh",
         overflow: "hidden"
       }}>
         {/* Header TopBar */}

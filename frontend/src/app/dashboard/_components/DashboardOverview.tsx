@@ -60,18 +60,14 @@ function AnimatedMetricCard({
 
   return (
     <div
-      className="metric-card stagger-card card-shine-effect"
+      className="metric-card card-shine-effect"
       style={{
         backgroundColor: "#ffffff",
         borderRadius: 14,
         padding: "1.25rem 1.5rem",
-        boxShadow: "0 4px 16px -2px rgba(33, 12, 174, 0.06), 0 0 0 1px rgba(77, 201, 230, 0.2)",
-        borderTop: "3px solid transparent",
-        borderImage: "linear-gradient(90deg, #4dc9e6 0%, #210cae 100%) 1",
         display: "flex",
         flexDirection: "column",
         gap: "0.35rem",
-        animationDelay: `${idx * 90}ms`,
         position: "relative",
       }}
     >
@@ -92,13 +88,13 @@ function AnimatedMetricCard({
         {desc}
       </span>
       {showProgressBar && (
-        <div style={{ height: 6, width: "100%", backgroundColor: "rgba(77,201,230,0.15)", borderRadius: 3, overflow: "hidden", marginTop: "0.5rem" }}>
+        <div style={{ height: 8, width: "100%", backgroundColor: "#e2e8f0", borderRadius: 4, overflow: "hidden", marginTop: "0.5rem", border: "1px solid #cbd5e1" }}>
           <div style={{
             height: "100%",
             width: `${fillWidth}%`,
-            background: "linear-gradient(90deg, #4dc9e6 0%, #210cae 100%)",
-            borderRadius: 3,
-            boxShadow: "0 0 10px rgba(77, 201, 230, 0.5)",
+            background: "linear-gradient(90deg, #94a3b8 0%, #64748b 50%, #334155 100%)",
+            borderRadius: 4,
+            boxShadow: "0 1px 3px rgba(15, 23, 42, 0.2)",
             transition: "width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
           }} />
         </div>
@@ -172,7 +168,8 @@ export const DashboardOverview = ({
 
       if (sumRes.ok) {
         const envelope = await sumRes.json();
-        setData(envelope.data);
+        const summaryData = envelope.data || envelope;
+        setData(summaryData);
       }
 
       if (reqRes.ok) {
@@ -217,21 +214,8 @@ export const DashboardOverview = ({
     return () => clearInterval(interval);
   }, [fetchDashboardSummary]);
 
-  if (loading && !data) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem" }}>
-          <MetricCardSkeleton />
-          <MetricCardSkeleton />
-          <MetricCardSkeleton />
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem" }}>
-          <MetricCardSkeleton />
-          <MetricCardSkeleton />
-        </div>
-      </div>
-    );
-  }
+  // Loading fallback placeholder if initial fetch is ongoing
+  const isInitialLoading = loading && !data;
 
   if (error) {
     return (
@@ -241,15 +225,15 @@ export const DashboardOverview = ({
     );
   }
 
-  const metrics = data?.metrics || {
-    totalAssets: 0,
-    assetsThisWeek: 0,
-    activeCheckouts: 0,
-    utilizationRate: 0,
-    pendingRequestsCount: 0,
-    awaitingStaffCount: 0,
-    awaitingOpsCount: 0,
-    lowStockAlertsCount: 0,
+  const metrics = {
+    totalAssets: data?.metrics?.totalAssets ?? data?.totalAssets ?? 0,
+    assetsThisWeek: data?.metrics?.assetsThisWeek ?? data?.assetsThisWeek ?? 0,
+    activeCheckouts: data?.metrics?.activeCheckouts ?? data?.activeCheckouts ?? 0,
+    utilizationRate: data?.metrics?.utilizationRate ?? data?.utilizationRate ?? 0,
+    pendingRequestsCount: data?.metrics?.pendingRequestsCount ?? data?.pendingRequestsCount ?? 0,
+    awaitingStaffCount: data?.metrics?.awaitingStaffCount ?? data?.awaitingStaffCount ?? 0,
+    awaitingOpsCount: data?.metrics?.awaitingOpsCount ?? data?.awaitingOpsCount ?? 0,
+    lowStockAlertsCount: data?.metrics?.lowStockAlertsCount ?? data?.lowStockAlertsCount ?? 0,
   };
 
   const recentRequests = (rawRequestsList.length > 0
@@ -424,11 +408,13 @@ export const DashboardOverview = ({
       {/* Grid Layout: Recent Requests & Low Stock Alerts */}
       <div className="dashboard-layout-grid" style={{ display: "grid", gap: "1.5rem", alignItems: "start", marginBottom: "1.75rem" }}>
         {/* Recent Request Transactions */}
-        <section style={{
-          backgroundColor: "#ffffff", borderRadius: 12,
-          boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(226,232,240,0.6)",
-          padding: "1.5rem",
-        }}>
+        <section
+          className="animated-mesh-background"
+          style={{
+            backgroundColor: "#ffffff", borderRadius: 12,
+            boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(226,232,240,0.6)",
+            padding: "1.5rem",
+          }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
             <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>Recent Request Transactions</h3>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
@@ -637,11 +623,14 @@ export const DashboardOverview = ({
         </section>
 
         {/* Low Stock Alerts */}
-        <section style={{
-          backgroundColor: "#ffffff", borderRadius: 12,
-          boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(226,232,240,0.6)",
-          padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem",
-        }}>
+        <section
+          className="animated-mesh-background"
+          style={{
+            borderRadius: 12,
+            boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(77,201,230,0.3)",
+            padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem",
+          }}
+        >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>Low-Stock Alerts</h3>
             <span style={{ fontSize: "0.7rem", fontWeight: 700, backgroundColor: lowStockAlerts.length > 0 ? "#fee2e2" : "#f1f5f9", color: lowStockAlerts.length > 0 ? "#991b1b" : "#475569", padding: "0.15rem 0.4rem", borderRadius: 6 }}>
@@ -688,11 +677,14 @@ export const DashboardOverview = ({
       </div>
 
       {/* New Section: Recent Asset Deployments Table */}
-      <section style={{
-        backgroundColor: "#ffffff", borderRadius: 12,
-        boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(226,232,240,0.6)",
-        padding: "1.5rem",
-      }}>
+      <section
+        className="animated-mesh-background"
+        style={{
+          borderRadius: 12,
+          boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(77,201,230,0.3)",
+          padding: "1.5rem",
+        }}
+      >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <span style={{ fontSize: "1.1rem" }}>🚀</span>

@@ -42,46 +42,231 @@ body {
 
 @keyframes polkadot-move-shine {
   0% {
-    background-position: 0px 0px, 0% 50%, 100% 50%;
-  }
-  50% {
-    background-position: 28px 28px, 100% 50%, 0% 50%;
+    background-position: 0px 0px, 0px 0px, 0% 0%, 0% 0%;
   }
   100% {
-    background-position: 56px 56px, 0% 50%, 100% 50%;
+    background-position: 48px 48px, -48px 48px, 100% 100%, 0% 100%;
   }
 }
 
-body {
+/* Shared Sidebar & Topbar Brand Mesh & Polkadot Moving Dots Background Definition */
+aside,
+header,
+.sidebar-responsive,
+.topbar-responsive,
+.sidebar-brand-bg,
+.topbar-brand-bg {
   background-image: 
-    radial-gradient(circle, rgba(33, 12, 174, 0.12) 1.25px, transparent 1.25px),
-    radial-gradient(circle at 20% 20%, rgba(225, 29, 72, 0.05) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(77, 201, 230, 0.08) 0%, transparent 50%),
-    linear-gradient(135deg, #ffffff 0%, #f8fafc 40%, #fff7f7 70%, #f0f7ff 100%);
-  background-size: 28px 28px, 200% 200%, 200% 200%, 300% 300%;
-  animation: polkadot-move-shine 20s linear infinite;
-  background-attachment: fixed;
+    radial-gradient(circle, rgba(225, 29, 72, 0.35) 2px, transparent 2px),
+    radial-gradient(circle, rgba(148, 163, 184, 0.40) 2px, transparent 2px),
+    radial-gradient(circle at 50% 10%, rgba(225, 29, 72, 0.06) 0%, transparent 60%),
+    linear-gradient(180deg, #ffffff 0%, rgba(248, 250, 252, 0.7) 35%, rgba(255, 241, 242, 0.5) 70%, rgba(241, 245, 249, 0.6) 100%) !important;
+  background-size: 24px 24px, 48px 48px, 100% 100%, 100% 300% !important;
+  animation: polkadot-move-shine 6s linear infinite !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PREMIUM ENTERPRISE BACKGROUND EFFECT SYSTEM (EYE-FRIENDLY & DYNAMIC)
+   ═══════════════════════════════════════════════════════════ */
+
+/* 1. Fluid Liquid Mesh Morph Animation */
+@keyframes fluid-mesh-morph {
+  0% {
+    transform: rotate(0deg) scale(1) translate(0px, 0px);
+  }
+  33% {
+    transform: rotate(6deg) scale(1.08) translate(30px, -20px);
+  }
+  66% {
+    transform: rotate(-4deg) scale(0.95) translate(-25px, 25px);
+  }
+  100% {
+    transform: rotate(0deg) scale(1) translate(0px, 0px);
+  }
+}
+
+/* 2. Soft Aurora Wave Sheen Glide */
+@keyframes aurora-wave-drift {
+  0% {
+    background-position: -200% -200%, 0% 0%;
+    opacity: 0.4;
+  }
+  50% {
+    background-position: 200% 200%, 50% 50%;
+    opacity: 0.85;
+  }
+  100% {
+    background-position: -200% -200%, 0% 0%;
+    opacity: 0.4;
+  }
+}
+
+/* 3. Geometric Tech Grid Pulse */
+@keyframes geometric-line-sheen {
+  0%, 100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.65;
+  }
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  background-color: #f8fafc;
   color: hsl(var(--foreground));
   font-family: var(--font-inter), 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Card glassmorphism & soft brand border highlight */
-.card-shine-effect,
+/* Main System Area Premium Ambient Glow & Multi-Layer Dynamic System Background */
+main,
+.main-responsive,
+.main-system-bg {
+  position: relative;
+  background-image: 
+    radial-gradient(circle, rgba(225, 29, 72, 0.28) 2px, transparent 2px),
+    radial-gradient(circle, rgba(148, 163, 184, 0.35) 1.8px, transparent 1.8px),
+    radial-gradient(130% 70% at 50% 100%, rgba(203, 213, 225, 0.25) 0%, rgba(225, 29, 72, 0.06) 35%, rgba(148, 163, 184, 0.18) 70%, transparent 100%),
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 35%, #f1f5f9 70%, #e2e8f0 100%) !important;
+  background-size: 24px 24px, 48px 48px, 100% 100%, 100% 100% !important;
+  animation: polkadot-move-shine 10s linear infinite !important;
+  overflow: hidden;
+}
+
+/* Layer 1: Fluid Liquid Color Mesh Blobs (Morphing Red & Silver Metallic) */
+main::before,
+.main-responsive::before,
+.main-system-bg::before {
+  content: "";
+  position: absolute;
+  inset: -15%;
+  z-index: 0;
+  pointer-events: none;
+  background-image: 
+    radial-gradient(circle at 20% 25%, rgba(225, 29, 72, 0.08) 0%, rgba(225, 29, 72, 0.02) 45%, transparent 65%),
+    radial-gradient(circle at 80% 35%, rgba(203, 213, 225, 0.30) 0%, rgba(148, 163, 184, 0.10) 45%, transparent 65%),
+    radial-gradient(circle at 50% 75%, rgba(226, 232, 240, 0.25) 0%, transparent 55%),
+    radial-gradient(circle at 35% 85%, rgba(203, 213, 225, 0.30) 0%, transparent 50%);
+  filter: blur(35px);
+  animation: fluid-mesh-morph 28s ease-in-out infinite;
+}
+
+/* Layer 2: Geometric Metallic Line Sheen & Aurora Wave Ray */
+main::after,
+.main-responsive::after,
+.main-system-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: 
+    linear-gradient(125deg, transparent 25%, rgba(255, 255, 255, 0.55) 42%, rgba(225, 29, 72, 0.06) 47%, rgba(203, 213, 225, 0.25) 53%, rgba(255, 255, 255, 0.55) 58%, transparent 75%),
+    linear-gradient(rgba(203, 213, 225, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(225, 29, 72, 0.03) 1px, transparent 1px);
+  background-size: 250% 250%, 48px 48px, 48px 48px;
+  filter: blur(8px);
+  animation: aurora-wave-drift 22s ease-in-out infinite, geometric-line-sheen 6s ease-in-out infinite;
+}
+
+main > *,
+.main-responsive > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ULTRA-UNIVERSAL SYSTEM-WIDE GLASSMORPHISM TRANSPARENCY OVERRIDE
+   ═══════════════════════════════════════════════════════════ */
+
+/* 1. Clear outer layout main containers and tab content wrappers */
+main,
+.main-responsive,
+.tab-content-animate,
+.tab-content-animate > div,
+div[class*="tab-content"],
+div[class*="Tab-container"],
+div[class*="page-container"] {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* 2. Universal Glassmorphic Transparency for ALL Modules, Cards, Panels, Modals, Forms & Sections */
+.animated-mesh-background,
 .metric-card,
+.catalog-card,
+.module-container-card,
+.card-shine-effect,
+.bg-white,
+.bg-slate-50,
+.bg-slate-100,
+.bg-gray-50,
+.bg-gray-100,
+div[class*="bg-white"],
+div[class*="card"]:not(.no-card),
+div[class*="panel"]:not(.no-card),
+div[class*="modal"]:not(.no-card),
+div[style*="background: #"]:not(.no-card),
+div[style*="background: rgb"]:not(.no-card),
+div[style*="backgroundColor: #"]:not(.no-card),
+div[style*="backgroundColor: rgb"]:not(.no-card),
 section,
-.module-container-card {
-  border: 1px solid rgba(226, 232, 240, 0.85) !important;
-  box-shadow: 0 4px 20px -4px rgba(33, 12, 174, 0.04), 0 2px 6px rgba(225, 29, 72, 0.02) !important;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+article,
+fieldset,
+form {
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-radius: 14px;
+  border: 1px solid rgba(225, 29, 72, 0.35) !important;
+  box-shadow: 0 4px 20px -4px rgba(225, 29, 72, 0.08), 0 0 10px rgba(226, 232, 240, 0.5) !important;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease !important;
+}
+
+/* Explicit exemption for pure transparent wrappers & logo containers */
+.no-card,
+.logo-header-clean,
+div[style*="background: transparent"],
+div[style*="background:none"],
+div[style*="background-color: transparent"] {
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.card-shine-effect::before,
+.metric-card::before,
+.module-container-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 15px;
+  padding: 1px;
+  background: linear-gradient(90deg, #e2e8f0 0%, #e11d48 50%, #9f1239 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.85;
 }
 
 .card-shine-effect:hover,
 .metric-card:hover,
 .module-container-card:hover {
-  border-color: rgba(77, 201, 230, 0.4) !important;
-  box-shadow: 0 10px 25px -4px rgba(33, 12, 174, 0.08), 0 4px 12px rgba(225, 29, 72, 0.04) !important;
+  transform: translateY(-3px) !important;
+  box-shadow: 0 12px 30px -4px rgba(225, 29, 72, 0.14), 0 0 14px rgba(226, 232, 240, 0.6) !important;
+}
+
+.card-shine-effect:hover::before,
+.metric-card:hover::before,
+.module-container-card:hover::before {
+  opacity: 1;
 }
 
 /* System-Wide Module Header Banner Accent */
@@ -492,9 +677,20 @@ th {
 /* ═══════════════════════════════════════════════════════════
    IMPROVEMENT #2 — Staggered Card Entrance (utility)
    ═══════════════════════════════════════════════════════════ */
+@keyframes slideFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .stagger-card {
-  animation: slideFadeIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-  opacity: 0;
+  animation: slideFadeIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  opacity: 1;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -568,23 +764,20 @@ th {
    CP360 UNIVERSAL BRAND COLOR & METALLIC SHINE SPECIFICATIONS
    ═══════════════════════════════════════════════════════════ */
 
-/* Sidebar Brand Mesh & Polkadot Background */
-.sidebar-brand-bg {
-  background-image: 
-    radial-gradient(circle, rgba(33, 12, 174, 0.18) 1.5px, transparent 1.5px),
-    radial-gradient(circle at 50% 10%, rgba(225, 29, 72, 0.08) 0%, transparent 60%),
-    linear-gradient(180deg, #ffffff 0%, #f0f7ff 35%, #fff1f2 70%, #f5f3ff 100%) !important;
-  background-size: 24px 24px, 100% 100%, 100% 300% !important;
-  animation: polkadot-move-shine 16s ease infinite !important;
+.metric-card,
+.catalog-card,
+.module-container-card,
+div[style*="borderRadius"] {
+  border-top: none !important;
+  border-image: none !important;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease, border-color 0.2s ease !important;
 }
 
-/* TopBar Brand Mesh & Polkadot Background */
-.topbar-brand-bg {
-  background-image: 
-    radial-gradient(circle, rgba(33, 12, 174, 0.18) 1.5px, transparent 1.5px),
-    linear-gradient(90deg, #ffffff 0%, #eff6ff 30%, #fff1f2 65%, #f0fdf4 100%) !important;
-  background-size: 24px 24px, 300% 100% !important;
-  animation: polkadot-move-shine 12s ease infinite !important;
+.metric-card:hover,
+.catalog-card:hover,
+.module-container-card:hover {
+  transform: translateY(-3px) scale(1.008) !important;
+  box-shadow: 0 10px 24px -2px rgba(225, 29, 72, 0.08), 0 0 14px rgba(226, 232, 240, 0.4) !important;
 }
 .card-shine-effect,
 .metric-card,
@@ -667,10 +860,10 @@ section {
 button[style*="210cae"],
 button[style*="4dc9e6"],
 .btn-primary-brand {
-  background: linear-gradient(135deg, #210cae 0%, #3b82f6 50%, #4dc9e6 100%) !important;
+  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 50%, #4dc9e6 100%) !important;
   color: #ffffff !important;
   border: none !important;
-  box-shadow: 0 4px 14px -2px rgba(33, 12, 174, 0.35) !important;
+  box-shadow: 0 4px 14px -2px rgba(59, 130, 246, 0.35) !important;
   position: relative;
   overflow: hidden;
 }
@@ -678,7 +871,7 @@ button[style*="4dc9e6"],
 button[style*="210cae"]:hover,
 button[style*="4dc9e6"]:hover,
 .btn-primary-brand:hover {
-  box-shadow: 0 8px 24px -2px rgba(33, 12, 174, 0.45), 0 0 16px rgba(225, 29, 72, 0.35) !important;
+  box-shadow: 0 8px 24px -2px rgba(59, 130, 246, 0.45), 0 0 16px rgba(225, 29, 72, 0.35) !important;
 }
 
 /* Interactive Search Inputs & Select Filters Pulse */
@@ -694,35 +887,64 @@ button[style*="4dc9e6"]:hover,
   }
 }
 
+/* Universal Search Bars, Form Inputs & Select Filters Styling Across All Modules */
 input[type="text"],
 input[type="search"],
-select {
+input[type="number"],
+input[type="date"],
+select,
+textarea,
+.search-glow,
+div[class*="search"],
+div[class*="filter"] {
+  background: rgba(255, 255, 255, 0.20) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(148, 163, 184, 0.3) !important;
+  color: #1e293b !important;
+  border-radius: 8px !important;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease !important;
 }
 
 input[type="text"]:focus,
 input[type="search"]:focus,
-select:focus {
-  border-color: #4dc9e6 !important;
+input[type="number"]:focus,
+input[type="date"]:focus,
+select:focus,
+textarea:focus {
+  border-color: #210cae !important;
+  box-shadow: 0 0 0 3px rgba(33, 12, 174, 0.12), 0 0 12px rgba(225, 29, 72, 0.15) !important;
   transform: translateY(-1px) !important;
-  animation: input-focus-pulse 2s infinite !important;
 }
 
 /* ═══════════════════════════════════════════════════════════
    PREMIUM TABLE COLOR & BADGE SPECIFICATIONS
    ═══════════════════════════════════════════════════════════ */
 
-/* Table Container Wrapper */
-table {
+/* Table Container & Table High-Definition Outline Specifications */
+table,
+div[class*="table-responsive"],
+div[class*="table-container"],
+.table-wrapper {
   border-collapse: separate !important;
   border-spacing: 0 !important;
   width: 100% !important;
+  border-radius: 14px !important;
+  overflow: hidden !important;
+  border: 1.5px solid rgba(59, 130, 246, 0.4) !important;
+  outline: 1px solid rgba(225, 29, 72, 0.25) !important;
+  box-shadow: 0 4px 24px -2px rgba(33, 12, 174, 0.08), 0 0 14px rgba(59, 130, 246, 0.15) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
 }
 
-/* Gradient Table Header Bar */
+/* Premium CP360 Soft Translucent Table Header Bar across ALL modules */
 thead tr {
-  background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 50%, #eff6ff 100%) !important;
-  border-bottom: 2px solid rgba(77, 201, 230, 0.3) !important;
+  background: linear-gradient(90deg, rgba(224, 231, 255, 0.35) 0%, rgba(219, 234, 254, 0.35) 50%, rgba(224, 242, 254, 0.35) 100%) !important;
+  border-bottom: 2px solid rgba(59, 130, 246, 0.4) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
 }
 
 th {
@@ -732,35 +954,54 @@ th {
   font-size: 0.72rem !important;
   letter-spacing: 0.06em !important;
   padding: 0.85rem 1rem !important;
-  border-bottom: 2px solid rgba(77, 201, 230, 0.25) !important;
+  border-bottom: 2px solid rgba(59, 130, 246, 0.4) !important;
   background-color: transparent !important;
+}
+
+td {
+  padding: 0.85rem 1rem !important;
+  font-size: 0.82rem !important;
+  color: #1e293b !important;
+  border-bottom: 1px solid rgba(203, 213, 225, 0.4) !important;
 }
 
 /* Universal Table Row Hover Effect across ALL modules */
 tr,
 tbody tr,
 .table-row-hover {
-  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
-  border-left: 3.5px solid transparent !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease !important;
+  border-left: 4px solid transparent !important;
   position: relative;
 }
 
 tbody tr:nth-child(even),
 tr:nth-child(even) {
-  background-color: rgba(248, 250, 252, 0.75) !important;
+  background-color: rgba(240, 247, 255, 0.04) !important;
 }
 
 tbody tr:nth-child(odd),
 tr:nth-child(odd) {
-  background-color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 tr:hover,
 tbody tr:hover,
 .table-row-hover:hover {
-  background-color: #fff5f5 !important;
-  border-left: 3.5px solid #e11d48 !important;
-  box-shadow: 0 2px 10px -2px rgba(225, 29, 72, 0.12), inset 0 0 6px rgba(255, 255, 255, 0.8) !important;
+  background: linear-gradient(90deg, rgba(224, 231, 255, 0.3) 0%, rgba(219, 234, 254, 0.3) 50%, rgba(224, 242, 254, 0.3) 100%) !important;
+  border-left: 4px solid #210cae !important;
+  box-shadow: 0 4px 14px -2px rgba(33, 12, 174, 0.1), inset 0 0 8px rgba(255, 255, 255, 0.8) !important;
+  transform: scale(1.002) !important;
+}
+
+.catalog-card,
+div[class*="grid"],
+div[style*="borderRadius: 14"],
+div[style*="borderRadius: 12"] {
+  border-top: none !important;
+  border-image: none !important;
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
 }
 
 /* Universal Text & Element Drag Selection Shining Red Highlight Across ENTIRE System */
@@ -843,4 +1084,410 @@ span[style*="borderRadius"]:hover,
 .badge:hover {
   animation: badge-subtle-pulse 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
   box-shadow: 0 4px 10px rgba(15, 23, 42, 0.1) !important;
+}
+
+/* ==========================================================================
+   100% UNIFIED METALLIC RED & SILVER GLASSMORPHISM SYSTEM-WIDE
+   ========================================================================== */
+
+/* Universal Red & Silver Glass Style Rule applied to EVERYTHING without exception */
+div,
+section,
+article,
+nav,
+aside,
+header,
+main,
+footer,
+table,
+thead,
+tbody,
+tr,
+th,
+td,
+input,
+select,
+textarea,
+button,
+a,
+span,
+ul,
+li,
+ol,
+div[role="dialog"],
+div[aria-modal="true"],
+.modal-content,
+.card-glass,
+.glass-panel,
+[class*="card"],
+[class*="panel"],
+[class*="modal"],
+[class*="popover"],
+[class*="dropdown"],
+[class*="sidebar"],
+[class*="bg-"] {
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+}
+
+/* Force EVERY container, box, card, button, tab, input, header and table row to use 100% IDENTICAL background & border glow */
+div[style*="background"],
+div[style*="backgroundColor"],
+div[class*="bg-"],
+section,
+article,
+nav,
+aside,
+header,
+button,
+nav a,
+nav button,
+.sidebar-item,
+input,
+select,
+textarea,
+table,
+thead,
+th,
+tbody tr,
+td,
+div[role="dialog"],
+div[aria-modal="true"],
+.modal-content {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.70) 0%, rgba(241, 245, 249, 0.50) 50%, rgba(225, 29, 72, 0.06) 100%) !important;
+  border: 1px solid rgba(225, 29, 72, 0.35) !important;
+  box-shadow: 
+    0 0 10px rgba(226, 232, 240, 0.6), 
+    0 4px 14px rgba(225, 29, 72, 0.08), 
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.95), 
+    inset 0 -1px 0 0 rgba(226, 232, 240, 0.5) !important;
+  color: #0f172a !important;
+}
+
+/* 100% IDENTICAL Crimson Red & Metallic Silver Hover Sheen & Outline Glow */
+button:hover,
+nav a:hover,
+nav button:hover,
+.sidebar-item:hover,
+input:focus,
+select:focus,
+textarea:focus,
+tbody tr:hover,
+div[onClick]:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(225, 29, 72, 0.12) 60%, rgba(241, 245, 249, 0.85) 100%) !important;
+  border-color: rgba(225, 29, 72, 0.60) !important;
+  box-shadow: 
+    0 0 16px rgba(226, 232, 240, 0.8), 
+    0 4px 18px rgba(225, 29, 72, 0.18), 
+    inset 0 1px 0 0 rgba(255, 255, 255, 1) !important;
+  color: #9f1239 !important;
+}
+
+/* Red & Metallic Silver Table Outlines and Dividers */
+table,
+thead,
+tbody,
+tr,
+th,
+td {
+  border-color: rgba(225, 29, 72, 0.22) !important;
+}
+
+th,
+td {
+  border-bottom: 1px solid rgba(225, 29, 72, 0.20) !important;
+  border-right: none !important;
+  border-left: none !important;
+  border-top: none !important;
+}
+
+/* ==========================================================================
+   SYSTEM-WIDE BLUE TO METALLIC SILVER ACCENT OVERRIDE
+   ========================================================================== */
+
+/* 1. All Blue Text Elements -> Metallic Slate / Silver */
+[class*="text-blue"],
+[class*="text-sky"],
+[class*="text-indigo"],
+[style*="color: '#2563eb'"],
+[style*="color: \"#2563eb\""],
+[style*="color: '#3b82f6'"],
+[style*="color: \"#3b82f6\""],
+[style*="color: '#1d4ed8'"],
+[style*="color: \"#1d4ed8\""],
+[style*="color: '#0284c7'"],
+[style*="color: \"#0284c7\""],
+[style*="color: '#475569'"] {
+  color: #334155 !important;
+}
+
+/* 2. All Blue Badges, Chips & Tag Pills -> Metallic Silver Glass with Crimson Outline */
+[class*="bg-blue"],
+[class*="bg-sky"],
+[class*="bg-indigo"],
+span[style*="#dbeafe"],
+span[style*="#bfdbfe"],
+span[style*="#e0f2fe"],
+span[style*="#bae6fd"],
+span[style*="#2563eb"],
+span[style*="#3b82f6"] {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, rgba(225, 29, 72, 0.08) 100%) !important;
+  color: #1e293b !important;
+  border: 1px solid rgba(225, 29, 72, 0.30) !important;
+  box-shadow: 0 0 6px rgba(226, 232, 240, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+/* 3. All Blue Icons (SVG fill & stroke) -> Silver Slate */
+svg[fill*="#2563eb"],
+svg[fill*="#3b82f6"],
+svg[fill*="#1d4ed8"],
+svg[stroke*="#2563eb"],
+svg[stroke*="#3b82f6"],
+svg[stroke*="#1d4ed8"],
+svg[class*="text-blue"],
+svg[class*="text-indigo"],
+svg[class*="text-sky"] {
+  color: #64748b !important;
+  stroke: #64748b !important;
+  fill: none !important;
+}
+
+/* 4. Active Navigation / Tab Indicator -> Metallic Red & Silver Sheen Glow */
+.active-tab,
+[aria-current="page"],
+div[style*="borderLeft: \"3px solid #2563eb\""],
+div[style*="borderLeft: '3px solid #2563eb'"] {
+  border-left: 3px solid #e11d48 !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.90) 0%, rgba(226, 232, 240, 0.65) 60%, rgba(225, 29, 72, 0.10) 100%) !important;
+  box-shadow: 0 0 14px rgba(225, 29, 72, 0.25), 0 0 10px rgba(226, 232, 240, 0.5) !important;
+}
+
+/* ==========================================================================
+   METALLIC SILVER & CRIMSON RED CONNECTIVITY: ICONS & STATUS BADGES
+   ========================================================================== */
+
+/* --- 1. System-Wide Icon Connectivity (Lucide SVG Icons & Inline SVGs) --- */
+svg:not([class*="no-silver-red"]),
+.lucide,
+svg path,
+svg line,
+svg circle,
+svg polyline,
+svg polygon,
+svg rect {
+  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* All default SVG icons derive metallic silver-slate tone unless in primary/hover states */
+svg:not([class*="text-"]):not([class*="stroke-"]):not([class*="icon-crimson"]) {
+  stroke: #64748b !important;
+  color: #64748b !important;
+}
+
+/* Primary/Brand Icons & Interactive Icon Containers (Crimson Red with Glow) */
+.icon-crimson,
+button svg,
+a svg,
+.sidebar-item svg,
+nav svg,
+th svg,
+label svg {
+  stroke: #e11d48 !important;
+  color: #e11d48 !important;
+  filter: drop-shadow(0 0 5px rgba(225, 29, 72, 0.25)) !important;
+}
+
+/* Parent Hover State Effect for Icons -> Glowing Deep Red & Metallic Silver Sheen */
+button:hover svg,
+a:hover svg,
+.sidebar-item:hover svg,
+tr:hover svg,
+div[onClick]:hover svg,
+div[onclick]:hover svg {
+  stroke: #be123c !important;
+  color: #be123c !important;
+  transform: scale(1.12) rotate(3deg);
+  filter: drop-shadow(0 0 8px rgba(225, 29, 72, 0.55)) drop-shadow(0 0 3px rgba(226, 232, 240, 0.9)) !important;
+}
+
+
+/* --- 2. Unified Metallic Silver & Crimson Red Status Badge Palette --- */
+
+/* Completed / Returned / Active / Approved / Available / Operational / In Stock */
+.badge-status-success,
+span[class*="emerald"],
+span[class*="green"],
+span[style*="In Stock"],
+span[style*="in stock"],
+span[style*="Returned"],
+span[style*="returned"],
+span[style*="Approved"],
+span[style*="approved"],
+span[style*="Available"],
+span[style*="available"],
+span[style*="Active"],
+span[style*="active"] {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(241, 245, 249, 0.90) 50%, rgba(225, 29, 72, 0.12) 100%) !important;
+  color: #9f1239 !important;
+  border: 1px solid rgba(225, 29, 72, 0.35) !important;
+  box-shadow: 0 2px 8px rgba(225, 29, 72, 0.12), inset 0 1px 0 0 rgba(255, 255, 255, 0.9) !important;
+  font-weight: 700 !important;
+}
+
+/* Pending / In Review / Processing / Under Maintenance */
+.badge-status-warning,
+span[class*="amber"],
+span[class*="yellow"],
+span[style*="Pending"],
+span[style*="pending"],
+span[style*="Review"],
+span[style*="review"],
+span[style*="Processing"],
+span[style*="processing"],
+span[style*="In Maintenance"] {
+  background: linear-gradient(135deg, rgba(255, 251, 235, 0.95) 0%, rgba(254, 243, 199, 0.80) 50%, rgba(225, 29, 72, 0.10) 100%) !important;
+  color: #9f1239 !important;
+  border: 1px solid rgba(225, 29, 72, 0.40) !important;
+  box-shadow: 0 2px 8px rgba(225, 29, 72, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 0.9) !important;
+  font-weight: 700 !important;
+}
+
+/* Critical / Rejected / Retired / Damaged / High Severity */
+.badge-status-danger,
+span[class*="red"],
+span[class*="rose"],
+span[style*="Rejected"],
+span[style*="rejected"],
+span[style*="Retired"],
+span[style*="retired"],
+span[style*="Damaged"],
+span[style*="damaged"],
+span[style*="Critical"],
+span[style*="critical"] {
+  background: linear-gradient(135deg, rgba(255, 241, 242, 0.95) 0%, rgba(254, 205, 211, 0.85) 50%, rgba(225, 29, 72, 0.25) 100%) !important;
+  color: #881337 !important;
+  border: 1px solid rgba(225, 29, 72, 0.60) !important;
+  box-shadow: 0 2px 10px rgba(225, 29, 72, 0.25), inset 0 1px 0 0 rgba(255, 255, 255, 0.9) !important;
+  font-weight: 700 !important;
+}
+
+/* Neutral / Assigned / In Use / Informational Statuses */
+.badge-status-neutral,
+span[class*="slate"],
+span[class*="gray"],
+span[style*="In Use"],
+span[style*="Assigned"],
+span[style*="assigned"] {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(241, 245, 249, 0.90) 50%, rgba(148, 163, 184, 0.20) 100%) !important;
+  color: #334155 !important;
+  border: 1px solid rgba(148, 163, 184, 0.45) !important;
+  box-shadow: 0 2px 8px rgba(100, 116, 139, 0.12), inset 0 1px 0 0 rgba(255, 255, 255, 0.9) !important;
+  font-weight: 700 !important;
+}
+
+/* --- 3. Metallic Silver & Crimson Red Badges for Department, Assigned Site, Employee ID & Roles --- */
+
+/* Employee ID Pills & User Code Badges */
+span[class*="font-mono"],
+code,
+.emp-id-badge,
+span:has(> svg[class*="lucide-id"]),
+span[style*="EMP-"],
+span[style*="emp-"] {
+  background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.06) 100%) !important;
+  color: #9f1239 !important;
+  border: 1px solid rgba(225, 29, 72, 0.35) !important;
+  box-shadow: 0 1px 4px rgba(225, 29, 72, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+}
+
+/* Department & Division Badges */
+.department-badge,
+span[class*="dept"],
+span[style*="Department"],
+span[style*="department"] {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 60%, rgba(225, 29, 72, 0.08) 100%) !important;
+  color: #1e293b !important;
+  border: 1px solid rgba(148, 163, 184, 0.40) !important;
+  border-left: 3px solid #e11d48 !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+  font-weight: 700 !important;
+}
+
+/* Assigned Site & Location Badges */
+.site-badge,
+span[class*="site"],
+span[style*="Site"],
+span[style*="site"],
+span[style*="Location"] {
+  background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 50%, rgba(225, 29, 72, 0.10) 100%) !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(225, 29, 72, 0.35) !important;
+  box-shadow: 0 2px 6px rgba(225, 29, 72, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+  font-weight: 700 !important;
+}
+
+/* Category Prefix Pills (CAB, HDS, KBD, LAP, MOU, MON, RAM, SSD, SYS) */
+.category-prefix-badge,
+span[class*="prefix"],
+span[style*="CAB"],
+span[style*="HDS"],
+span[style*="KBD"],
+span[style*="LAP"],
+span[style*="MOU"],
+span[style*="MON"],
+span[style*="RAM"],
+span[style*="SSD"],
+span[style*="SYS"] {
+  background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 50%, rgba(225, 29, 72, 0.10) 100%) !important;
+  color: #9f1239 !important;
+  border: 1px solid rgba(225, 29, 72, 0.40) !important;
+  box-shadow: 0 1px 4px rgba(225, 29, 72, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+  font-weight: 700 !important;
+}
+
+/* Sidebar & TopBar Navigation Icons Connectivity */
+aside svg,
+header svg,
+.sidebar-responsive svg,
+.topbar-responsive svg,
+.sidebar-item svg,
+.topbar-brand-bg svg {
+  stroke: #e11d48 !important;
+  color: #e11d48 !important;
+  filter: drop-shadow(0 0 5px rgba(225, 29, 72, 0.25)) !important;
+}
+
+aside svg line,
+header svg line,
+aside svg path,
+header svg path,
+aside svg polyline,
+header svg polyline,
+aside svg rect,
+header svg rect,
+aside svg circle,
+header svg circle {
+  stroke: #e11d48 !important;
+}
+
+/* Sidebar & TopBar Active & Hover State Icon Glow */
+aside a:hover svg,
+aside button:hover svg,
+header button:hover svg,
+.sidebar-item:hover svg,
+.active-tab svg {
+  stroke: #be123c !important;
+  color: #be123c !important;
+  filter: drop-shadow(0 0 8px rgba(225, 29, 72, 0.55)) drop-shadow(0 0 3px rgba(226, 232, 240, 0.9)) !important;
+  transform: scale(1.1) rotate(2deg);
+}
+
+/* Overriding internal inline SVG linearGradient stops for Sidebar icons */
+aside svg stop[stopColor="#4dc9e6"],
+aside svg stop[stopColor="#210cae"],
+header svg stop[stopColor="#4dc9e6"],
+header svg stop[stopColor="#210cae"] {
+  stop-color: #e11d48 !important;
 }

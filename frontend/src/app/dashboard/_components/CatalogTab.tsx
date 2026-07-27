@@ -720,17 +720,19 @@ export const CatalogTab = ({
           </section>
 
           {/* Filter and Action Bar */}
-          <div style={{
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "1rem",
-            backgroundColor: "#ffffff",
-            borderRadius: 12,
-            padding: "1rem 1.25rem",
-            boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(226,232,240,0.6)",
-          }}>
+          <div
+            className="animated-mesh-background"
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "1rem",
+              borderRadius: 12,
+              padding: "1rem 1.25rem",
+              boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(77,201,230,0.3)",
+            }}
+          >
             <div style={{ display: "flex", flex: 1, flexWrap: "wrap", gap: "0.75rem", minWidth: "280px" }}>
               {/* Search */}
               <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", flex: 1, minWidth: "200px" }}>
@@ -1005,13 +1007,15 @@ export const CatalogTab = ({
           </div>
 
           {/* Catalog Listing Card */}
-          <div style={{
-            backgroundColor: "#ffffff",
-            borderRadius: 12,
-            boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(226,232,240,0.6)",
-            padding: "1.25rem 1.5rem 1.5rem",
-            overflow: "hidden"
-          }}>
+          <div
+            className="animated-mesh-background"
+            style={{
+              borderRadius: 12,
+              boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(77,201,230,0.3)",
+              padding: "1.25rem 1.5rem 1.5rem",
+              overflow: "hidden"
+            }}
+          >
             {/* Upper Left Multi-Select Trigger Button Header (Exact Red Dot Position) */}
             {!isLoadingItems && filteredItems.length > 0 && (
               <div style={{
@@ -1734,20 +1738,20 @@ export const CatalogTab = ({
                     let stockBadgeColor = "#10b981";
                     let stockBg = "#d1fae5";
                     let stockLabel = "In Stock";
-                    let headerGradient = "linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)";
-                    let iconColor = "#059669";
+                    let headerGradient = "linear-gradient(135deg, rgba(224, 231, 255, 0.9) 0%, rgba(219, 234, 254, 0.85) 60%, rgba(224, 242, 254, 0.8) 100%)";
+                    let iconColor = "#210cae";
 
                     if (quantity === 0) {
                       stockBadgeColor = "#ef4444";
                       stockBg = "#fee2e2";
                       stockLabel = "Out of Stock";
-                      headerGradient = "linear-gradient(135deg, #fef2f2 0%, #fff1f2 100%)";
+                      headerGradient = "linear-gradient(135deg, rgba(254, 226, 226, 0.9) 0%, rgba(254, 242, 242, 0.85) 100%)";
                       iconColor = "#dc2626";
                     } else if (quantity <= reorderPt) {
                       stockBadgeColor = "#f59e0b";
                       stockBg = "#fffbeb";
                       stockLabel = "Low Stock";
-                      headerGradient = "linear-gradient(135deg, #fffbeb 0%, #fef9c3 100%)";
+                      headerGradient = "linear-gradient(135deg, rgba(254, 243, 199, 0.9) 0%, rgba(254, 249, 195, 0.85) 100%)";
                       iconColor = "#d97706";
                     }
 
@@ -1756,11 +1760,12 @@ export const CatalogTab = ({
                     return (
                       <div
                         key={it.id}
+                        className="catalog-card card-shine-effect"
                         onClick={() => onToggleSelectItem(it.id, showCircles)}
                         style={{
-                          backgroundColor: "#ffffff",
+                          backgroundColor: "transparent",
                           borderRadius: 14,
-                          border: isSelected ? "2px solid #210cae" : "1px solid #e2e8f0",
+                          border: isSelected ? "2px solid #210cae" : "1px solid rgba(77, 201, 230, 0.4)",
                           display: "flex",
                           flexDirection: "column",
                           position: "relative",
@@ -1768,30 +1773,30 @@ export const CatalogTab = ({
                           transition: "all 0.2s ease-in-out",
                           boxShadow: isSelected
                             ? "0 0 0 3px rgba(33,12,174,0.1), 0 8px 20px rgba(33,12,174,0.08)"
-                            : "0 1px 4px rgba(0,0,0,0.04), 0 0 0 1px rgba(226,232,240,0.6)",
+                            : "0 2px 8px rgba(33,12,174,0.04), 0 0 0 1px rgba(77,201,230,0.25)",
                           cursor: "pointer",
                         }}
                         onMouseEnter={(e) => {
                           if (!isSelected) {
                             e.currentTarget.style.transform = "translateY(-3px)";
-                            e.currentTarget.style.boxShadow = "0 12px 24px rgba(15,23,42,0.08), 0 0 0 1px #cbd5e1";
+                            e.currentTarget.style.boxShadow = "0 12px 24px rgba(33,12,174,0.1), 0 0 0 1px #4dc9e6";
                           }
                         }}
                         onMouseLeave={(e) => {
                           if (!isSelected) {
                             e.currentTarget.style.transform = "translateY(0)";
-                            e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.04), 0 0 0 1px rgba(226,232,240,0.6)";
+                            e.currentTarget.style.boxShadow = "0 2px 8px rgba(33,12,174,0.04), 0 0 0 1px rgba(77,201,230,0.25)";
                           }
                         }}
                       >
                         {/* Card Header with circular selection button + icon + badges */}
                         <div style={{
-                          background: isSelected ? "linear-gradient(135deg, rgba(33,12,174,0.07) 0%, rgba(77,201,230,0.05) 100%)" : headerGradient,
+                          background: isSelected ? "linear-gradient(135deg, rgba(33,12,174,0.14) 0%, rgba(77,201,230,0.1) 100%)" : headerGradient,
                           padding: "1rem 1.1rem 0.85rem",
                           display: "flex",
                           alignItems: "flex-start",
                           gap: "0.75rem",
-                          borderBottom: "1px solid rgba(0,0,0,0.04)",
+                          borderBottom: "1px solid rgba(77,201,230,0.25)",
                         }}>
                           {/* Circular selection button to left of card - displayed ONLY when showCircles (multi-select mode) is true */}
                           {showCircles && (
@@ -1860,11 +1865,11 @@ export const CatalogTab = ({
                                 fontSize: "0.62rem", fontWeight: 800,
                                 letterSpacing: "0.04em",
                                 background: isConsumable 
-                                  ? "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)" 
-                                  : "linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)",
-                                color: isConsumable ? "#92400e" : "#0369a1",
-                                border: isConsumable ? "1px solid #fcd34d" : "1px solid #7dd3fc",
-                                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                                  ? "linear-gradient(135deg, #fff1f2 0%, #ffe4e6 60%, rgba(225, 29, 72, 0.15) 100%)" 
+                                  : "linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(148, 163, 184, 0.15) 100%)",
+                                color: isConsumable ? "#9f1239" : "#334155",
+                                border: isConsumable ? "1px solid rgba(225, 29, 72, 0.40)" : "1px solid rgba(148, 163, 184, 0.45)",
+                                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
                               }}>
                                 {isConsumable ? "CONSUMABLE" : "NON-CONSUMABLE"}
                               </span>
@@ -1873,13 +1878,13 @@ export const CatalogTab = ({
                                 fontSize: "0.62rem", fontWeight: 800,
                                 letterSpacing: "0.04em",
                                 background: stockLabel === "In Stock" 
-                                  ? "linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)" 
+                                  ? "linear-gradient(135deg, #ffffff 0%, #f1f5f9 50%, rgba(20, 184, 166, 0.12) 100%)" 
                                   : stockLabel === "Low Stock"
-                                  ? "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)"
-                                  : "linear-gradient(135deg, #fee2e2 0%, #fca5a5 100%)",
-                                color: stockLabel === "In Stock" ? "#15803d" : stockLabel === "Low Stock" ? "#b45309" : "#b91c1c",
-                                border: stockLabel === "In Stock" ? "1px solid #86efac" : stockLabel === "Low Stock" ? "1px solid #fcd34d" : "1px solid #fca5a5",
-                                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                                  ? "linear-gradient(135deg, #fff1f2 0%, #ffe4e6 50%, rgba(225, 29, 72, 0.12) 100%)"
+                                  : "linear-gradient(135deg, #fff1f2 0%, #fecaca 50%, rgba(225, 29, 72, 0.25) 100%)",
+                                color: stockLabel === "In Stock" ? "#0f766e" : stockLabel === "Low Stock" ? "#9f1239" : "#881337",
+                                border: stockLabel === "In Stock" ? "1px solid rgba(20, 184, 166, 0.45)" : stockLabel === "Low Stock" ? "1px solid rgba(225, 29, 72, 0.40)" : "1px solid rgba(225, 29, 72, 0.60)",
+                                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
                               }}>
                                 {stockLabel}
                               </span>
@@ -1933,21 +1938,21 @@ export const CatalogTab = ({
                                 alignItems: "center",
                                 gap: "0.45rem",
                                 fontSize: "0.72rem", fontWeight: 700,
-                                color: "#4c1d95",
-                                background: "linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)",
-                                border: "1px solid #c4b5fd",
+                                color: "#881337",
+                                background: "linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.08) 100%)",
+                                border: "1px solid rgba(225, 29, 72, 0.35)",
                                 padding: "0.25rem 0.65rem",
                                 borderRadius: "9999px",
-                                boxShadow: "0 1px 3px rgba(109, 40, 217, 0.12)",
+                                boxShadow: "0 1px 4px rgba(225, 29, 72, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
                                 maxWidth: "100%",
                               }}>
                                 <span style={{
                                   width: 22, height: 22, borderRadius: 7,
-                                  background: "linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)",
+                                  background: "linear-gradient(135deg, #e11d48 0%, #9f1239 100%)",
                                   color: "#ffffff",
                                   fontSize: "0.7rem", fontWeight: 800,
                                   display: "flex", alignItems: "center", justifyContent: "center",
-                                  flexShrink: 0, boxShadow: "0 2px 4px rgba(124, 58, 237, 0.3)"
+                                  flexShrink: 0, boxShadow: "0 2px 5px rgba(225, 29, 72, 0.3)"
                                 }}>
                                   {it.supplier.name.charAt(0).toUpperCase()}
                                 </span>
@@ -1956,7 +1961,8 @@ export const CatalogTab = ({
                                   <span style={{
                                     display: "inline-flex", alignItems: "center", gap: "0.2rem",
                                     padding: "0.1rem 0.4rem", borderRadius: "9999px",
-                                    backgroundColor: "#ddd6fe", color: "#5b21b6",
+                                    backgroundColor: "rgba(225, 29, 72, 0.12)", color: "#9f1239",
+                                    border: "1px solid rgba(225, 29, 72, 0.25)",
                                     fontSize: "0.62rem", fontWeight: 800,
                                     fontFamily: "'JetBrains Mono', monospace"
                                   }}>
@@ -2014,14 +2020,14 @@ export const CatalogTab = ({
                               </div>
                               <span style={{ fontSize: "0.65rem", fontWeight: 700, color: stockBadgeColor }}>{Math.round(fillPct)}% capacity</span>
                             </div>
-                            <div style={{ width: "100%", height: "7px", backgroundColor: "#f1f5f9", borderRadius: "4px", overflow: "hidden" }}>
+                            <div style={{ width: "100%", height: "8px", backgroundColor: "#e2e8f0", borderRadius: "4px", border: "1px solid #cbd5e1", overflow: "hidden" }}>
                               <div style={{
                                 width: `${fillPct}%`, height: "100%",
                                 background: quantity === 0
                                   ? "#ef4444"
                                   : quantity <= reorderPt
                                     ? "linear-gradient(90deg, #f59e0b, #fbbf24)"
-                                    : "linear-gradient(90deg, #10b981, #34d399)",
+                                    : "linear-gradient(90deg, #94a3b8 0%, #64748b 50%, #334155 100%)",
                                 borderRadius: "4px",
                                 transition: "width 0.35s ease",
                               }} />
@@ -2386,13 +2392,16 @@ export const CatalogTab = ({
                                 <span style={{
                                   fontSize: "0.65rem",
                                   fontWeight: 800,
-                                  padding: "0.1rem 0.45rem",
-                                  borderRadius: "4px",
+                                  padding: "0.15rem 0.5rem",
+                                  borderRadius: "6px",
                                   display: "inline-block",
                                   width: "fit-content",
-                                  backgroundColor: isConsumable ? "#ecfdf5" : "#eff6ff",
-                                  color: isConsumable ? "#047857" : "#1d4ed8",
-                                  border: `1px solid ${isConsumable ? "#a7f3d0" : "#bfdbfe"}`
+                                  background: isConsumable 
+                                    ? "linear-gradient(135deg, #fff1f2 0%, #ffe4e6 60%, rgba(225, 29, 72, 0.15) 100%)" 
+                                    : "linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(148, 163, 184, 0.15) 100%)",
+                                  color: isConsumable ? "#9f1239" : "#334155",
+                                  border: isConsumable ? "1px solid rgba(225, 29, 72, 0.40)" : "1px solid rgba(148, 163, 184, 0.45)",
+                                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
                                 }}>
                                   {isConsumable ? "CONSUMABLE" : "NON-CONSUMABLE"}
                                 </span>
@@ -2441,13 +2450,18 @@ export const CatalogTab = ({
                             padding: "0.2rem 0.6rem",
                             borderRadius: "12px",
                             fontSize: "0.72rem",
-                            fontWeight: 700,
-                            backgroundColor: dep.status === "RETURNED"
-                              ? (dep.returnCondition === "DAMAGED" ? "#fffbeb" : dep.returnCondition === "MISSING" ? "#fef2f2" : "#d1fae5")
-                              : "#dbeafe",
+                            fontWeight: 800,
+                            letterSpacing: "0.04em",
+                            background: dep.status === "RETURNED"
+                              ? (dep.returnCondition === "DAMAGED" ? "linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)" : dep.returnCondition === "MISSING" ? "linear-gradient(135deg, #fff1f2 0%, #fecaca 100%)" : "linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)")
+                              : "linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.12) 100%)",
                             color: dep.status === "RETURNED"
-                              ? (dep.returnCondition === "DAMAGED" ? "#b45309" : dep.returnCondition === "MISSING" ? "#b91c1c" : "#065f46")
-                              : "#1d4ed8"
+                              ? (dep.returnCondition === "DAMAGED" ? "#9f1239" : dep.returnCondition === "MISSING" ? "#881337" : "#334155")
+                              : "#be123c",
+                            border: dep.status === "RETURNED"
+                              ? (dep.returnCondition === "DAMAGED" ? "1px solid rgba(225, 29, 72, 0.45)" : dep.returnCondition === "MISSING" ? "1px solid rgba(225, 29, 72, 0.60)" : "1px solid rgba(148, 163, 184, 0.45)")
+                              : "1px solid rgba(225, 29, 72, 0.40)",
+                            boxShadow: "0 1px 3px rgba(225, 29, 72, 0.10)"
                           }}>
                             {dep.status === "RETURNED"
                               ? (dep.returnCondition === "DAMAGED" ? "⚠️ DAMAGED" : dep.returnCondition === "MISSING" ? `❌ MISSING (${dep.missingCount || 1})` : "RETURNED")
@@ -2466,15 +2480,16 @@ export const CatalogTab = ({
                                 style={{
                                   padding: "0.35rem 0.65rem",
                                   borderRadius: "6px",
-                                  border: "1px solid #10b981",
-                                  backgroundColor: "#ecfdf5",
-                                  color: "#047857",
+                                  border: "1px solid rgba(225, 29, 72, 0.40)",
+                                  background: "linear-gradient(135deg, #ffffff 0%, #fff1f2 60%, rgba(225, 29, 72, 0.12) 100%)",
+                                  color: "#be123c",
                                   fontSize: "0.75rem",
                                   fontWeight: 700,
                                   cursor: "pointer",
                                   display: "inline-flex",
                                   alignItems: "center",
-                                  gap: "0.25rem"
+                                  gap: "0.25rem",
+                                  boxShadow: "0 1px 3px rgba(225, 29, 72, 0.12)"
                                 }}
                               >
                                 ↩️ Return Asset
@@ -2486,7 +2501,7 @@ export const CatalogTab = ({
                                 fontSize: "0.72rem",
                                 fontWeight: 700,
                                 backgroundColor: "#f1f5f9",
-                                color: "#065f46"
+                                color: "#475569"
                               }}>
                                 ✓ Returned
                               </span>
@@ -2500,15 +2515,16 @@ export const CatalogTab = ({
                               style={{
                                 padding: "0.35rem 0.65rem",
                                 borderRadius: "6px",
-                                border: "1px solid #cbd5e1",
-                                backgroundColor: "#ffffff",
-                                color: "#2563eb",
+                                border: "1px solid rgba(148, 163, 184, 0.45)",
+                                background: "linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)",
+                                color: "#334155",
                                 fontSize: "0.75rem",
-                                fontWeight: 600,
+                                fontWeight: 700,
                                 cursor: "pointer",
                                 display: "inline-flex",
                                 alignItems: "center",
-                                gap: "0.25rem"
+                                gap: "0.25rem",
+                                boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)"
                               }}
                             >
                               📄 PDF

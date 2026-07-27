@@ -278,7 +278,7 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
   return (
     <div className="space-y-6">
       {/* Header & Actions */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700/60 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 animated-mesh-background p-6 rounded-2xl border border-gray-100 dark:border-gray-700/60 shadow-sm">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <svg className="w-6 h-6 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -304,7 +304,7 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
 
       {/* Search & Stats Bar */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm flex items-center gap-3">
+        <div className="lg:col-span-3 animated-mesh-background p-4 rounded-xl border border-gray-100 dark:border-gray-700/60 shadow-sm flex items-center gap-3">
           <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -322,7 +322,7 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
           )}
         </div>
 
-        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-gray-800 dark:to-gray-800/80 p-4 rounded-xl border border-indigo-100 dark:border-gray-700/60 shadow-sm flex items-center justify-between">
+        <div className="animated-mesh-background p-4 rounded-xl border border-indigo-100 dark:border-gray-700/60 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Total Vendors</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">{suppliers.length}</p>
@@ -335,7 +335,7 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
 
       {/* Main Table / Grid */}
       {isLoading ? (
-        <div className="bg-white dark:bg-gray-800 p-12 rounded-2xl border border-gray-100 dark:border-gray-700/60 shadow-sm text-center">
+        <div className="animated-mesh-background p-12 rounded-2xl border border-gray-100 dark:border-gray-700/60 shadow-sm text-center">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-600 border-t-transparent"></div>
           <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Loading supplier records...</p>
         </div>
@@ -347,7 +347,7 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
           </button>
         </div>
       ) : filteredSuppliers.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 p-12 rounded-2xl border border-gray-100 dark:border-gray-700/60 shadow-sm text-center">
+        <div className="animated-mesh-background p-12 rounded-2xl border border-gray-100 dark:border-gray-700/60 shadow-sm text-center">
           <svg className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
           </svg>
@@ -355,7 +355,7 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Try adjusting your search criteria or add a new supplier.</p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/60 shadow-sm overflow-hidden">
+        <div className="animated-mesh-background rounded-2xl border border-gray-100 dark:border-gray-700/60 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-gray-600 dark:text-gray-300">
               <thead className="bg-gray-50 dark:bg-gray-700/50 text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-100 dark:border-gray-700">

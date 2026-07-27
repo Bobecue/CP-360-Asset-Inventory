@@ -386,11 +386,11 @@ export const SettingsTab = ({
                           <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
                             <div style={{
                               width: 32, height: 32, borderRadius: 8,
-                              background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
-                              color: "#15803d",
+                              background: "linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.12) 100%)",
+                              color: "#e11d48",
                               display: "flex", alignItems: "center", justifyContent: "center",
-                              border: "1px solid #86efac", flexShrink: 0,
-                              boxShadow: "0 1px 3px rgba(21, 128, 61, 0.1)"
+                              border: "1px solid rgba(225, 29, 72, 0.35)", flexShrink: 0,
+                              boxShadow: "0 1px 4px rgba(225, 29, 72, 0.15)"
                             }}>
                               {getCategoryIcon(c.name, c.name, 16)}
                             </div>
@@ -403,11 +403,11 @@ export const SettingsTab = ({
                             padding: "0.15rem 0.5rem", borderRadius: 9999,
                             fontSize: "0.68rem", fontWeight: 800,
                             fontFamily: "'JetBrains Mono', monospace",
-                            background: "linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)",
-                            color: "#3730a3", border: "1px solid #a5b4fc",
-                            boxShadow: "0 1px 2px rgba(55, 48, 163, 0.1)"
+                            background: "linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.10) 100%)",
+                            color: "#9f1239", border: "1px solid rgba(225, 29, 72, 0.40)",
+                            boxShadow: "0 1px 3px rgba(225, 29, 72, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9)"
                           }}>
-                            <span style={{ width: 14, height: 14, borderRadius: "50%", backgroundColor: "#4f46e5", color: "#ffffff", fontSize: "0.58rem", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900 }}>#</span>
+                            <span style={{ width: 14, height: 14, borderRadius: "50%", backgroundColor: "#e11d48", color: "#ffffff", fontSize: "0.58rem", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900 }}>#</span>
                             <span>{c.prefix}</span>
                           </span>
                         </td>
@@ -419,10 +419,10 @@ export const SettingsTab = ({
                             fontSize: "0.65rem",
                             fontWeight: 800,
                             letterSpacing: "0.03em",
-                            background: c.type === "CONSUMABLE" ? "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)" : "linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)",
-                            color: c.type === "CONSUMABLE" ? "#92400e" : "#0369a1",
-                            border: c.type === "CONSUMABLE" ? "1px solid #fcd34d" : "1px solid #7dd3fc",
-                            boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+                            background: c.type === "CONSUMABLE" ? "linear-gradient(135deg, #fff1f2 0%, #ffe4e6 60%, rgba(225, 29, 72, 0.15) 100%)" : "linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(148, 163, 184, 0.15) 100%)",
+                            color: c.type === "CONSUMABLE" ? "#9f1239" : "#334155",
+                            border: c.type === "CONSUMABLE" ? "1px solid rgba(225, 29, 72, 0.40)" : "1px solid rgba(148, 163, 184, 0.45)",
+                            boxShadow: c.type === "CONSUMABLE" ? "0 1px 4px rgba(225, 29, 72, 0.12)" : "0 1px 4px rgba(100, 116, 139, 0.10)"
                           }}>
                             {c.type === "CONSUMABLE" ? "Consumable" : "Non-Consumable"}
                           </span>
