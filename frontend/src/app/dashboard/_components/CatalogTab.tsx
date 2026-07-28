@@ -1895,7 +1895,7 @@ export const CatalogTab = ({
                     return (
                       <div
                         key={it.id}
-                        className="catalog-card"
+                        className="catalog-card glitter-grid-card"
                         onClick={() => onToggleSelectItem(it.id, showCircles)}
                         style={{
                           backgroundColor: "#FFFFFF",
@@ -1987,7 +1987,7 @@ export const CatalogTab = ({
                               <AssetTypeBadge type={it.category?.type} categoryName={it.category?.name} size="sm" />
 
                               {/* Stock Status Badge */}
-                              <span style={{
+                              <span className="glitter-status-badge" style={{
                                 padding: "3px 10px",
                                 borderRadius: "9999px",
                                 fontSize: "11px",
@@ -2012,7 +2012,7 @@ export const CatalogTab = ({
                             }}>
                               {it.name}
                             </h4>
-                            <span style={{ fontSize: "12px", color: "#6B7280", marginTop: "2px", display: "block" }}>
+                            <span className="glitter-category-badge" style={{ fontSize: "12px", color: "#6B7280", marginTop: "2px", display: "inline-block", padding: "1px 6px", borderRadius: "4px" }}>
                               {it.category?.name || "Uncategorized"}
                             </span>
                           </div>
@@ -2079,11 +2079,11 @@ export const CatalogTab = ({
                                   </svg>
                                 </div>
                                 <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                                  <span style={{ fontSize: "13px", fontWeight: 600, color: "#111827" }}>
+                                  <span className="glitter-supplier-name-badge" style={{ fontSize: "13px", fontWeight: 600, color: "#111827", padding: "1px 6px", borderRadius: "4px" }}>
                                     {it.supplier.name}
                                   </span>
                                   {it.supplier.supplierId && (
-                                    <span style={{
+                                    <span className="glitter-supplier-id-badge" style={{
                                       display: "inline-flex",
                                       alignItems: "center",
                                       gap: "6px",
@@ -2202,6 +2202,7 @@ export const CatalogTab = ({
                                 e.stopPropagation();
                                 onOpenStockModal(it);
                               }}
+                              className="glitter-action-btn"
                               style={{
                                 display: "inline-flex",
                                 alignItems: "center",
@@ -2240,6 +2241,7 @@ export const CatalogTab = ({
                                   onOpenViewTags(it);
                                 }}
                                 title="View Asset Tags"
+                                className="glitter-action-btn"
                                 style={{
                                   width: "36px",
                                   height: "36px",
@@ -2266,6 +2268,7 @@ export const CatalogTab = ({
                                   onOpenEditModal(it);
                                 }}
                                 title="Edit Item"
+                                className="glitter-action-btn"
                                 style={{
                                   width: "36px",
                                   height: "36px",
@@ -2292,6 +2295,7 @@ export const CatalogTab = ({
                                 onOpenHistoryModal(it);
                               }}
                               title="View Change History"
+                              className="glitter-action-btn"
                               style={{
                                 width: "36px",
                                 height: "36px",
@@ -2317,6 +2321,7 @@ export const CatalogTab = ({
                                   onDeleteTarget("item", it.id, it.name);
                                 }}
                                 title="Delete Item"
+                                className="glitter-action-btn"
                                 style={{
                                   width: "36px",
                                   height: "36px",
