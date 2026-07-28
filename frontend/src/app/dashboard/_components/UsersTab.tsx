@@ -329,7 +329,7 @@ export const UsersTab = ({
 
                       {/* Status */}
                       <td style={{ padding: "0.75rem 0.5rem" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                        <div className="glitter-status-badge" style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", padding: "0.15rem 0.5rem", borderRadius: 9999, backgroundColor: u.isActive !== false ? "#ecfdf5" : "#f1f5f9", border: u.isActive !== false ? "1px solid #6ee7b7" : "1px solid #cbd5e1" }}>
                           <span style={{
                             width: 7, height: 7, borderRadius: "50%",
                             backgroundColor: u.isActive !== false ? "#10b981" : "#94a3b8",
@@ -348,7 +348,7 @@ export const UsersTab = ({
                       {/* Department */}
                       <td style={{ padding: "0.75rem 0.5rem" }}>
                         {u.department ? (
-                          <span style={{
+                          <span className="glitter-department-badge" style={{
                             display: "inline-flex", alignItems: "center", gap: "0.35rem",
                             padding: "0.18rem 0.55rem", borderRadius: 9999,
                             fontSize: "0.72rem", fontWeight: 600,
@@ -386,6 +386,7 @@ export const UsersTab = ({
                           <button
                             onClick={() => onOpenEditModal(u)}
                             title="Edit User Info"
+                            className="glitter-action-btn"
                             style={{
                               background: "none", border: "none", cursor: "pointer",
                               color: "#475569", padding: "4px", borderRadius: "4px",
@@ -401,6 +402,7 @@ export const UsersTab = ({
                             <button
                               onClick={() => onToggleUserActive(u)}
                               title={u.isActive !== false ? "Deactivate User" : "Activate User"}
+                              className="glitter-action-btn"
                               style={{
                                 background: "none", border: "none", cursor: "pointer",
                                 color: u.isActive !== false ? "#dc2626" : "#10b981",

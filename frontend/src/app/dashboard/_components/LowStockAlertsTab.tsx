@@ -583,7 +583,7 @@ export const LowStockAlertsTab = ({
 
                       {/* Category */}
                       <td style={{ padding: "0.85rem 1rem" }}>
-                        <span style={{
+                        <span className="glitter-category-badge" style={{
                           fontSize: "0.72rem",
                           fontWeight: 600,
                           padding: "0.2rem 0.55rem",
@@ -620,7 +620,7 @@ export const LowStockAlertsTab = ({
 
                       {/* Severity Pill */}
                       <td style={{ padding: "0.85rem 1rem" }}>
-                        <span style={{
+                        <span className="glitter-status-badge" style={{
                           fontSize: "0.72rem",
                           fontWeight: 800,
                           padding: "0.25rem 0.65rem",

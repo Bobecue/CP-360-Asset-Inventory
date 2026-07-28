@@ -2580,10 +2580,10 @@ export const CatalogTab = ({
                             const isConsumable = catType === "CONSUMABLE";
                             return (
                               <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
-                                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0f172a" }}>
+                                <span className="glitter-category-badge" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0f172a", width: "fit-content", padding: "0.1rem 0.4rem", borderRadius: "4px" }}>
                                   {catName}
                                 </span>
-                                <span style={{
+                                <span className="glitter-category-badge" style={{
                                   fontSize: "0.65rem",
                                   fontWeight: 800,
                                   padding: "0.15rem 0.5rem",
@@ -2641,7 +2641,7 @@ export const CatalogTab = ({
                           </div>
                         </td>
                         <td style={{ padding: "0.9rem 1.25rem" }}>
-                          <span style={{
+                          <span className="glitter-status-badge" style={{
                             padding: "0.2rem 0.6rem",
                             borderRadius: "9999px",
                             fontSize: "0.72rem",
@@ -2674,6 +2674,7 @@ export const CatalogTab = ({
                                   e.stopPropagation();
                                   handleOpenReturnModal(dep);
                                 }}
+                                className="glitter-action-btn"
                                 title="Return Asset to Inventory"
                                 style={{
                                   padding: "0.35rem 0.65rem",

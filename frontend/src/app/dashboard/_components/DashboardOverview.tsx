@@ -320,7 +320,7 @@ export const DashboardOverview = ({
     const match = conf[s] ?? Object.entries(conf).find(([k]) => s.includes(k))?.[1] ?? conf["PENDING"];
 
     return (
-      <span style={{
+      <span className="glitter-status-badge" style={{
         display: "inline-flex",
         alignItems: "center",
         padding: "0.25rem 0.65rem",

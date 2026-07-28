@@ -325,19 +325,19 @@ export const RoleBadge = ({ role, size = "md" }: { role: string; size?: "sm" | "
     switch (r) {
       case "SUPER_ADMIN":
         return (
-          <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <svg className="glitter-star-icon" width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
           </svg>
         );
       case "ADMIN": // Ops Manager
         return (
-          <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <svg className="glitter-star-icon" width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
           </svg>
         );
       case "INVENTORY_STAFF":
         return (
-          <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <svg className="glitter-star-icon" width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
             <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
             <line x1="12" y1="22.08" x2="12" y2="12" />
@@ -345,14 +345,14 @@ export const RoleBadge = ({ role, size = "md" }: { role: string; size?: "sm" | "
         );
       case "TEAM_LEADER":
         return (
-          <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <svg className="glitter-star-icon" width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 12 2" />
           </svg>
         );
       case "EMPLOYEE":
       default:
         return (
-          <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <svg className="glitter-star-icon" width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
             <circle cx="12" cy="7" r="4" />
           </svg>
@@ -367,8 +367,12 @@ export const RoleBadge = ({ role, size = "md" }: { role: string; size?: "sm" | "
     lg: { padding: "0.35rem 0.85rem", fontSize: "0.82rem", gap: "0.45rem" }
   }[size];
 
+  const roleClassKey = role ? role.toLowerCase() : "employee";
+  const glitterClassName = `glitter-glow-badge-${roleClassKey}`;
+
   return (
     <span
+      className={glitterClassName}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -391,37 +395,37 @@ export const RoleBadge = ({ role, size = "md" }: { role: string; size?: "sm" | "
 
 export const EidBadge = ({ employeeId, size = "md" }: { employeeId?: string | null; size?: "sm" | "md" }) => {
   if (!employeeId) {
-    return <span style={{ color: "#cbd5e1" }}>—</span>;
+    return <span style={{ color: "#94a3b8" }}>—</span>;
   }
 
-  const padding = size === "sm" ? "0.12rem 0.45rem" : "0.2rem 0.55rem";
-  const fontSize = size === "sm" ? "0.68rem" : "0.74rem";
+  const padding = size === "sm" ? "0.15rem 0.5rem" : "0.22rem 0.6rem";
+  const fontSize = size === "sm" ? "0.7rem" : "0.76rem";
 
   return (
     <span
+      className="glitter-eid-badge"
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: "0.3rem",
+        gap: "0.35rem",
         padding: padding,
         borderRadius: "6px",
-        background: "linear-gradient(135deg, #F8FAFC 0%, #EEF2FF 100%)",
-        color: "#4338CA",
-        border: "1px solid #C7D2FE",
+        background: "#EEF2FF",
+        color: "#3730A3",
+        border: "1.5px solid #C7D2FE",
         fontSize: fontSize,
         fontWeight: 700,
         fontFamily: "var(--font-geist-mono), monospace",
-        letterSpacing: "0.03em",
-        boxShadow: "0 1px 2px rgba(99, 102, 241, 0.08)",
+        letterSpacing: "0.02em",
         whiteSpace: "nowrap"
       }}
     >
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.9 }}>
-        <rect x="3" y="4" width="18" height="16" rx="2" stroke="#6366F1" fill="rgba(99, 102, 241, 0.1)" />
-        <circle cx="9" cy="10" r="2" stroke="#6366F1" />
-        <line x1="15" y1="9" x2="17" y2="9" stroke="#4F46E5" strokeWidth="2" />
-        <line x1="15" y1="13" x2="17" y2="13" stroke="#4F46E5" strokeWidth="2" />
-        <line x1="7" y1="16" x2="17" y2="16" stroke="#6366F1" />
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <rect x="3" y="4" width="18" height="16" rx="2" stroke="#4F46E5" fill="rgba(79, 70, 229, 0.1)" />
+        <circle cx="9" cy="10" r="2" stroke="#4F46E5" />
+        <line x1="15" y1="9" x2="17" y2="9" stroke="#4338CA" strokeWidth="2" />
+        <line x1="15" y1="13" x2="17" y2="13" stroke="#4338CA" strokeWidth="2" />
+        <line x1="7" y1="16" x2="17" y2="16" stroke="#4F46E5" />
       </svg>
       <span>{employeeId}</span>
     </span>
@@ -441,22 +445,23 @@ export const SiteBadge = ({
 }) => {
   const name = site?.name || siteName;
   const pfx = site?.prefix || prefix;
-  const pinSize = size === "sm" ? 11 : 12;
+  const pinSize = size === "sm" ? 12 : 13;
 
   if (!name) {
     return (
       <span
+        className="glitter-site-badge"
         style={{
           display: "inline-flex",
           alignItems: "center",
           gap: "0.3rem",
-          padding: size === "sm" ? "0.15rem 0.5rem" : "0.2rem 0.6rem",
+          padding: size === "sm" ? "0.15rem 0.5rem" : "0.22rem 0.6rem",
           borderRadius: "9999px",
-          background: "#f8fafc",
-          color: "#64748b",
-          border: "1px solid #e2e8f0",
-          fontSize: size === "sm" ? "0.68rem" : "0.74rem",
-          fontWeight: 500,
+          background: "#F1F5F9",
+          color: "#475569",
+          border: "1.5px solid #CBD5E1",
+          fontSize: size === "sm" ? "0.7rem" : "0.76rem",
+          fontWeight: 600,
           fontStyle: "italic",
         }}
       >
@@ -472,22 +477,22 @@ export const SiteBadge = ({
 
   return (
     <span
+      className="glitter-site-badge"
       style={{
         display: "inline-flex",
         alignItems: "center",
         gap: "0.35rem",
-        padding: size === "sm" ? "0.15rem 0.55rem" : "0.25rem 0.65rem",
+        padding: size === "sm" ? "0.18rem 0.55rem" : "0.25rem 0.7rem",
         borderRadius: "9999px",
-        background: "linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 50%, rgba(59, 130, 246, 0.08) 100%)",
-        border: "1px solid #BFDBFE",
-        boxShadow: "0 1px 4px rgba(59, 130, 246, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
-        fontSize: size === "sm" ? "0.7rem" : "0.76rem",
-        color: "#1E40AF",
-        fontWeight: 600,
+        background: "#DBEAFE",
+        border: "1.5px solid #93C5FD",
+        fontSize: size === "sm" ? "0.72rem" : "0.78rem",
+        color: "#1E3A8A",
+        fontWeight: 700,
         whiteSpace: "nowrap"
       }}
     >
-      <svg width={pinSize} height={pinSize} viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+      <svg width={pinSize} height={pinSize} viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
         <circle cx="12" cy="10" r="3" />
       </svg>
@@ -496,12 +501,11 @@ export const SiteBadge = ({
           style={{
             fontSize: "0.65rem",
             fontWeight: 800,
-            background: "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)",
+            background: "#2563EB",
             color: "#ffffff",
-            padding: "0.08rem 0.4rem",
+            padding: "0.1rem 0.45rem",
             borderRadius: "4px",
-            letterSpacing: "0.04em",
-            boxShadow: "0 1px 3px rgba(59, 130, 246, 0.3)"
+            letterSpacing: "0.03em"
           }}
         >
           {pfx}
@@ -521,32 +525,29 @@ export const AssetTagBadge = ({
   size?: "sm" | "md" | "lg";
   variant?: "default" | "dark" | "outline";
 }) => {
-  if (!tag) return <span style={{ color: "#cbd5e1" }}>—</span>;
+  if (!tag) return <span style={{ color: "#94a3b8" }}>—</span>;
 
   const sizeStyles = {
-    sm: { padding: "0.12rem 0.45rem", fontSize: "0.68rem", gap: "0.25rem" },
-    md: { padding: "0.2rem 0.55rem", fontSize: "0.74rem", gap: "0.3rem" },
-    lg: { padding: "0.3rem 0.75rem", fontSize: "0.82rem", gap: "0.35rem" }
+    sm: { padding: "0.15rem 0.5rem", fontSize: "0.7rem", gap: "0.3rem" },
+    md: { padding: "0.22rem 0.6rem", fontSize: "0.76rem", gap: "0.35rem" },
+    lg: { padding: "0.32rem 0.8rem", fontSize: "0.84rem", gap: "0.4rem" }
   }[size];
 
   const variantStyles = {
     default: {
-      background: "linear-gradient(135deg, #FFFFFF 0%, #EEF2FF 60%, rgba(99, 102, 241, 0.1) 100%)",
-      color: "#4338CA",
-      border: "1px solid #C7D2FE",
-      boxShadow: "0 1px 4px rgba(99, 102, 241, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9)"
+      background: "#EEF2FF",
+      color: "#312E81",
+      border: "1.5px solid #A5B4FC"
     },
     dark: {
-      background: "linear-gradient(135deg, #0F172A 0%, #1E1B4B 100%)",
-      color: "#818CF8",
-      border: "1px solid rgba(129, 140, 248, 0.4)",
-      boxShadow: "0 2px 6px rgba(15, 23, 42, 0.25)"
+      background: "#0F172A",
+      color: "#C7D2FE",
+      border: "1.5px solid #475569"
     },
     outline: {
       background: "#ffffff",
-      color: "#4F46E5",
-      border: "1px solid #C7D2FE",
-      boxShadow: "0 1px 3px rgba(99, 102, 241, 0.05)"
+      color: "#3730A3",
+      border: "1.5px solid #C7D2FE"
     }
   }[variant];
 
@@ -558,14 +559,14 @@ export const AssetTagBadge = ({
         borderRadius: "6px",
         fontFamily: "var(--font-geist-mono), monospace",
         fontWeight: 700,
-        letterSpacing: "0.04em",
+        letterSpacing: "0.03em",
         whiteSpace: "nowrap",
         userSelect: "none",
         ...sizeStyles,
         ...variantStyles
       }}
     >
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
         <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
         <line x1="7" y1="7" x2="7.01" y2="7" />
       </svg>
@@ -581,34 +582,33 @@ export const AssetTypeBadge = ({ type, categoryName, size = "md" }: { type?: any
   const label = isConsumable ? "Consumable" : "Non-Consumable";
 
   const sizeStyles = {
-    sm: { padding: "2px 8px", fontSize: "0.65rem" },
-    md: { padding: "3px 10px", fontSize: "0.72rem" },
-    lg: { padding: "4px 12px", fontSize: "0.8rem" },
+    sm: { padding: "3px 10px", fontSize: "0.68rem" },
+    md: { padding: "4px 12px", fontSize: "0.75rem" },
+    lg: { padding: "5px 14px", fontSize: "0.82rem" },
   }[size];
 
   const badgeStyle: React.CSSProperties = isConsumable
     ? {
-        background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
-        color: "#1d4ed8",
-        border: "1px solid rgba(59, 130, 246, 0.4)",
-        boxShadow: "0 1px 3px rgba(37, 99, 235, 0.12)",
+        background: "#FEF3C7",
+        color: "#92400E",
+        border: "1.5px solid #FCD34D",
       }
     : {
-        background: "linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)",
-        color: "#6d28d9",
-        border: "1px solid rgba(124, 58, 237, 0.4)",
-        boxShadow: "0 1px 3px rgba(109, 40, 217, 0.12)",
+        background: "#F1F5F9",
+        color: "#334155",
+        border: "1.5px solid #CBD5E1",
       };
 
   return (
     <span
+      className="glitter-category-badge"
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: "0.3rem",
+        gap: "0.35rem",
         borderRadius: "9999px",
-        fontWeight: 750,
-        letterSpacing: "0.02em",
+        fontWeight: 800,
+        letterSpacing: "0.03em",
         whiteSpace: "nowrap",
         userSelect: "none",
         ...sizeStyles,
@@ -617,10 +617,10 @@ export const AssetTypeBadge = ({ type, categoryName, size = "md" }: { type?: any
     >
       <span
         style={{
-          width: "6px",
-          height: "6px",
+          width: "7px",
+          height: "7px",
           borderRadius: "50%",
-          backgroundColor: isConsumable ? "#2563eb" : "#7c3aed",
+          backgroundColor: isConsumable ? "#D97706" : "#475569",
         }}
       />
       <span>{label}</span>

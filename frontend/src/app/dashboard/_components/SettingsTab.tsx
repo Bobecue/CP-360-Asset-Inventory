@@ -218,9 +218,11 @@ export const SettingsTab = ({
                         onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fafafa")}
                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                       >
-                        <td style={{ padding: "0.75rem 0.5rem", fontWeight: 600, color: "#1e293b" }}>{s.name}</td>
                         <td style={{ padding: "0.75rem 0.5rem" }}>
-                          <span style={{ fontSize: "0.68rem", backgroundColor: "rgba(33, 12, 174, 0.06)", color: "#210cae", padding: "0.1rem 0.35rem", borderRadius: 4, fontWeight: 700 }}>
+                          <span className="glitter-site-badge" style={{ fontWeight: 600, color: "#1e293b", padding: "0.15rem 0.5rem", borderRadius: "6px" }}>{s.name}</span>
+                        </td>
+                        <td style={{ padding: "0.75rem 0.5rem" }}>
+                          <span className="glitter-site-badge" style={{ fontSize: "0.68rem", backgroundColor: "rgba(33, 12, 174, 0.06)", color: "#210cae", padding: "0.1rem 0.35rem", borderRadius: 4, fontWeight: 700 }}>
                             {s.prefix}
                           </span>
                         </td>
@@ -230,6 +232,7 @@ export const SettingsTab = ({
                             <button
                               onClick={() => onOpenEditSiteModal(s)}
                               title="Edit Site"
+                              className="glitter-action-btn"
                               style={{
                                 background: "none", border: "none", cursor: "pointer",
                                 color: "#475569", padding: "4px", borderRadius: "4px",
@@ -243,6 +246,7 @@ export const SettingsTab = ({
                             <button
                               onClick={() => onDeleteTarget("site", s.id, s.name)}
                               title="Delete Site"
+                              className="glitter-action-btn"
                               style={{
                                 background: "none", border: "none", cursor: "pointer",
                                 color: "#dc2626", padding: "4px", borderRadius: "4px",
@@ -308,7 +312,7 @@ export const SettingsTab = ({
                             }}>
                               {getDepartmentIcon(d.name)}
                             </div>
-                            <span style={{ fontWeight: 600, color: "#1e293b" }}>{d.name}</span>
+                            <span className="glitter-department-badge" style={{ fontWeight: 600, color: "#1e293b", padding: "0.15rem 0.5rem", borderRadius: "6px" }}>{d.name}</span>
                           </div>
                         </td>
                         <td style={{ padding: "0.75rem 0.5rem", textAlign: "right" }}>

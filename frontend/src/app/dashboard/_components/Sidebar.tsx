@@ -125,7 +125,7 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
 
   return (
     <aside 
-      className={`sidebar-responsive ${isSidebarOpen ? "open" : ""}`}
+      className={`sidebar-responsive glitter-sidebar-bg ${isSidebarOpen ? "open" : ""}`}
       style={{
         width: isSidebarOpen ? 260 : 70,
         backgroundColor: "#0B1220",
@@ -166,7 +166,7 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
             width: "100%",
             padding: "0.25rem"
           }}>
-            <div style={{ 
+            <div className="glitter-logo-container" style={{ 
               height: 44, 
               width: "100%",
               display: "flex", 
@@ -177,11 +177,11 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
               <img
                 src="/logo.png"
                 alt="Contact Point 360"
+                className="glitter-glow-logo"
                 style={{
                   height: "38px",
                   maxWidth: "100%",
                   objectFit: "contain",
-                  filter: "brightness(2.2) contrast(1.3) drop-shadow(0 0 1px rgba(255, 255, 255, 0.8))",
                 }}
               />
             </div>
@@ -198,7 +198,7 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
             </span>
           </div>
         ) : (
-          <div style={{
+          <div className="glitter-logo-container" style={{
             width: 42,
             height: 42,
             display: "flex",
@@ -211,11 +211,11 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
             <img
               src="/logo.png"
               alt="CP360 Logo"
+              className="glitter-glow-logo"
               style={{
                 height: "30px",
                 maxWidth: "100%",
                 objectFit: "contain",
-                filter: "brightness(2.2) contrast(1.3) drop-shadow(0 0 1px rgba(255, 255, 255, 0.8))",
               }}
             />
           </div>
@@ -384,12 +384,15 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
             backgroundColor: "#1E293B", borderRadius: 12, border: "1px solid #334155", padding: "0.75rem",
           }}>
             <div style={{ position: "relative", flexShrink: 0 }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: "50%",
-                backgroundColor: "#6366F1",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: "#FFFFFF", fontWeight: 700, fontSize: "0.85rem",
-              }}>
+              <div 
+                className="glitter-glow-avatar"
+                style={{
+                  width: 36, height: 36, borderRadius: "50%",
+                  backgroundColor: "#6366F1",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: "#FFFFFF", fontWeight: 700, fontSize: "0.85rem",
+                }}
+              >
                 {initials}
               </div>
               <span

@@ -421,7 +421,7 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
                   >
                     <td className="px-6 py-4 font-mono text-xs">
                       {s.supplierId ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800/60 shadow-xs">
+                        <span className="glitter-supplier-id-badge inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800/60 shadow-xs">
                           <span className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] font-black shrink-0">
                             S
                           </span>
@@ -432,7 +432,7 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
                       )}
                     </td>
                     <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">
-                      <div className="flex items-center gap-2">
+                      <div className="glitter-supplier-name-badge inline-flex items-center gap-2 px-2 py-1 rounded-lg">
                         <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-xs font-bold flex items-center justify-center shadow-sm shrink-0">
                           {s.name.charAt(0).toUpperCase()}
                         </div>
@@ -475,7 +475,7 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
                     <td className="px-6 py-4 text-xs text-gray-600 dark:text-gray-300">
                       {[s.city, s.province, s.country].filter(Boolean).length > 0 ? (
                         <div className="space-y-1">
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-800 border border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/60 shadow-xs">
+                          <span className="glitter-site-badge inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-800 border border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/60 shadow-xs">
                             <span className="w-4 h-4 rounded-full bg-sky-500 text-white flex items-center justify-center shrink-0">
                               <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -496,7 +496,7 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
                     <td className="px-6 py-4 text-center">
                       <button
                         onClick={() => setViewingSupplier(s)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-semibold transition-colors"
+                        className="glitter-action-btn inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-semibold transition-colors"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -509,7 +509,7 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
                         <button
                           onClick={() => handleOpenEdit(s)}
                           title="Edit Supplier"
-                          className="p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                          className="glitter-action-btn p-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -518,7 +518,7 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
                         <button
                           onClick={() => handleDeleteSupplier(s.id, s.name)}
                           title="Delete Supplier"
-                          className="p-1.5 text-red-600 hover:text-red-800 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition-colors"
+                          className="glitter-action-btn p-1.5 text-red-600 hover:text-red-800 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition-colors"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

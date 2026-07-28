@@ -212,20 +212,22 @@ export const TopBar = ({
             alignItems: "center",
             gap: "0.65rem"
           }}>
-            <div style={{
-              width: 36,
-              height: 36,
-              borderRadius: "50%",
-              background: "linear-gradient(135deg, #3B82F6 0%, #00C6FF 100%)",
-              color: "#FFFFFF",
-              fontWeight: 800,
-              fontSize: "0.85rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 2px 8px rgba(59, 130, 246, 0.35)",
-              flexShrink: 0
-            }}>
+            <div 
+              className="glitter-glow-avatar"
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #3B82F6 0%, #00C6FF 100%)",
+                color: "#FFFFFF",
+                fontWeight: 800,
+                fontSize: "0.85rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0
+              }}
+            >
               {(currentUser.name || "SU").substring(0, 2).toUpperCase()}
             </div>
             <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>

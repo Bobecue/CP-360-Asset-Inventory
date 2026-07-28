@@ -2190,7 +2190,7 @@ export default function DashboardPage() {
       )}
 
       {/* Main Body */}
-      <div className="animated-mesh-background" style={{
+      <div className="animated-mesh-background glitter-main-bg" style={{
         flex: 1,
         display: "flex",
         flexDirection: "column",

@@ -381,14 +381,18 @@ export const ProcurementTab = ({
                         className="animated-row"
                         style={{ borderBottom: "1px solid #f8fafc", animationDelay: `${index * 0.04}s` }}>
                         <td style={{ padding: "0.75rem 0.5rem", color: "#210cae", fontWeight: 700 }}>{po.poNumber}</td>
-                        <td style={{ padding: "0.75rem 0.5rem", color: "#1e293b", fontWeight: 600 }}>{po.supplier?.name}</td>
+                        <td style={{ padding: "0.75rem 0.5rem" }}>
+                          <span className="glitter-supplier-name-badge" style={{ color: "#1e293b", fontWeight: 600, padding: "0.15rem 0.45rem", borderRadius: "6px", backgroundColor: "#f8fafc" }}>
+                            {po.supplier?.name}
+                          </span>
+                        </td>
                         <td style={{ padding: "0.75rem 0.5rem", color: "#64748b" }}>{new Date(po.createdAt).toLocaleDateString()}</td>
                         <td style={{ padding: "0.75rem 0.5rem", color: "#64748b" }}>{po.creator?.name}</td>
                         <td style={{ padding: "0.75rem 0.5rem", textAlign: "center" }}>
                           <span style={{ fontSize: "0.74rem", fontWeight: 600 }}>{totalReceived} / {totalOrdered} received</span>
                         </td>
                         <td style={{ padding: "0.75rem 0.5rem", textAlign: "center" }}>
-                          <span style={{
+                          <span className="glitter-status-badge" style={{
                             display: "inline-block", padding: "0.15rem 0.5rem", borderRadius: 6,
                             fontSize: "0.7rem", fontWeight: 700, color: statusColor, backgroundColor: statusBg
                           }}>
@@ -400,6 +404,7 @@ export const ProcurementTab = ({
                             {isDraft && (
                               <button
                                 onClick={() => handlePlaceOrder(po.id)}
+                                className="glitter-action-btn"
                                 style={{
                                   padding: "0.3rem 0.65rem", borderRadius: 6, border: "1px solid #3b82f6",
                                   backgroundColor: "#eff6ff", color: "#2563eb", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer"
@@ -411,6 +416,7 @@ export const ProcurementTab = ({
                             {(isOrdered || isPartiallyReceived) && (
                               <button
                                 onClick={() => handleProcessReceipt(po)}
+                                className="glitter-action-btn"
                                 style={{
                                   padding: "0.3rem 0.65rem", borderRadius: 6, border: "none",
                                   backgroundColor: "#210cae", color: "#ffffff", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer",
