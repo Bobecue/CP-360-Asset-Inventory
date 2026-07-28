@@ -1361,11 +1361,11 @@ export function RequestsTable({
                           <button
                             onClick={() => onRowClick(req)}
                             style={{
-                              padding: '0.25rem 0.6rem',
+                              padding: '0.25rem 0.65rem',
                               borderRadius: 6,
-                              border: '1px solid rgba(225, 29, 72, 0.35)',
-                              background: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.08) 100%)',
-                              color: '#be123c',
+                              border: '1px solid #cbd5e1',
+                              background: '#ffffff',
+                              color: '#334155',
                               fontSize: '0.74rem',
                               fontWeight: 700,
                               cursor: 'pointer',
@@ -1373,12 +1373,14 @@ export function RequestsTable({
                               boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.borderColor = 'rgba(225, 29, 72, 0.60)';
-                              e.currentTarget.style.color = '#e11d48';
+                              e.currentTarget.style.borderColor = '#94a3b8';
+                              e.currentTarget.style.color = '#0f172a';
+                              e.currentTarget.style.backgroundColor = '#f8fafc';
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.borderColor = 'rgba(225, 29, 72, 0.35)';
-                              e.currentTarget.style.color = '#be123c';
+                              e.currentTarget.style.borderColor = '#cbd5e1';
+                              e.currentTarget.style.color = '#334155';
+                              e.currentTarget.style.backgroundColor = '#ffffff';
                             }}
                           >
                             View Drawer →
@@ -1388,11 +1390,11 @@ export function RequestsTable({
                       <button
                         onClick={() => onRowClick(req)}
                         style={{
-                          padding: '0.25rem 0.6rem',
+                          padding: '0.25rem 0.65rem',
                           borderRadius: 6,
-                          border: '1px solid rgba(225, 29, 72, 0.35)',
-                          background: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.08) 100%)',
-                          color: '#be123c',
+                          border: '1px solid #cbd5e1',
+                          background: '#ffffff',
+                          color: '#334155',
                           fontSize: '0.74rem',
                           fontWeight: 700,
                           cursor: 'pointer',
@@ -1400,12 +1402,14 @@ export function RequestsTable({
                           boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = 'rgba(225, 29, 72, 0.60)';
-                          e.currentTarget.style.color = '#e11d48';
+                          e.currentTarget.style.borderColor = '#94a3b8';
+                          e.currentTarget.style.color = '#0f172a';
+                          e.currentTarget.style.backgroundColor = '#f8fafc';
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = 'rgba(225, 29, 72, 0.35)';
-                          e.currentTarget.style.color = '#be123c';
+                          e.currentTarget.style.borderColor = '#cbd5e1';
+                          e.currentTarget.style.color = '#334155';
+                          e.currentTarget.style.backgroundColor = '#ffffff';
                         }}
                       >
                         View Drawer →

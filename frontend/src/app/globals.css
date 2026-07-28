@@ -1,233 +1,112 @@
 @import "tailwindcss";
 
 :root {
-  /* CP360 Brand Gradient Theme (#4dc9e6 & #210cae) */
-  --gradient-start: #4dc9e6;
-  /* Vibrant Sky Blue */
-  --gradient-end: #210cae;
-  /* Deep Indigo / Royal Blue */
+  /* Enterprise UI System Color Tokens */
+  --bg-app: #F8FAFC;
+  --bg-sidebar: #0F172A;
+  --bg-sidebar-hover: #1E293B;
+  --bg-sidebar-active: #1E293B;
+  
+  --accent-primary: #6366F1; /* Premium Indigo */
+  --accent-blue: #3B82F6;    /* Electric Blue */
+  --accent-indigo: #6366F1;
 
-  /* Neutral palette (clean, soft slate for text and borders) */
-  --neutral-50: #fafafa;
-  --neutral-100: #f4f4f5;
-  --neutral-200: #e4e4e7;
-  --neutral-300: #d4d4d8;
-  --neutral-400: #a1a1aa;
-  --neutral-500: #71717a;
-  --neutral-600: #52525b;
-  --neutral-700: #3f3f46;
-  --neutral-800: #27272a;
-  --neutral-900: #18181b;
+  --bg-surface: #FFFFFF;
+  --border-surface: #E2E8F0;
 
-  --background: 0 0% 98%;
-  --foreground: 240 5.9% 10%;
-  --border: 240 5.9% 90%;
-  --surface: #ffffff;
-  --surface-2: var(--neutral-100);
+  --text-primary: #1E293B;   /* Dark Charcoal */
+  --text-secondary: #64748B; /* Muted Slate Gray */
+
+  --status-red: #EF4444;
+  --status-green: #10B981;
 }
 
 @theme inline {
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
-  --color-border: hsl(var(--border));
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --font-sans: var(--font-inter);
+  --color-background: var(--bg-app);
+  --color-foreground: var(--text-primary);
+  --color-border: var(--border-surface);
+  --color-surface: var(--bg-surface);
+  --color-surface-2: var(--bg-sidebar);
+  --font-sans: var(--font-inter), 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 html,
 body {
   height: 100%;
-}
-
-@keyframes polkadot-move-shine {
-  0% {
-    background-position: 0px 0px, 0px 0px, 0% 0%, 0% 0%;
-  }
-  100% {
-    background-position: 48px 48px, -48px 48px, 100% 100%, 0% 100%;
-  }
-}
-
-/* Shared Sidebar & Topbar Brand Mesh & Polkadot Moving Dots Background Definition */
-aside,
-header,
-.sidebar-responsive,
-.topbar-responsive,
-.sidebar-brand-bg,
-.topbar-brand-bg {
-  background-image: 
-    radial-gradient(circle, rgba(225, 29, 72, 0.35) 2px, transparent 2px),
-    radial-gradient(circle, rgba(148, 163, 184, 0.40) 2px, transparent 2px),
-    radial-gradient(circle at 50% 10%, rgba(225, 29, 72, 0.06) 0%, transparent 60%),
-    linear-gradient(180deg, #ffffff 0%, rgba(248, 250, 252, 0.7) 35%, rgba(255, 241, 242, 0.5) 70%, rgba(241, 245, 249, 0.6) 100%) !important;
-  background-size: 24px 24px, 48px 48px, 100% 100%, 100% 300% !important;
-  animation: polkadot-move-shine 6s linear infinite !important;
-}
-
-/* ═══════════════════════════════════════════════════════════
-   PREMIUM ENTERPRISE BACKGROUND EFFECT SYSTEM (EYE-FRIENDLY & DYNAMIC)
-   ═══════════════════════════════════════════════════════════ */
-
-/* 1. Fluid Liquid Mesh Morph Animation */
-@keyframes fluid-mesh-morph {
-  0% {
-    transform: rotate(0deg) scale(1) translate(0px, 0px);
-  }
-  33% {
-    transform: rotate(6deg) scale(1.08) translate(30px, -20px);
-  }
-  66% {
-    transform: rotate(-4deg) scale(0.95) translate(-25px, 25px);
-  }
-  100% {
-    transform: rotate(0deg) scale(1) translate(0px, 0px);
-  }
-}
-
-/* 2. Soft Aurora Wave Sheen Glide */
-@keyframes aurora-wave-drift {
-  0% {
-    background-position: -200% -200%, 0% 0%;
-    opacity: 0.4;
-  }
-  50% {
-    background-position: 200% 200%, 50% 50%;
-    opacity: 0.85;
-  }
-  100% {
-    background-position: -200% -200%, 0% 0%;
-    opacity: 0.4;
-  }
-}
-
-/* 3. Geometric Tech Grid Pulse */
-@keyframes geometric-line-sheen {
-  0%, 100% {
-    opacity: 0.35;
-  }
-  50% {
-    opacity: 0.65;
-  }
-}
-
-html,
-body {
-  height: 100%;
+  margin: 0;
+  padding: 0;
   overflow: hidden;
-  background-color: #f8fafc;
-  color: hsl(var(--foreground));
-  font-family: var(--font-inter), 'Inter', system-ui, sans-serif;
+  background: radial-gradient(circle at 50% 0%, #F1F5F9 0%, #F8FAFC 75%) !important;
+  color: #1E293B;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  position: relative;
 }
 
-/* Main System Area Premium Ambient Glow & Multi-Layer Dynamic System Background */
+/* System Background Full-Screen Ambient Light Shine Sweep */
+@keyframes bgSystemShineSweep {
+  0% {
+    transform: translate(-100%, -100%) rotate(25deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.55;
+  }
+  85% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: translate(180%, 180%) rotate(25deg);
+    opacity: 0;
+  }
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    rgba(147, 197, 253, 0.02) 30%,
+    rgba(186, 230, 253, 0.12) 48%,
+    rgba(255, 255, 255, 0.35) 50%,
+    rgba(186, 230, 253, 0.12) 52%,
+    rgba(147, 197, 253, 0.02) 70%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+  animation: bgSystemShineSweep 14s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* App & Main Area Background */
 main,
 .main-responsive,
 .main-system-bg {
-  position: relative;
-  background-image: 
-    radial-gradient(circle, rgba(225, 29, 72, 0.28) 2px, transparent 2px),
-    radial-gradient(circle, rgba(148, 163, 184, 0.35) 1.8px, transparent 1.8px),
-    radial-gradient(130% 70% at 50% 100%, rgba(203, 213, 225, 0.25) 0%, rgba(225, 29, 72, 0.06) 35%, rgba(148, 163, 184, 0.18) 70%, transparent 100%),
-    linear-gradient(180deg, #ffffff 0%, #f8fafc 35%, #f1f5f9 70%, #e2e8f0 100%) !important;
-  background-size: 24px 24px, 48px 48px, 100% 100%, 100% 100% !important;
-  animation: polkadot-move-shine 10s linear infinite !important;
-  overflow: hidden;
-}
-
-/* Layer 1: Fluid Liquid Color Mesh Blobs (Morphing Red & Silver Metallic) */
-main::before,
-.main-responsive::before,
-.main-system-bg::before {
-  content: "";
-  position: absolute;
-  inset: -15%;
-  z-index: 0;
-  pointer-events: none;
-  background-image: 
-    radial-gradient(circle at 20% 25%, rgba(225, 29, 72, 0.08) 0%, rgba(225, 29, 72, 0.02) 45%, transparent 65%),
-    radial-gradient(circle at 80% 35%, rgba(203, 213, 225, 0.30) 0%, rgba(148, 163, 184, 0.10) 45%, transparent 65%),
-    radial-gradient(circle at 50% 75%, rgba(226, 232, 240, 0.25) 0%, transparent 55%),
-    radial-gradient(circle at 35% 85%, rgba(203, 213, 225, 0.30) 0%, transparent 50%);
-  filter: blur(35px);
-  animation: fluid-mesh-morph 28s ease-in-out infinite;
-}
-
-/* Layer 2: Geometric Metallic Line Sheen & Aurora Wave Ray */
-main::after,
-.main-responsive::after,
-.main-system-bg::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image: 
-    linear-gradient(125deg, transparent 25%, rgba(255, 255, 255, 0.55) 42%, rgba(225, 29, 72, 0.06) 47%, rgba(203, 213, 225, 0.25) 53%, rgba(255, 255, 255, 0.55) 58%, transparent 75%),
-    linear-gradient(rgba(203, 213, 225, 0.12) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(225, 29, 72, 0.03) 1px, transparent 1px);
-  background-size: 250% 250%, 48px 48px, 48px 48px;
-  filter: blur(8px);
-  animation: aurora-wave-drift 22s ease-in-out infinite, geometric-line-sheen 6s ease-in-out infinite;
-}
-
-main > *,
-.main-responsive > * {
-  position: relative;
-  z-index: 1;
-}
-
-/* ═══════════════════════════════════════════════════════════
-   ULTRA-UNIVERSAL SYSTEM-WIDE GLASSMORPHISM TRANSPARENCY OVERRIDE
-   ═══════════════════════════════════════════════════════════ */
-
-/* 1. Clear outer layout main containers and tab content wrappers */
-main,
-.main-responsive,
-.tab-content-animate,
-.tab-content-animate > div,
-div[class*="tab-content"],
-div[class*="Tab-container"],
-div[class*="page-container"] {
-  background: transparent !important;
   background-color: transparent !important;
+  position: relative;
+  z-index: 2;
 }
 
-/* 2. Universal Glassmorphic Transparency for ALL Modules, Cards, Panels, Modals, Forms & Sections */
-.animated-mesh-background,
-.metric-card,
-.catalog-card,
-.module-container-card,
-.card-shine-effect,
-.bg-white,
-.bg-slate-50,
-.bg-slate-100,
-.bg-gray-50,
-.bg-gray-100,
-div[class*="bg-white"],
-div[class*="card"]:not(.no-card),
-div[class*="panel"]:not(.no-card),
-div[class*="modal"]:not(.no-card),
-div[style*="background: #"]:not(.no-card),
-div[style*="background: rgb"]:not(.no-card),
-div[style*="backgroundColor: #"]:not(.no-card),
-div[style*="backgroundColor: rgb"]:not(.no-card),
-section,
-article,
-fieldset,
-form {
-  background-color: rgba(255, 255, 255, 0.18) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  border-radius: 14px;
-  border: 1px solid rgba(225, 29, 72, 0.35) !important;
-  box-shadow: 0 4px 20px -4px rgba(225, 29, 72, 0.08), 0 0 10px rgba(226, 232, 240, 0.5) !important;
-  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease !important;
+/* Clear old background overrides & transparent wrappers */
+aside,
+header,
+main,
+.sidebar-responsive,
+.topbar-responsive,
+.sidebar-brand-bg,
+.topbar-brand-bg,
+.main-responsive,
+.main-system-bg,
+.animated-mesh-background {
+  background-image: none !important;
 }
 
-/* Explicit exemption for pure transparent wrappers & logo containers */
 .no-card,
 .logo-header-clean,
 div[style*="background: transparent"],
@@ -240,100 +119,510 @@ div[style*="background-color: transparent"] {
   background-color: transparent !important;
 }
 
-.card-shine-effect::before,
+/* ─── 2. Moving Visual Effects (Sidebar & Top Navigation Bar Edge Flows) ────── */
+@keyframes sidebarScanBeam {
+  0% {
+    top: -35%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    top: 135%;
+    opacity: 0;
+  }
+}
+
+@keyframes topbarScanBeam {
+  0% {
+    left: -35%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    left: 135%;
+    opacity: 0;
+  }
+}
+
+.sidebar-scan-beam {
+  position: absolute;
+  top: 0;
+  right: -1px;
+  width: 1.5px;
+  height: 25%;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(147, 197, 253, 0.1) 20%,
+    rgba(186, 230, 253, 0.6) 45%,
+    rgba(255, 255, 255, 0.9) 50%,
+    rgba(186, 230, 253, 0.6) 55%,
+    rgba(147, 197, 253, 0.1) 80%,
+    transparent 100%
+  );
+  box-shadow: 
+    0 0 3px 0.5px rgba(255, 255, 255, 0.7),
+    0 0 6px 1px rgba(186, 230, 253, 0.45),
+    0 0 12px 2px rgba(147, 197, 253, 0.2);
+  filter: drop-shadow(0 0 2px rgba(186, 230, 253, 0.4));
+  pointer-events: none;
+  z-index: 40;
+  animation: sidebarScanBeam 5.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.topbar-scan-beam {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  height: 1.5px;
+  width: 25%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(147, 197, 253, 0.1) 20%,
+    rgba(186, 230, 253, 0.6) 45%,
+    rgba(255, 255, 255, 0.9) 50%,
+    rgba(186, 230, 253, 0.6) 55%,
+    rgba(147, 197, 253, 0.1) 80%,
+    transparent 100%
+  );
+  box-shadow: 
+    0 0 3px 0.5px rgba(255, 255, 255, 0.7),
+    0 0 6px 1px rgba(186, 230, 253, 0.45),
+    0 0 12px 2px rgba(147, 197, 253, 0.2);
+  filter: drop-shadow(0 0 2px rgba(186, 230, 253, 0.4));
+  pointer-events: none;
+  z-index: 40;
+  animation: topbarScanBeam 5.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ─── 3. Global Lift & "Shine" Hover & Drag Interactions ─────────────────────── */
+
+/* Interactive Elements Base Styling */
+.interactive-element,
+.metric-card,
+.enterprise-card,
+.catalog-card,
+.module-container-card,
+.card-shine-effect,
+nav a,
+aside a,
+button:not(.no-raise),
+tbody tr {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease, border-color 0.15s ease !important;
+}
+
+/* Universal Shine Sweep Glint Effect (Subtle & Formal) */
+.interactive-element::before,
 .metric-card::before,
-.module-container-card::before {
+.enterprise-card::before,
+.catalog-card::before,
+.module-container-card::before,
+.card-shine-effect::before,
+button:not(.no-raise)::before {
   content: "";
   position: absolute;
-  inset: -1px;
-  border-radius: 15px;
-  padding: 1px;
-  background: linear-gradient(90deg, #e2e8f0 0%, #e11d48 50%, #9f1239 100%);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
+  top: 0;
+  left: -150%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.25) 50%,
+    transparent 100%
+  );
+  transform: skewX(-20deg);
   pointer-events: none;
-  opacity: 0.85;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
-.card-shine-effect:hover,
-.metric-card:hover,
-.module-container-card:hover {
-  transform: translateY(-3px) !important;
-  box-shadow: 0 12px 30px -4px rgba(225, 29, 72, 0.14), 0 0 14px rgba(226, 232, 240, 0.6) !important;
-}
-
-.card-shine-effect:hover::before,
+.interactive-element:hover::before,
 .metric-card:hover::before,
-.module-container-card:hover::before {
+.enterprise-card:hover::before,
+.catalog-card:hover::before,
+.module-container-card:hover::before,
+.card-shine-effect:hover::before,
+button:not(.no-raise):hover::before,
+tbody tr:hover::before {
   opacity: 1;
+  animation: shineGlint 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes shineGlint {
+  0% {
+    left: -150%;
+  }
+  100% {
+    left: 180%;
+  }
+}
+
+/* General Card & Panel Restyling - Crisp Formal Elevation */
+.metric-card,
+.enterprise-card,
+.catalog-card,
+.module-container-card,
+.card-shine-effect,
+div[class*="card"]:not(.no-card):not(.sidebar-responsive):not(.topbar-responsive),
+div[class*="panel"]:not(.no-card),
+div[class*="modal"]:not(.no-card),
+section:not(.no-card),
+article:not(.no-card),
+fieldset:not(.no-card) {
+  background-color: #FFFFFF !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.03) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  will-change: transform, box-shadow;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease !important;
+}
+
+/* Card Hover Formal Lift & Elevation */
+.metric-card:hover,
+.enterprise-card:hover,
+.catalog-card:hover,
+.module-container-card:hover,
+.card-shine-effect:hover,
+div[class*="card"]:not(.no-card):not(.sidebar-responsive):not(.topbar-responsive):hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.04) !important;
+  border-color: rgba(99, 102, 241, 0.35) !important;
+  z-index: 10;
+}
+
+/* Tactile Active / Click State */
+.metric-card:active,
+.enterprise-card:active,
+.catalog-card:active,
+.module-container-card:active,
+.card-shine-effect:active,
+div[class*="card"]:not(.no-card):not(.sidebar-responsive):not(.topbar-responsive):active,
+button:not(.no-raise):active {
+  transform: translateY(0px) scale(0.995) !important;
+  box-shadow: 0 2px 6px -1px rgba(15, 23, 42, 0.06) !important;
+}
+
+/* Button Styling & Primary Accent */
+button:not(.no-raise) {
+  cursor: pointer;
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease !important;
+}
+
+button:hover:not(.no-raise) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+
+.btn-primary-brand,
+button.bg-red-600,
+button.bg-primary {
+  background: #6366F1 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #4F46E5 !important;
+  font-weight: 500 !important;
+  box-shadow: 0 1px 3px rgba(99, 102, 241, 0.2) !important;
+}
+
+.btn-primary-brand:hover,
+button.bg-red-600:hover,
+button.bg-primary:hover {
+  background: #4F46E5 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3) !important;
+}
+
+.btn-primary-brand:active,
+button.bg-red-600:active,
+button.bg-primary:active {
+  transform: translateY(0px) scale(0.985) !important;
+  box-shadow: 0 1px 2px rgba(99, 102, 241, 0.2) !important;
+}
+
+/* Text Tokens & High Contrast Charcoal Typography */
+h1, h2, h3, h4, h5, h6, .text-primary-color {
+  color: #1E293B !important;
+}
+
+p, span.text-secondary, .text-slate-500, .text-gray-500 {
+  color: #64748B;
+}
+
+/* Enterprise Input & Control Styles */
+input[type="text"],
+input[type="email"],
+input[type="number"],
+input[type="password"],
+input[type="search"],
+select,
+textarea {
+  background-color: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 8px;
+  color: #1E293B !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #94A3B8 !important;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.15) !important;
+}
+
+/* Focus Ring & Keyboard Accessibility */
+*:focus-visible {
+  outline: 2px solid #94A3B8 !important;
+  outline-offset: 2px !important;
+}
+
+/* Table Design System */
+.table-container,
+div:has(> table) {
+  border-radius: 12px;
+  border: 1px solid #E2E8F0;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  background-color: #FFFFFF;
+}
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+thead tr {
+  background: #F8FAFC !important;
+  border-bottom: 1px solid #E2E8F0 !important;
+}
+
+thead th, th {
+  background-color: #F8FAFC !important;
+  color: #64748B !important;
+  font-weight: 600 !important;
+  font-size: 0.75rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  border-bottom: 1px solid #E2E8F0 !important;
+  padding: 0.75rem 1rem !important;
+  position: sticky;
+  top: 0;
+}
+
+tbody tr {
+  background-color: #FFFFFF;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease !important;
+  position: relative;
+}
+
+tbody tr:nth-child(even) {
+  background-color: #F8FAFC;
+}
+
+tbody tr:hover {
+  background-color: #F1F5F9 !important;
+  box-shadow: inset 2px 0 0 #6366F1, 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+  z-index: 5;
+}
+
+tbody tr:active {
+  background-color: #E2E8F0 !important;
+}
+
+tbody tr.selected,
+tbody tr[data-selected="true"] {
+  background-color: #F8FAFC !important;
+}
+
+tbody td {
+  border-bottom: 1px solid #E2E8F0 !important;
+  color: #1E293B;
+  font-size: 0.85rem;
+  padding: 0.85rem 1rem !important;
 }
 
 /* System-Wide Module Header Banner Accent */
 .module-header-accent {
-  background: linear-gradient(135deg, rgba(225, 29, 72, 0.05) 0%, rgba(77, 201, 230, 0.06) 40%, rgba(33, 12, 174, 0.04) 100%);
-  border-bottom: 1px solid rgba(225, 29, 72, 0.2);
+  background: #FFFFFF !important;
+  border-bottom: 1px solid #E2E8F0 !important;
   padding: 1.25rem 1.5rem;
   border-radius: 12px 12px 0 0;
 }
 
-/* System-Wide Primary Action Button (Featuring CP360 Red, Indigo, & Sky Blue Gradient with Metallic Silver Glow) */
-.btn-primary-brand {
-  background: linear-gradient(135deg, #e11d48 0%, #210cae 50%, #4dc9e6 100%) !important;
-  color: #ffffff !important;
-  font-weight: 700 !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
-  box-shadow: 0 4px 14px -2px rgba(225, 29, 72, 0.35) !important;
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+/* Status Badges */
+.badge-filled-approved,
+.badge-approved {
+  background-color: #10B981 !important;
+  color: #FFFFFF !important;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.73rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
-.btn-primary-brand:hover {
-  transform: translateY(-1.5px) scale(1.02) !important;
-  box-shadow: 0 6px 20px -2px rgba(225, 29, 72, 0.5), 0 0 14px rgba(77, 201, 230, 0.4) !important;
+.badge-filled-pending,
+.badge-pending {
+  background-color: #F59E0B !important;
+  color: #FFFFFF !important;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.73rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
-.btn-primary-brand:active {
-  transform: translateY(0) scale(0.98) !important;
+.badge-filled-rejected,
+.badge-rejected {
+  background-color: #EF4444 !important;
+  color: #FFFFFF !important;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.73rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
-/* Metallic Silver & Red Gradient Table Header Bar */
-thead tr {
-  background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 35%, #fff1f2 70%, #f0f7ff 100%) !important;
-  border-bottom: 2px solid rgba(225, 29, 72, 0.3) !important;
+.badge-filled-returned {
+  background-color: #F1F5F9 !important;
+  color: #64748B !important;
+  border: 1px solid #E2E8F0 !important;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.73rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
-th {
-  color: #0f172a !important;
-  font-weight: 800 !important;
-  text-transform: uppercase !important;
-  font-size: 0.72rem !important;
-  letter-spacing: 0.06em !important;
-  padding: 0.85rem 1rem !important;
-  border-bottom: 2px solid rgba(225, 29, 72, 0.25) !important;
-  background-color: transparent !important;
+.badge-filled-processing {
+  background-color: #3B82F6 !important;
+  color: #FFFFFF !important;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.73rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
-*:focus-visible {
-  outline: 2px solid var(--gradient-end);
-  outline-offset: 2px;
+/* Neutral Pills for Metadata (EID, Site, Dept, Category) */
+span[class*="font-mono"],
+code,
+.emp-id-badge {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+  border: 1px solid #E2E8F0 !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
 }
 
+.department-badge,
+.site-badge,
+.category-prefix-badge {
+  background-color: #F8FAFC !important;
+  color: #475569 !important;
+  border: 1px solid #E2E8F0 !important;
+  box-shadow: none !important;
+  font-weight: 600 !important;
+}
+
+/* ─── Global Scrollbar Styling ────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--neutral-100);
+  background: #F1F5F9;
+  border-radius: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--neutral-300);
-  border-radius: 3px;
+  background: #CBD5E1;
+  border-radius: 6px;
+  border: 2px solid #F1F5F9;
+  transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--neutral-400);
+  background: #94A3B8;
 }
+
+::-webkit-scrollbar-thumb:active {
+  background: #64748B;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #CBD5E1 #F1F5F9;
+}
+
+.table-scrollable-container,
+.custom-scrollbar {
+  overflow-y: scroll !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: #3B82F6 #F1F5F9 !important;
+}
+
+.table-scrollable-container::-webkit-scrollbar,
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+  display: block !important;
+}
+
+.table-scrollable-container::-webkit-scrollbar-track,
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #F1F5F9 !important;
+  border-radius: 6px !important;
+}
+
+.table-scrollable-container::-webkit-scrollbar-thumb,
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #3B82F6 !important;
+  border-radius: 6px !important;
+  border: 2px solid #FFFFFF !important;
+}
+
+.table-scrollable-container::-webkit-scrollbar-thumb:hover,
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #1d4ed8 !important;
+}
+
 
 /* ─── Mobile Responsiveness Additions ────────────────────────────── */
 
@@ -447,20 +736,21 @@ th {
 
 /* Global Animations for modules, sub-modules and tables */
 @keyframes slideFadeIn {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(18px) scale(0.98);
   }
 
-  to {
+  100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
 .animated-row {
-  animation: slideFadeIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: slideFadeIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   opacity: 0;
+  will-change: transform, opacity;
 }
 
 @keyframes moduleFlipIn {
@@ -705,10 +995,11 @@ th {
 
 .metric-card:hover,
 .card-hover-effect:hover {
-  transform: translateY(-3px) !important;
-  box-shadow: 0 12px 30px -4px rgba(33, 12, 174, 0.10),
-    0 4px 14px -2px rgba(77, 201, 230, 0.18) !important;
-  border-color: rgba(77, 201, 230, 0.4) !important;
+  transform: translateY(-8px) scale(1.008) translateZ(10px) !important;
+  box-shadow: 0 20px 35px -8px rgba(15, 23, 42, 0.12),
+    0 10px 18px -6px rgba(33, 12, 174, 0.12) !important;
+  border-color: rgba(77, 201, 230, 0.5) !important;
+  z-index: 10;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -732,16 +1023,16 @@ th {
 @keyframes tabSwitchFade {
   0% {
     opacity: 0;
-    transform: translateY(8px) scale(0.996);
+    transform: translateY(12px) perspective(1200px) rotateX(-4deg);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0) perspective(1200px) rotateX(0deg);
   }
 }
 
 .tab-content-animate {
-  animation: tabSwitchFade 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: tabSwitchFade 0.4s cubic-bezier(0.23, 1, 0.32, 1) forwards;
   will-change: transform, opacity;
 }
 
@@ -760,734 +1051,4 @@ th {
   transform: translateY(0) scale(0.975) !important;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   CP360 UNIVERSAL BRAND COLOR & METALLIC SHINE SPECIFICATIONS
-   ═══════════════════════════════════════════════════════════ */
 
-.metric-card,
-.catalog-card,
-.module-container-card,
-div[style*="borderRadius"] {
-  border-top: none !important;
-  border-image: none !important;
-  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease, border-color 0.2s ease !important;
-}
-
-.metric-card:hover,
-.catalog-card:hover,
-.module-container-card:hover {
-  transform: translateY(-3px) scale(1.008) !important;
-  box-shadow: 0 10px 24px -2px rgba(225, 29, 72, 0.08), 0 0 14px rgba(226, 232, 240, 0.4) !important;
-}
-.card-shine-effect,
-.metric-card,
-.module-container-card,
-div[style*="borderRadius"] {
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease !important;
-}
-
-/* ═══════════════════════════════════════════════════════════
-   UNIVERSAL CURSOR HOVER RED SHINE SPECIFICATIONS (ALL MODULES)
-   ═══════════════════════════════════════════════════════════ */
-
-/* Any Card, Grid Container, Module Block, and Panel shines Red when pointed at */
-.card-shine-effect:hover,
-.metric-card:hover,
-.module-container-card:hover,
-div[style*="borderRadius"]:hover,
-div[style*="background"]:hover,
-article:hover,
-section:hover {
-  border-color: rgba(225, 29, 72, 0.35) !important;
-  box-shadow: 0 6px 20px -2px rgba(225, 29, 72, 0.16), 0 0 12px rgba(225, 29, 72, 0.1) !important;
-}
-
-/* Any Button or Clickable Pill shines Red when pointed at */
-button:hover,
-a:hover,
-span[style*="borderRadius"]:hover {
-  border-color: rgba(225, 29, 72, 0.45) !important;
-  box-shadow: 0 4px 16px -2px rgba(225, 29, 72, 0.25), 0 0 8px rgba(225, 29, 72, 0.15) !important;
-}
-
-/* Inputs, Select Dropdowns, Date Pickers shine Red on Hover & Focus */
-input:hover,
-input:focus,
-select:hover,
-select:focus,
-textarea:hover,
-textarea:focus {
-  border-color: #e11d48 !important;
-  box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.18), 0 0 10px rgba(225, 29, 72, 0.12) !important;
-}
-
-@keyframes card-shine-sweep {
-  0% {
-    transform: translateX(-120%) rotate(25deg);
-  }
-  25%, 100% {
-    transform: translateX(280%) rotate(25deg);
-  }
-}
-
-/* Universal Button Brand Styling & Interactive Glow Sheen */
-button {
-  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease, background-color 0.15s ease !important;
-  will-change: transform;
-}
-
-button:hover {
-  transform: translateY(-2px) scale(1.02) !important;
-}
-
-button:active {
-  transform: translateY(0) scale(0.96) !important;
-}
-
-/* Floating Card Interactive Lift & Tilt */
-.metric-card,
-.card-shine-effect,
-section {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease !important;
-}
-
-.metric-card:hover,
-.card-shine-effect:hover {
-  transform: translateY(-4px) scale(1.008) !important;
-}
-
-/* Primary Action Buttons across all modules */
-button[style*="210cae"],
-button[style*="4dc9e6"],
-.btn-primary-brand {
-  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 50%, #4dc9e6 100%) !important;
-  color: #ffffff !important;
-  border: none !important;
-  box-shadow: 0 4px 14px -2px rgba(59, 130, 246, 0.35) !important;
-  position: relative;
-  overflow: hidden;
-}
-
-button[style*="210cae"]:hover,
-button[style*="4dc9e6"]:hover,
-.btn-primary-brand:hover {
-  box-shadow: 0 8px 24px -2px rgba(59, 130, 246, 0.45), 0 0 16px rgba(225, 29, 72, 0.35) !important;
-}
-
-/* Interactive Search Inputs & Select Filters Pulse */
-@keyframes input-focus-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(77, 201, 230, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 4px rgba(77, 201, 230, 0.18);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(77, 201, 230, 0.4);
-  }
-}
-
-/* Universal Search Bars, Form Inputs & Select Filters Styling Across All Modules */
-input[type="text"],
-input[type="search"],
-input[type="number"],
-input[type="date"],
-select,
-textarea,
-.search-glow,
-div[class*="search"],
-div[class*="filter"] {
-  background: rgba(255, 255, 255, 0.20) !important;
-  backdrop-filter: blur(8px) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
-  border: 1px solid rgba(148, 163, 184, 0.3) !important;
-  color: #1e293b !important;
-  border-radius: 8px !important;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease !important;
-}
-
-input[type="text"]:focus,
-input[type="search"]:focus,
-input[type="number"]:focus,
-input[type="date"]:focus,
-select:focus,
-textarea:focus {
-  border-color: #210cae !important;
-  box-shadow: 0 0 0 3px rgba(33, 12, 174, 0.12), 0 0 12px rgba(225, 29, 72, 0.15) !important;
-  transform: translateY(-1px) !important;
-}
-
-/* ═══════════════════════════════════════════════════════════
-   PREMIUM TABLE COLOR & BADGE SPECIFICATIONS
-   ═══════════════════════════════════════════════════════════ */
-
-/* Table Container & Table High-Definition Outline Specifications */
-table,
-div[class*="table-responsive"],
-div[class*="table-container"],
-.table-wrapper {
-  border-collapse: separate !important;
-  border-spacing: 0 !important;
-  width: 100% !important;
-  border-radius: 14px !important;
-  overflow: hidden !important;
-  border: 1.5px solid rgba(59, 130, 246, 0.4) !important;
-  outline: 1px solid rgba(225, 29, 72, 0.25) !important;
-  box-shadow: 0 4px 24px -2px rgba(33, 12, 174, 0.08), 0 0 14px rgba(59, 130, 246, 0.15) !important;
-  background: rgba(255, 255, 255, 0.12) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-}
-
-/* Premium CP360 Soft Translucent Table Header Bar across ALL modules */
-thead tr {
-  background: linear-gradient(90deg, rgba(224, 231, 255, 0.35) 0%, rgba(219, 234, 254, 0.35) 50%, rgba(224, 242, 254, 0.35) 100%) !important;
-  border-bottom: 2px solid rgba(59, 130, 246, 0.4) !important;
-  backdrop-filter: blur(8px) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
-}
-
-th {
-  color: #1e293b !important;
-  font-weight: 800 !important;
-  text-transform: uppercase !important;
-  font-size: 0.72rem !important;
-  letter-spacing: 0.06em !important;
-  padding: 0.85rem 1rem !important;
-  border-bottom: 2px solid rgba(59, 130, 246, 0.4) !important;
-  background-color: transparent !important;
-}
-
-td {
-  padding: 0.85rem 1rem !important;
-  font-size: 0.82rem !important;
-  color: #1e293b !important;
-  border-bottom: 1px solid rgba(203, 213, 225, 0.4) !important;
-}
-
-/* Universal Table Row Hover Effect across ALL modules */
-tr,
-tbody tr,
-.table-row-hover {
-  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease !important;
-  border-left: 4px solid transparent !important;
-  position: relative;
-}
-
-tbody tr:nth-child(even),
-tr:nth-child(even) {
-  background-color: rgba(240, 247, 255, 0.04) !important;
-}
-
-tbody tr:nth-child(odd),
-tr:nth-child(odd) {
-  background-color: rgba(255, 255, 255, 0.08) !important;
-}
-
-tr:hover,
-tbody tr:hover,
-.table-row-hover:hover {
-  background: linear-gradient(90deg, rgba(224, 231, 255, 0.3) 0%, rgba(219, 234, 254, 0.3) 50%, rgba(224, 242, 254, 0.3) 100%) !important;
-  border-left: 4px solid #210cae !important;
-  box-shadow: 0 4px 14px -2px rgba(33, 12, 174, 0.1), inset 0 0 8px rgba(255, 255, 255, 0.8) !important;
-  transform: scale(1.002) !important;
-}
-
-.catalog-card,
-div[class*="grid"],
-div[style*="borderRadius: 14"],
-div[style*="borderRadius: 12"] {
-  border-top: none !important;
-  border-image: none !important;
-  background-color: rgba(255, 255, 255, 0.15) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-}
-
-/* Universal Text & Element Drag Selection Shining Red Highlight Across ENTIRE System */
-*::selection,
-*::-moz-selection,
-::selection,
-::-moz-selection {
-  background-color: #ff1a40 !important;
-  color: #ffffff !important;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.95), 0 0 4px rgba(255, 26, 64, 0.8) !important;
-}
-
-/* Request ID Pills */
-span[style*="req-"],
-code,
-.request-id-badge {
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important;
-  color: #210cae !important;
-  border: 1px solid rgba(33, 12, 174, 0.2) !important;
-  font-weight: 700 !important;
-  padding: 0.2rem 0.6rem !important;
-  border-radius: 6px !important;
-  font-family: monospace !important;
-  box-shadow: 0 1px 3px rgba(33, 12, 174, 0.08) !important;
-}
-
-/* Status Chips & Badges Color Enhancements */
-span[style*="Returned"],
-span[style*="returned"] {
-  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important;
-  color: #047857 !important;
-  border: 1px solid #6ee7b7 !important;
-  font-weight: 700 !important;
-  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.15) !important;
-}
-
-span[style*="Pending"],
-span[style*="pending"] {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
-  color: #b45309 !important;
-  border: 1px solid #fcd34d !important;
-  font-weight: 700 !important;
-  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.15) !important;
-}
-
-span[style*="Processing"],
-span[style*="processing"],
-span[style*="In Use"],
-span[style*="Released"] {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
-  color: #1d4ed8 !important;
-  border: 1px solid #93c5fd !important;
-  font-weight: 700 !important;
-  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.15) !important;
-}
-
-/* Asset Tag Pills inside tables */
-span[style*="SK4-"],
-span[style*="SKA-"] {
-  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%) !important;
-  color: #0369a1 !important;
-  border: 1px solid #7dd3fc !important;
-  font-weight: 700 !important;
-  padding: 0.15rem 0.5rem !important;
-  border-radius: 6px !important;
-  box-shadow: 0 1px 3px rgba(3, 105, 161, 0.12) !important;
-}
-
-/* Status Chips Pulse Glow */
-@keyframes badge-subtle-pulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.04);
-  }
-}
-
-span[style*="borderRadius"]:hover,
-.badge:hover {
-  animation: badge-subtle-pulse 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.1) !important;
-}
-
-/* ==========================================================================
-   100% UNIFIED METALLIC RED & SILVER GLASSMORPHISM SYSTEM-WIDE
-   ========================================================================== */
-
-/* Universal Red & Silver Glass Style Rule applied to EVERYTHING without exception */
-div,
-section,
-article,
-nav,
-aside,
-header,
-main,
-footer,
-table,
-thead,
-tbody,
-tr,
-th,
-td,
-input,
-select,
-textarea,
-button,
-a,
-span,
-ul,
-li,
-ol,
-div[role="dialog"],
-div[aria-modal="true"],
-.modal-content,
-.card-glass,
-.glass-panel,
-[class*="card"],
-[class*="panel"],
-[class*="modal"],
-[class*="popover"],
-[class*="dropdown"],
-[class*="sidebar"],
-[class*="bg-"] {
-  backdrop-filter: blur(14px) !important;
-  -webkit-backdrop-filter: blur(14px) !important;
-}
-
-/* Force EVERY container, box, card, button, tab, input, header and table row to use 100% IDENTICAL background & border glow */
-div[style*="background"],
-div[style*="backgroundColor"],
-div[class*="bg-"],
-section,
-article,
-nav,
-aside,
-header,
-button,
-nav a,
-nav button,
-.sidebar-item,
-input,
-select,
-textarea,
-table,
-thead,
-th,
-tbody tr,
-td,
-div[role="dialog"],
-div[aria-modal="true"],
-.modal-content {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.70) 0%, rgba(241, 245, 249, 0.50) 50%, rgba(225, 29, 72, 0.06) 100%) !important;
-  border: 1px solid rgba(225, 29, 72, 0.35) !important;
-  box-shadow: 
-    0 0 10px rgba(226, 232, 240, 0.6), 
-    0 4px 14px rgba(225, 29, 72, 0.08), 
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.95), 
-    inset 0 -1px 0 0 rgba(226, 232, 240, 0.5) !important;
-  color: #0f172a !important;
-}
-
-/* 100% IDENTICAL Crimson Red & Metallic Silver Hover Sheen & Outline Glow */
-button:hover,
-nav a:hover,
-nav button:hover,
-.sidebar-item:hover,
-input:focus,
-select:focus,
-textarea:focus,
-tbody tr:hover,
-div[onClick]:hover {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(225, 29, 72, 0.12) 60%, rgba(241, 245, 249, 0.85) 100%) !important;
-  border-color: rgba(225, 29, 72, 0.60) !important;
-  box-shadow: 
-    0 0 16px rgba(226, 232, 240, 0.8), 
-    0 4px 18px rgba(225, 29, 72, 0.18), 
-    inset 0 1px 0 0 rgba(255, 255, 255, 1) !important;
-  color: #9f1239 !important;
-}
-
-/* Red & Metallic Silver Table Outlines and Dividers */
-table,
-thead,
-tbody,
-tr,
-th,
-td {
-  border-color: rgba(225, 29, 72, 0.22) !important;
-}
-
-th,
-td {
-  border-bottom: 1px solid rgba(225, 29, 72, 0.20) !important;
-  border-right: none !important;
-  border-left: none !important;
-  border-top: none !important;
-}
-
-/* ==========================================================================
-   SYSTEM-WIDE BLUE TO METALLIC SILVER ACCENT OVERRIDE
-   ========================================================================== */
-
-/* 1. All Blue Text Elements -> Metallic Slate / Silver */
-[class*="text-blue"],
-[class*="text-sky"],
-[class*="text-indigo"],
-[style*="color: '#2563eb'"],
-[style*="color: \"#2563eb\""],
-[style*="color: '#3b82f6'"],
-[style*="color: \"#3b82f6\""],
-[style*="color: '#1d4ed8'"],
-[style*="color: \"#1d4ed8\""],
-[style*="color: '#0284c7'"],
-[style*="color: \"#0284c7\""],
-[style*="color: '#475569'"] {
-  color: #334155 !important;
-}
-
-/* 2. All Blue Badges, Chips & Tag Pills -> Metallic Silver Glass with Crimson Outline */
-[class*="bg-blue"],
-[class*="bg-sky"],
-[class*="bg-indigo"],
-span[style*="#dbeafe"],
-span[style*="#bfdbfe"],
-span[style*="#e0f2fe"],
-span[style*="#bae6fd"],
-span[style*="#2563eb"],
-span[style*="#3b82f6"] {
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, rgba(225, 29, 72, 0.08) 100%) !important;
-  color: #1e293b !important;
-  border: 1px solid rgba(225, 29, 72, 0.30) !important;
-  box-shadow: 0 0 6px rgba(226, 232, 240, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.9) !important;
-}
-
-/* 3. All Blue Icons (SVG fill & stroke) -> Silver Slate */
-svg[fill*="#2563eb"],
-svg[fill*="#3b82f6"],
-svg[fill*="#1d4ed8"],
-svg[stroke*="#2563eb"],
-svg[stroke*="#3b82f6"],
-svg[stroke*="#1d4ed8"],
-svg[class*="text-blue"],
-svg[class*="text-indigo"],
-svg[class*="text-sky"] {
-  color: #64748b !important;
-  stroke: #64748b !important;
-  fill: none !important;
-}
-
-/* 4. Active Navigation / Tab Indicator -> Metallic Red & Silver Sheen Glow */
-.active-tab,
-[aria-current="page"],
-div[style*="borderLeft: \"3px solid #2563eb\""],
-div[style*="borderLeft: '3px solid #2563eb'"] {
-  border-left: 3px solid #e11d48 !important;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.90) 0%, rgba(226, 232, 240, 0.65) 60%, rgba(225, 29, 72, 0.10) 100%) !important;
-  box-shadow: 0 0 14px rgba(225, 29, 72, 0.25), 0 0 10px rgba(226, 232, 240, 0.5) !important;
-}
-
-/* ==========================================================================
-   METALLIC SILVER & CRIMSON RED CONNECTIVITY: ICONS & STATUS BADGES
-   ========================================================================== */
-
-/* --- 1. System-Wide Icon Connectivity (Lucide SVG Icons & Inline SVGs) --- */
-svg:not([class*="no-silver-red"]),
-.lucide,
-svg path,
-svg line,
-svg circle,
-svg polyline,
-svg polygon,
-svg rect {
-  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* All default SVG icons derive metallic silver-slate tone unless in primary/hover states */
-svg:not([class*="text-"]):not([class*="stroke-"]):not([class*="icon-crimson"]) {
-  stroke: #64748b !important;
-  color: #64748b !important;
-}
-
-/* Primary/Brand Icons & Interactive Icon Containers (Crimson Red with Glow) */
-.icon-crimson,
-button svg,
-a svg,
-.sidebar-item svg,
-nav svg,
-th svg,
-label svg {
-  stroke: #e11d48 !important;
-  color: #e11d48 !important;
-  filter: drop-shadow(0 0 5px rgba(225, 29, 72, 0.25)) !important;
-}
-
-/* Parent Hover State Effect for Icons -> Glowing Deep Red & Metallic Silver Sheen */
-button:hover svg,
-a:hover svg,
-.sidebar-item:hover svg,
-tr:hover svg,
-div[onClick]:hover svg,
-div[onclick]:hover svg {
-  stroke: #be123c !important;
-  color: #be123c !important;
-  transform: scale(1.12) rotate(3deg);
-  filter: drop-shadow(0 0 8px rgba(225, 29, 72, 0.55)) drop-shadow(0 0 3px rgba(226, 232, 240, 0.9)) !important;
-}
-
-
-/* --- 2. Unified Metallic Silver & Crimson Red Status Badge Palette --- */
-
-/* Completed / Returned / Active / Approved / Available / Operational / In Stock */
-.badge-status-success,
-span[class*="emerald"],
-span[class*="green"],
-span[style*="In Stock"],
-span[style*="in stock"],
-span[style*="Returned"],
-span[style*="returned"],
-span[style*="Approved"],
-span[style*="approved"],
-span[style*="Available"],
-span[style*="available"],
-span[style*="Active"],
-span[style*="active"] {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(241, 245, 249, 0.90) 50%, rgba(225, 29, 72, 0.12) 100%) !important;
-  color: #9f1239 !important;
-  border: 1px solid rgba(225, 29, 72, 0.35) !important;
-  box-shadow: 0 2px 8px rgba(225, 29, 72, 0.12), inset 0 1px 0 0 rgba(255, 255, 255, 0.9) !important;
-  font-weight: 700 !important;
-}
-
-/* Pending / In Review / Processing / Under Maintenance */
-.badge-status-warning,
-span[class*="amber"],
-span[class*="yellow"],
-span[style*="Pending"],
-span[style*="pending"],
-span[style*="Review"],
-span[style*="review"],
-span[style*="Processing"],
-span[style*="processing"],
-span[style*="In Maintenance"] {
-  background: linear-gradient(135deg, rgba(255, 251, 235, 0.95) 0%, rgba(254, 243, 199, 0.80) 50%, rgba(225, 29, 72, 0.10) 100%) !important;
-  color: #9f1239 !important;
-  border: 1px solid rgba(225, 29, 72, 0.40) !important;
-  box-shadow: 0 2px 8px rgba(225, 29, 72, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 0.9) !important;
-  font-weight: 700 !important;
-}
-
-/* Critical / Rejected / Retired / Damaged / High Severity */
-.badge-status-danger,
-span[class*="red"],
-span[class*="rose"],
-span[style*="Rejected"],
-span[style*="rejected"],
-span[style*="Retired"],
-span[style*="retired"],
-span[style*="Damaged"],
-span[style*="damaged"],
-span[style*="Critical"],
-span[style*="critical"] {
-  background: linear-gradient(135deg, rgba(255, 241, 242, 0.95) 0%, rgba(254, 205, 211, 0.85) 50%, rgba(225, 29, 72, 0.25) 100%) !important;
-  color: #881337 !important;
-  border: 1px solid rgba(225, 29, 72, 0.60) !important;
-  box-shadow: 0 2px 10px rgba(225, 29, 72, 0.25), inset 0 1px 0 0 rgba(255, 255, 255, 0.9) !important;
-  font-weight: 700 !important;
-}
-
-/* Neutral / Assigned / In Use / Informational Statuses */
-.badge-status-neutral,
-span[class*="slate"],
-span[class*="gray"],
-span[style*="In Use"],
-span[style*="Assigned"],
-span[style*="assigned"] {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(241, 245, 249, 0.90) 50%, rgba(148, 163, 184, 0.20) 100%) !important;
-  color: #334155 !important;
-  border: 1px solid rgba(148, 163, 184, 0.45) !important;
-  box-shadow: 0 2px 8px rgba(100, 116, 139, 0.12), inset 0 1px 0 0 rgba(255, 255, 255, 0.9) !important;
-  font-weight: 700 !important;
-}
-
-/* --- 3. Metallic Silver & Crimson Red Badges for Department, Assigned Site, Employee ID & Roles --- */
-
-/* Employee ID Pills & User Code Badges */
-span[class*="font-mono"],
-code,
-.emp-id-badge,
-span:has(> svg[class*="lucide-id"]),
-span[style*="EMP-"],
-span[style*="emp-"] {
-  background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.06) 100%) !important;
-  color: #9f1239 !important;
-  border: 1px solid rgba(225, 29, 72, 0.35) !important;
-  box-shadow: 0 1px 4px rgba(225, 29, 72, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
-  font-weight: 700 !important;
-  border-radius: 6px !important;
-}
-
-/* Department & Division Badges */
-.department-badge,
-span[class*="dept"],
-span[style*="Department"],
-span[style*="department"] {
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 60%, rgba(225, 29, 72, 0.08) 100%) !important;
-  color: #1e293b !important;
-  border: 1px solid rgba(148, 163, 184, 0.40) !important;
-  border-left: 3px solid #e11d48 !important;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
-  font-weight: 700 !important;
-}
-
-/* Assigned Site & Location Badges */
-.site-badge,
-span[class*="site"],
-span[style*="Site"],
-span[style*="site"],
-span[style*="Location"] {
-  background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 50%, rgba(225, 29, 72, 0.10) 100%) !important;
-  color: #0f172a !important;
-  border: 1px solid rgba(225, 29, 72, 0.35) !important;
-  box-shadow: 0 2px 6px rgba(225, 29, 72, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
-  font-weight: 700 !important;
-}
-
-/* Category Prefix Pills (CAB, HDS, KBD, LAP, MOU, MON, RAM, SSD, SYS) */
-.category-prefix-badge,
-span[class*="prefix"],
-span[style*="CAB"],
-span[style*="HDS"],
-span[style*="KBD"],
-span[style*="LAP"],
-span[style*="MOU"],
-span[style*="MON"],
-span[style*="RAM"],
-span[style*="SSD"],
-span[style*="SYS"] {
-  background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 50%, rgba(225, 29, 72, 0.10) 100%) !important;
-  color: #9f1239 !important;
-  border: 1px solid rgba(225, 29, 72, 0.40) !important;
-  box-shadow: 0 1px 4px rgba(225, 29, 72, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
-  font-weight: 700 !important;
-}
-
-/* Sidebar & TopBar Navigation Icons Connectivity */
-aside svg,
-header svg,
-.sidebar-responsive svg,
-.topbar-responsive svg,
-.sidebar-item svg,
-.topbar-brand-bg svg {
-  stroke: #e11d48 !important;
-  color: #e11d48 !important;
-  filter: drop-shadow(0 0 5px rgba(225, 29, 72, 0.25)) !important;
-}
-
-aside svg line,
-header svg line,
-aside svg path,
-header svg path,
-aside svg polyline,
-header svg polyline,
-aside svg rect,
-header svg rect,
-aside svg circle,
-header svg circle {
-  stroke: #e11d48 !important;
-}
-
-/* Sidebar & TopBar Active & Hover State Icon Glow */
-aside a:hover svg,
-aside button:hover svg,
-header button:hover svg,
-.sidebar-item:hover svg,
-.active-tab svg {
-  stroke: #be123c !important;
-  color: #be123c !important;
-  filter: drop-shadow(0 0 8px rgba(225, 29, 72, 0.55)) drop-shadow(0 0 3px rgba(226, 232, 240, 0.9)) !important;
-  transform: scale(1.1) rotate(2deg);
-}
-
-/* Overriding internal inline SVG linearGradient stops for Sidebar icons */
-aside svg stop[stopColor="#4dc9e6"],
-aside svg stop[stopColor="#210cae"],
-header svg stop[stopColor="#4dc9e6"],
-header svg stop[stopColor="#210cae"] {
-  stop-color: #e11d48 !important;
-}

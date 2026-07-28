@@ -35,16 +35,19 @@ function AnimatedMetricCard({
   title,
   rawValue,
   desc,
-  color,
-  idx,
+  bgColor = "#FFFFFF",
+  accentColor = "#6366F1",
+  icon,
   showProgressBar = false,
   progressBarValue = 0,
 }: {
+  idx?: number;
   title: string;
   rawValue: number;
   desc: string;
-  color: string;
-  idx: number;
+  bgColor?: string;
+  accentColor?: string;
+  icon?: React.ReactNode;
   showProgressBar?: boolean;
   progressBarValue?: number;
 }) {
@@ -60,41 +63,55 @@ function AnimatedMetricCard({
 
   return (
     <div
-      className="metric-card card-shine-effect"
+      className="metric-card"
       style={{
-        backgroundColor: "#ffffff",
+        backgroundColor: bgColor,
         borderRadius: 14,
         padding: "1.25rem 1.5rem",
         display: "flex",
         flexDirection: "column",
         gap: "0.35rem",
         position: "relative",
+        border: "1px solid #E2E8F0",
+        boxShadow: "0 1px 3px rgba(15,23,42,0.05)",
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+        <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#64748B" }}>
           {title}
         </span>
-        <div className="brand-icon-badge" style={{ width: 28, height: 28 }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="#210cae" />
-          </svg>
+        <div style={{
+          width: 32,
+          height: 32,
+          borderRadius: 8,
+          backgroundColor: "#F8FAFC",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: accentColor,
+          border: "1px solid #E2E8F0",
+          boxShadow: "0 1px 2px rgba(15,23,42,0.04)"
+        }}>
+          {icon || (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+            </svg>
+          )}
         </div>
       </div>
-      <span style={{ fontSize: "1.85rem", fontWeight: 800, color, letterSpacing: "-0.02em" }}>
+      <span style={{ fontSize: "32px", fontWeight: 700, color: "#0F172A", letterSpacing: "-0.02em", marginTop: "0.25rem" }}>
         {animated.toLocaleString()}
       </span>
-      <span style={{ fontSize: "0.76rem", color: "#64748b", fontWeight: 500 }}>
+      <span style={{ fontSize: "0.78rem", color: "#64748B", fontWeight: 500 }}>
         {desc}
       </span>
       {showProgressBar && (
-        <div style={{ height: 8, width: "100%", backgroundColor: "#e2e8f0", borderRadius: 4, overflow: "hidden", marginTop: "0.5rem", border: "1px solid #cbd5e1" }}>
+        <div style={{ height: 8, width: "100%", backgroundColor: "#F1F5F9", borderRadius: 9999, overflow: "hidden", marginTop: "0.5rem" }}>
           <div style={{
             height: "100%",
             width: `${fillWidth}%`,
-            background: "linear-gradient(90deg, #94a3b8 0%, #64748b 50%, #334155 100%)",
-            borderRadius: 4,
-            boxShadow: "0 1px 3px rgba(15, 23, 42, 0.2)",
+            backgroundColor: accentColor,
+            borderRadius: 9999,
             transition: "width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
           }} />
         </div>
@@ -219,7 +236,7 @@ export const DashboardOverview = ({
 
   if (error) {
     return (
-      <div style={{ padding: "2rem", backgroundColor: "#fee2e2", borderRadius: 12, border: "1px solid #fca5a5", color: "#b91c1c", fontSize: "0.875rem", fontWeight: 500 }}>
+      <div style={{ padding: "2rem", backgroundColor: "#FEF2F2", borderRadius: 14, border: "1px solid #E5E7EB", color: "#DC2626", fontSize: "0.875rem", fontWeight: 500 }}>
         Failed to load dashboard data: {error}
       </div>
     );
@@ -282,79 +299,71 @@ export const DashboardOverview = ({
     return ratioA - ratioB;
   });
 
-  const metricCards = [
-    {
-      title: "Total Cataloged Assets",
-      rawValue: metrics.totalAssets,
-      desc: `+${metrics.assetsThisWeek} registered this week`,
-      color: "#0f172a",
-    },
-    {
-      title: "Active Workstation Checkouts",
-      rawValue: metrics.activeCheckouts,
-      desc: `${metrics.utilizationRate}% total utilization rate`,
-      color: "#0f172a",
-    },
-    {
-      title: "Triggered Low-Stock Alerts",
-      rawValue: metrics.lowStockAlertsCount,
-      desc: "Items below threshold point",
-      color: "#ef4444",
-    },
-  ];
-
   const renderStatusBadge = (statusStr: string) => {
     const s = (statusStr || "").toUpperCase();
-    let bg = "#f1f5f9", color = "#475569", label = statusStr;
-    if (s.includes("PENDING")) { bg = "#fef9c3"; color = "#a16207"; label = "Pending"; }
-    else if (s === "APPROVED") { bg = "#e0e7ff"; color = "#4338ca"; label = "Approved"; }
-    else if (s === "READY_FOR_PICKUP") { bg = "#f0f9ff"; color = "#0369a1"; label = "Ready for Pickup"; }
-    else if (s === "RELEASED" || s === "ITEM_RECEIVED" || s === "COMPLETED") { bg = "#ecfdf5"; color = "#047857"; label = "Completed"; }
-    else if (s === "REJECTED" || s === "CANCELLED") { bg = "#fef2f2"; color = "#b91c1c"; label = s; }
-    else if (s === "RETURNED") { bg = "#f1f5f9"; color = "#64748b"; label = "Returned"; }
+
+    const conf: Record<string, { bg: string; color: string; border: string; label: string }> = {
+      PENDING:              { bg: "linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)", color: "#c2410c", border: "rgba(234,88,12,0.40)", label: "Pending" },
+      PENDING_OPS_APPROVAL: { bg: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", color: "#6b21a8", border: "rgba(147,51,234,0.35)", label: "Pending Ops" },
+      APPROVED:             { bg: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", color: "#1d4ed8", border: "rgba(59,130,246,0.35)", label: "Approved" },
+      READY_FOR_PICKUP:     { bg: "linear-gradient(135deg, #ecfeff 0%, #cffafe 100%)", color: "#0e7490", border: "rgba(6,182,212,0.35)", label: "Ready for Pickup" },
+      PROCESSING:           { bg: "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)", color: "#0369a1", border: "rgba(14,165,233,0.35)", label: "Processing" },
+      RELEASED:             { bg: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)", color: "#15803d", border: "rgba(34,197,94,0.35)", label: "Released" },
+      ITEM_RECEIVED:        { bg: "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)", color: "#047857", border: "rgba(16,185,129,0.35)", label: "Completed" },
+      COMPLETED:            { bg: "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)", color: "#047857", border: "rgba(16,185,129,0.35)", label: "Completed" },
+      REJECTED:             { bg: "linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)", color: "#b91c1c", border: "rgba(239,68,68,0.40)", label: "Rejected" },
+      CANCELLED:            { bg: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)", color: "#475569", border: "rgba(148,163,184,0.45)", label: "Cancelled" },
+      RETURNED:             { bg: "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)", color: "#065f46", border: "#6ee7b7", label: "Returned" },
+    };
+
+    // Try exact match first, then partial
+    const match = conf[s] ?? Object.entries(conf).find(([k]) => s.includes(k))?.[1] ?? conf["PENDING"];
 
     return (
       <span style={{
-        display: "inline-block",
-        padding: "0.2rem 0.55rem",
-        borderRadius: 6,
+        display: "inline-flex",
+        alignItems: "center",
+        padding: "0.25rem 0.65rem",
+        borderRadius: 9999,
+        background: match.bg,
+        color: match.color,
+        border: `1px solid ${match.border}`,
         fontSize: "0.72rem",
         fontWeight: 700,
-        backgroundColor: bg,
-        color: color,
-        whiteSpace: "nowrap"
+        whiteSpace: "nowrap",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
       }}>
-        {label}
+        {match.label}
       </span>
     );
   };
 
   return (
-    <>
+    <div className="animate-module-flip" style={{ padding: "0.5rem 0" }}>
       {/* Site Filter Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
         <div>
-          <span style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 500 }}>
+          <h1 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#111827", margin: 0 }}>Dashboard Overview</h1>
+          <span style={{ fontSize: "0.85rem", color: "#6B7280", fontWeight: 400 }}>
             Real-time stock and request metrics scoped by site location.
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <label htmlFor="site-filter" style={{ fontSize: "0.8rem", fontWeight: 600, color: "#64748b" }}>Site Filter:</label>
+          <label htmlFor="site-filter" style={{ fontSize: "0.85rem", fontWeight: 600, color: "#374151" }}>Site Filter:</label>
           <select
             id="site-filter"
             value={selectedSiteId || "ALL"}
             onChange={(e) => handleSetSelectedSiteId(e.target.value)}
             style={{
-              padding: "0.4rem 1.75rem 0.4rem 0.75rem",
+              padding: "0.45rem 1.75rem 0.45rem 0.75rem",
               borderRadius: "8px",
-              border: "1px solid #cbd5e1",
-              fontSize: "0.82rem",
-              fontWeight: 600,
-              backgroundColor: "#ffffff",
-              color: "#1e293b",
+              border: "1px solid #D1D5DB",
+              fontSize: "0.85rem",
+              fontWeight: 500,
+              backgroundColor: "#FFFFFF",
+              color: "#111827",
               outline: "none",
               cursor: "pointer",
-              boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
             }}
           >
             <option value="ALL">All Sites</option>
@@ -367,67 +376,88 @@ export const DashboardOverview = ({
         </div>
       </div>
 
-      <div style={{ marginBottom: "1.75rem" }}>
-        <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0f172a", marginBottom: "0.75rem" }}>
-          Pending approvals — split by stage
-        </h3>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem" }}>
-          <AnimatedMetricCard
-            idx={0}
-            title="Awaiting staff review"
-            rawValue={metrics.awaitingStaffCount}
-            desc="Inventory staff to act"
-            color="#2563eb"
-          />
-          <AnimatedMetricCard
-            idx={1}
-            title="Awaiting ops manager sign-off"
-            rawValue={metrics.awaitingOpsCount}
-            desc="Final approval pending"
-            color="#E85D00"
-          />
-        </div>
-      </div>
+      {/* Specified Enterprise KPI Cards Row 1 & 2 */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem", marginBottom: "1.5rem" }}>
+        {/* Pending Staff Review */}
+        <AnimatedMetricCard
+          idx={0}
+          title="Pending Staff Review"
+          rawValue={metrics.awaitingStaffCount}
+          desc="Inventory staff to review"
+          bgColor="#EFF6FF"
+          accentColor="#2563EB"
+          icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
+        />
 
-      {/* Metrics Row */}
-      <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem", marginBottom: "1.75rem" }}>
-        {metricCards.map((metric, idx) => (
-          <AnimatedMetricCard
-            key={idx}
-            idx={idx}
-            title={metric.title}
-            rawValue={metric.rawValue}
-            desc={metric.desc}
-            color={metric.color}
-            showProgressBar={metric.title.includes("Active")}
-            progressBarValue={metrics.utilizationRate}
-          />
-        ))}
-      </section>
+        {/* Awaiting Manager Sign-off */}
+        <AnimatedMetricCard
+          idx={1}
+          title="Awaiting Manager Sign-off"
+          rawValue={metrics.awaitingOpsCount}
+          desc="Final approval pending"
+          bgColor="#FFF7ED"
+          accentColor="#EA580C"
+          icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EA580C" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>}
+        />
 
-      {/* Grid Layout: Recent Requests & Low Stock Alerts */}
+        {/* Total Cataloged Assets */}
+        <AnimatedMetricCard
+          idx={2}
+          title="Total Cataloged Assets"
+          rawValue={metrics.totalAssets}
+          desc={`+${metrics.assetsThisWeek} registered this week`}
+          bgColor="#ECFDF5"
+          accentColor="#059669"
+          icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>}
+        />
+
+        {/* Active Workstations */}
+        <AnimatedMetricCard
+          idx={3}
+          title="Active Workstations"
+          rawValue={metrics.activeCheckouts}
+          desc={`${metrics.utilizationRate}% total utilization rate`}
+          bgColor="#F5F3FF"
+          accentColor="#7C3AED"
+          showProgressBar={true}
+          progressBarValue={metrics.utilizationRate}
+          icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>}
+        />
+
+        {/* Low Stock Alerts */}
+        <AnimatedMetricCard
+          idx={4}
+          title="Low Stock Alerts"
+          rawValue={metrics.lowStockAlertsCount}
+          desc="Items below threshold point"
+          bgColor="#FEF2F2"
+          accentColor="#DC2626"
+          icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2"><path d="M10.29 3.86L1.82 18C1.5 18.55 1.9 19.25 2.53 19.25H21.47C22.1 19.25 22.5 18.55 22.18 18L13.71 3.86C13.01 2.71 10.99 2.71 10.29 3.86Z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="16.5" r="0.8" fill="currentColor"/></svg>}
+        />
+      </div>      {/* Grid Layout: Recent Requests & Low Stock Alerts */}
       <div className="dashboard-layout-grid" style={{ display: "grid", gap: "1.5rem", alignItems: "start", marginBottom: "1.75rem" }}>
         {/* Recent Request Transactions */}
         <section
-          className="animated-mesh-background"
           style={{
-            backgroundColor: "#ffffff", borderRadius: 12,
-            boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(226,232,240,0.6)",
+            backgroundColor: "#FFFFFF",
+            borderRadius: 14,
+            border: "1px solid #E5E7EB",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
             padding: "1.5rem",
           }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-            <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>Recent Request Transactions</h3>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#111827", margin: 0 }}>Recent Request Transactions</h3>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
               <button
                 onClick={() => fetchDashboardSummary(false)}
                 title="Refresh dashboard"
                 style={{
-                  padding: "0.3rem 0.65rem",
-                  borderRadius: 6,
-                  border: "1px solid #e2e8f0",
-                  backgroundColor: "#f8fafc",
-                  color: "#475569",
-                  fontSize: "0.72rem",
+                  padding: "0.4rem 0.75rem",
+                  borderRadius: 8,
+                  border: "1px solid #E5E7EB",
+                  backgroundColor: "#FFFFFF",
+                  color: "#374151",
+                  fontSize: "0.78rem",
                   fontWeight: 600,
                   cursor: "pointer",
                   display: "flex",
@@ -437,9 +467,7 @@ export const DashboardOverview = ({
               >
                 ↻ Refresh
               </button>
-              <span style={{ fontSize: "0.78rem", color: "#94a3b8", cursor: "pointer", fontWeight: 500 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#1e293b")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#94a3b8")}
+              <span style={{ fontSize: "0.8rem", color: "#DC2626", cursor: "pointer", fontWeight: 600 }}
                 onClick={onViewRequests}
               >
                 View All Orders →
@@ -515,10 +543,10 @@ export const DashboardOverview = ({
           </div>
 
           {/* Table matching Request Orders structure */}
-          <div style={{ maxHeight: "380px", overflowY: "auto", overflowX: "auto" }}>
+          <div className="table-scrollable-container" style={{ maxHeight: "380px", overflowY: "auto", overflowX: "auto", scrollbarWidth: "thin", scrollbarColor: "#2563eb #f1f5f9" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.82rem" }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid #f1f5f9", backgroundColor: "#f8fafc" }}>
+              <thead style={{ position: "sticky", top: 0, backgroundColor: "#f8fafc", zIndex: 5, boxShadow: "0 1px 0 #e2e8f0" }}>
+                <tr>
                   <th style={{ padding: "0.75rem 0.6rem", color: "#64748b", fontWeight: 700 }}>Request ID</th>
                   <th style={{ padding: "0.75rem 0.6rem", color: "#64748b", fontWeight: 700 }}>Item Catalog</th>
                   <th style={{ padding: "0.75rem 0.6rem", color: "#64748b", fontWeight: 700 }}>Requested By</th>
@@ -536,7 +564,7 @@ export const DashboardOverview = ({
                     </td>
                   </tr>
                 ) : (
-                  filteredRequests.map((req: any) => {
+                  filteredRequests.map((req: any, index: number) => {
                     const reqId = req.id ? (req.id.length > 12 ? req.id.substring(0, 10) : req.id) : "REQ";
                     const itemName = req.itemName || req.item || "Asset Item";
                     const itemCat = req.itemCategory || req.category;
@@ -548,8 +576,27 @@ export const DashboardOverview = ({
 
                     return (
                       <tr key={req.id}
-                        className="table-row-hover"
-                        style={{ borderBottom: "1px solid #f8fafc", cursor: "pointer" }}
+                        className="animated-row table-row-hover"
+                        style={{ 
+                          borderBottom: "1px solid #f8fafc", 
+                          cursor: "pointer",
+                          animationDelay: `${index * 0.04}s`,
+                          transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)"
+                        }}
+                        onMouseEnter={(e) => {
+                          const iconSpan = e.currentTarget.querySelector('.item-icon') as HTMLElement;
+                          if (iconSpan) {
+                            iconSpan.style.transform = 'scale(1.2) rotate(-5deg)';
+                            iconSpan.style.color = '#3b82f6';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          const iconSpan = e.currentTarget.querySelector('.item-icon') as HTMLElement;
+                          if (iconSpan) {
+                            iconSpan.style.transform = 'scale(1) rotate(0deg)';
+                            iconSpan.style.color = '#64748b';
+                          }
+                        }}
                         onClick={onViewRequests}
                       >
                         <td style={{ padding: "0.75rem 0.6rem" }}>
@@ -569,7 +616,7 @@ export const DashboardOverview = ({
                         </td>
                         <td style={{ padding: "0.75rem 0.6rem" }}>
                           <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
-                            <span style={{ color: "#64748b", display: "flex", alignItems: "center", marginTop: "0.1rem" }}>
+                            <span className="item-icon" style={{ color: "#64748b", display: "flex", alignItems: "center", marginTop: "0.1rem", transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
                               {getCategoryIcon(itemCat, itemName)}
                             </span>
                             <div style={{ display: "flex", flexDirection: "column" }}>
@@ -695,7 +742,7 @@ export const DashboardOverview = ({
           </span>
         </div>
 
-        <div style={{ overflowX: "auto", maxHeight: "400px", overflowY: "auto" }}>
+        <div className="table-scrollable-container" style={{ overflowX: "auto", maxHeight: "380px", overflowY: "auto", scrollbarWidth: "thin", scrollbarColor: "#2563eb #f1f5f9" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem", textAlign: "left" }}>
             <thead style={{ position: "sticky", top: 0, backgroundColor: "#f8fafc", zIndex: 5, boxShadow: "0 1px 0 #e2e8f0" }}>
               <tr>
@@ -778,6 +825,6 @@ export const DashboardOverview = ({
           </table>
         </div>
       </section>
-    </>
+    </div>
   );
 };

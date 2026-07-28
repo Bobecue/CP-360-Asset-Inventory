@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { CatalogItem, getCategoryIcon, RoleBadge, SiteBadge, EidBadge, AssetTagBadge } from "@/types/dashboard";
+import { CatalogItem, getCategoryIcon, RoleBadge, SiteBadge, EidBadge, AssetTagBadge, AssetTypeBadge } from "@/types/dashboard";
 import jsPDF from "jspdf";
 import { RequestTimeline } from "./RequestTimeline";
 import { getApiUrl } from "../../../utils/api";
@@ -503,8 +503,8 @@ export const CatalogTab = ({
         const updatedItems = prevItems.map((item) => {
           const isTargetItem =
             item.id === dep.rawRequest?.itemId ||
-            item.name.toLowerCase() === dep.itemName.toLowerCase() ||
-            item.sku.toUpperCase() === (dep.assetTag || "").toUpperCase();
+            (item.name || "").toLowerCase() === (dep.itemName || "").toLowerCase() ||
+            (item.sku ? item.sku.toUpperCase() === (dep.assetTag || "").toUpperCase() : false);
 
           if (isTargetItem) {
             const currentQty = item.quantity ?? 0;
@@ -597,7 +597,7 @@ export const CatalogTab = ({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+    <div className="animate-module-flip" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
 
       {/* Warnings & Notices */}
       {isUsingMockData && (
@@ -625,15 +625,21 @@ export const CatalogTab = ({
       {catalogSubTab === "inventory" && (
         <div className="table-container-fade" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
           {/* Items Summary Cards */}
-          <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+          <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.5rem" }}>
             {[
               {
                 title: "Total Catalog Items",
                 value: catalogItems.length,
                 desc: "Configured catalog SKUs",
+                trend: "↑ 12% from last month",
+                trendPositive: true,
+                bgColor: "#EFF6FF",
+                accentColor: "#2563EB",
+                iconColor: "#1D4ED8",
+                iconBg: "#DBEAFE",
                 icon: (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#210cae" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="12 2 20.73 7 12 12 3.27 7" fill="rgba(33, 12, 174, 0.15)" stroke="none" />
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 20.73 7 12 12 3.27 7" />
                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
                     <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
                     <line x1="12" y1="22.08" x2="12" y2="12" />
@@ -641,30 +647,42 @@ export const CatalogTab = ({
                 )
               },
               {
-                title: "Consumable Items",
+                title: "Consumables",
                 value: catalogItems.filter(it => it.category?.type === "CONSUMABLE").length,
                 desc: "Non-serialized items",
+                trend: "↑ 5% from last month",
+                trendPositive: true,
+                bgColor: "#ECFDF5",
+                accentColor: "#059669",
+                iconColor: "#047857",
+                iconBg: "#D1FAE5",
                 icon: (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#210cae" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                    <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z" fill="rgba(33, 12, 174, 0.15)" />
+                    <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4z" />
                   </svg>
                 )
               },
               {
-                title: "Non-Consumable Items",
+                title: "Non-Consumables",
                 value: catalogItems.filter(it => it.category?.type === "NON_CONSUMABLE").length,
                 desc: "Serialized assets",
+                trend: "↑ 8% from last month",
+                trendPositive: true,
+                bgColor: "#F5F3FF",
+                accentColor: "#7C3AED",
+                iconColor: "#6D28D9",
+                iconBg: "#DDD6FE",
                 icon: (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#210cae" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" fill="rgba(33, 12, 174, 0.15)" />
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
                     <line x1="8" y1="21" x2="16" y2="21" />
                     <line x1="12" y1="17" x2="12" y2="21" />
                   </svg>
                 )
               },
               {
-                title: "Low Stock / Out of Stock",
+                title: "Low Stock",
                 filterStock: "LOW_STOCK",
                 value: catalogItems.filter(it => {
                   const siteStock = (selectedSiteId && selectedSiteId !== "ALL") ? it.stockLevels?.find(sl => sl.siteId === selectedSiteId) : null;
@@ -674,10 +692,16 @@ export const CatalogTab = ({
                   const min = siteStock ? siteStock.reorderPoint : (it.reorderPoint || 5);
                   return qty <= min;
                 }).length,
-                desc: catalogStockFilter === "LOW_STOCK" ? "⚡ Filtering by Low Stock" : "Click to filter list",
+                desc: catalogStockFilter === "LOW_STOCK" ? "Filtering low stock SKUs" : "Requires reorder attention",
+                trend: "↓ 3% from yesterday",
+                trendPositive: true,
+                bgColor: "#FEF2F2",
+                accentColor: "#DC2626",
+                iconColor: "#B91C1C",
+                iconBg: "#FEE2E2",
                 icon: (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" fill="rgba(239, 68, 68, 0.1)" />
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                     <line x1="12" y1="9" x2="12" y2="13" />
                     <line x1="12" y1="17" x2="12.01" y2="17" />
                   </svg>
@@ -685,74 +709,120 @@ export const CatalogTab = ({
               },
             ].map((item: any, idx) => (
               <div key={idx}
-                className="metric-card card-shine-effect"
+                className="metric-card"
                 onClick={() => {
                   if (item.filterStock) {
                     setCatalogStockFilter(catalogStockFilter === item.filterStock ? "ALL" : item.filterStock);
                   }
                 }}
                 style={{
-                  backgroundColor: "#ffffff",
-                  borderRadius: 12,
-                  padding: "1rem 1.25rem",
-                  boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(226,232,240,0.6)",
-                  border: item.filterStock && catalogStockFilter === item.filterStock ? "2px solid #ef4444" : "1px solid rgba(226,232,240,0.6)",
+                  backgroundColor: "#FFFFFF",
+                  borderRadius: "16px",
+                  padding: "24px",
+                  boxShadow: "0 4px 12px rgba(0,0,0,.05)",
+                  border: item.filterStock && catalogStockFilter === item.filterStock ? "2px solid #DC2626" : "1px solid #E5E7EB",
                   display: "flex",
-                  alignItems: "center",
+                  flexDirection: "column",
                   justifyContent: "space-between",
                   cursor: item.filterStock ? "pointer" : "default",
+                  transition: "all 0.2s ease-in-out",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-3px)";
+                  e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,.08)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,.05)";
                 }}
               >
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-                  <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.02em" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.03em" }}>
                     {item.title}
                   </span>
-                  <span style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a" }}>
+                  <div style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: "50%",
+                    backgroundColor: item.iconBg,
+                    color: item.iconColor,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}>
+                    {item.icon}
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <span style={{ fontSize: "34px", fontWeight: 700, color: "#111827", lineHeight: 1.1 }}>
                     <AnimatedNumber value={item.value} />
                   </span>
-                  <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>
-                    {item.desc}
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "4px" }}>
+                    <span style={{ fontSize: "12px", color: "#6B7280" }}>
+                      {item.desc}
+                    </span>
+                    <span style={{
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      color: item.trendPositive ? (item.title === "Low Stock" ? "#059669" : "#059669") : "#DC2626",
+                      backgroundColor: item.bgColor,
+                      padding: "2px 8px",
+                      borderRadius: "12px",
+                    }}>
+                      {item.trend}
+                    </span>
+                  </div>
                 </div>
-                <span style={{ display: "flex", alignItems: "center" }}>{item.icon}</span>
               </div>
             ))}
           </section>
 
           {/* Filter and Action Bar */}
           <div
-            className="animated-mesh-background"
             style={{
               display: "flex",
               flexWrap: "wrap",
               alignItems: "center",
               justifyContent: "space-between",
               gap: "1rem",
-              borderRadius: 12,
-              padding: "1rem 1.25rem",
-              boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(77,201,230,0.3)",
+              backgroundColor: "#FFFFFF",
+              borderRadius: "16px",
+              padding: "20px 24px",
+              boxShadow: "0 4px 12px rgba(0,0,0,.05)",
+              border: "1px solid #E5E7EB",
             }}
           >
-            <div style={{ display: "flex", flex: 1, flexWrap: "wrap", gap: "0.75rem", minWidth: "280px" }}>
+            <div style={{ display: "flex", flex: 1, flexWrap: "wrap", gap: "1rem", minWidth: "280px" }}>
               {/* Search */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", flex: 1, minWidth: "200px" }}>
-                <label style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Search Item</label>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 1, minWidth: "240px" }}>
+                <label style={{ fontSize: "12px", fontWeight: 600, color: "#6B7280" }}>Search Assets</label>
                 <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                  <svg style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+                  <svg style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#9CA3AF" }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                   <input
                     type="text"
-                    placeholder="Search Asset Tag, Name, Description..."
+                    placeholder="Search Asset Tag, Name, SKU, Description..."
                     value={catalogSearch}
                     onChange={(e) => setCatalogSearch(e.target.value)}
-                    className="search-glow"
                     style={{
                       width: "100%",
-                      padding: "0.45rem 2.2rem 0.45rem 1.85rem",
-                      borderRadius: 6,
-                      border: "1px solid #e2e8f0",
-                      fontSize: "0.8rem",
-                      color: "#1e293b",
+                      padding: "10px 40px 10px 42px",
+                      borderRadius: "10px",
+                      border: "1px solid #E5E7EB",
+                      fontSize: "14px",
+                      color: "#111827",
+                      backgroundColor: "#F9FAFB",
                       outline: "none",
+                      transition: "all 0.15s ease-in-out",
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.border = "2px solid #DC2626";
+                      e.currentTarget.style.backgroundColor = "#FFFFFF";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.border = "1px solid #E5E7EB";
+                      e.currentTarget.style.backgroundColor = "#F9FAFB";
                     }}
                   />
                   {onOpenScanModal && (
@@ -762,42 +832,46 @@ export const CatalogTab = ({
                       title="Scan Barcode / Tag Code"
                       style={{
                         position: "absolute",
-                        right: 6,
+                        right: 8,
                         background: "none",
                         border: "none",
                         cursor: "pointer",
-                        color: "#475569",
-                        padding: "4px",
-                        borderRadius: "4px",
+                        color: "#6B7280",
+                        padding: "6px",
+                        borderRadius: "6px",
                         display: "flex",
                         alignItems: "center"
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f1f5f9"}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F3F4F6"}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
                     </button>
                   )}
                 </div>
               </div>
 
               {/* Site Scope Selector */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "160px" }}>
-                <label style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Viewing Stock At</label>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px", minWidth: "160px" }}>
+                <label style={{ fontSize: "12px", fontWeight: 600, color: "#6B7280" }}>Viewing Site</label>
                 <select
                   value={selectedSiteId || "ALL"}
                   onChange={(e) => setSelectedSiteId(e.target.value)}
                   style={{
-                    padding: "0.45rem 0.65rem",
-                    borderRadius: 6,
-                    border: "1px solid #e2e8f0",
-                    fontSize: "0.8rem",
-                    color: "#475569",
-                    backgroundColor: "#ffffff",
+                    height: "42px",
+                    padding: "0 12px",
+                    borderRadius: "10px",
+                    border: "1px solid #E5E7EB",
+                    fontSize: "14px",
+                    color: "#111827",
+                    backgroundColor: "#F9FAFB",
                     outline: "none",
+                    cursor: "pointer",
                   }}
+                  onFocus={(e) => e.currentTarget.style.border = "2px solid #DC2626"}
+                  onBlur={(e) => e.currentTarget.style.border = "1px solid #E5E7EB"}
                 >
-                  <option value="ALL">All Sites (Global View)</option>
+                  <option value="ALL">All Sites (Global)</option>
                   {sites.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name} ({s.prefix})
@@ -807,20 +881,24 @@ export const CatalogTab = ({
               </div>
 
               {/* Category Filter */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "150px" }}>
-                <label style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Category</label>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px", minWidth: "160px" }}>
+                <label style={{ fontSize: "12px", fontWeight: 600, color: "#6B7280" }}>Category</label>
                 <select
                   value={catalogCategoryFilter}
                   onChange={(e) => setCatalogCategoryFilter(e.target.value)}
                   style={{
-                    padding: "0.45rem 0.65rem",
-                    borderRadius: 6,
-                    border: "1px solid #e2e8f0",
-                    fontSize: "0.8rem",
-                    color: "#475569",
-                    backgroundColor: "#ffffff",
+                    height: "42px",
+                    padding: "0 12px",
+                    borderRadius: "10px",
+                    border: "1px solid #E5E7EB",
+                    fontSize: "14px",
+                    color: "#111827",
+                    backgroundColor: "#F9FAFB",
                     outline: "none",
+                    cursor: "pointer",
                   }}
+                  onFocus={(e) => e.currentTarget.style.border = "2px solid #DC2626"}
+                  onBlur={(e) => e.currentTarget.style.border = "1px solid #E5E7EB"}
                 >
                   <option value="ALL">All Categories</option>
                   <option value="NON_CONSUMABLE">All Non-Consumables</option>
@@ -847,20 +925,24 @@ export const CatalogTab = ({
               </div>
 
               {/* Stock Status Filter */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "130px" }}>
-                <label style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Stock Status</label>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px", minWidth: "140px" }}>
+                <label style={{ fontSize: "12px", fontWeight: 600, color: "#6B7280" }}>Stock Status</label>
                 <select
                   value={catalogStockFilter}
                   onChange={(e) => setCatalogStockFilter(e.target.value)}
                   style={{
-                    padding: "0.45rem 0.65rem",
-                    borderRadius: 6,
-                    border: "1px solid #e2e8f0",
-                    fontSize: "0.8rem",
-                    color: "#475569",
-                    backgroundColor: "#ffffff",
+                    height: "42px",
+                    padding: "0 12px",
+                    borderRadius: "10px",
+                    border: "1px solid #E5E7EB",
+                    fontSize: "14px",
+                    color: "#111827",
+                    backgroundColor: "#F9FAFB",
                     outline: "none",
+                    cursor: "pointer",
                   }}
+                  onFocus={(e) => e.currentTarget.style.border = "2px solid #DC2626"}
+                  onBlur={(e) => e.currentTarget.style.border = "1px solid #E5E7EB"}
                 >
                   <option value="ALL">All Levels</option>
                   <option value="LOW_STOCK">Low Stock Warning</option>
@@ -869,20 +951,24 @@ export const CatalogTab = ({
               </div>
 
               {/* Sort Order Selector */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "150px" }}>
-                <label style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Sort By</label>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px", minWidth: "150px" }}>
+                <label style={{ fontSize: "12px", fontWeight: 600, color: "#6B7280" }}>Sort By</label>
                 <select
                   value={catalogSortKey}
                   onChange={(e) => setCatalogSortKey(e.target.value)}
                   style={{
-                    padding: "0.45rem 0.65rem",
-                    borderRadius: 6,
-                    border: "1px solid #e2e8f0",
-                    fontSize: "0.8rem",
-                    color: "#475569",
-                    backgroundColor: "#ffffff",
+                    height: "42px",
+                    padding: "0 12px",
+                    borderRadius: "10px",
+                    border: "1px solid #E5E7EB",
+                    fontSize: "14px",
+                    color: "#111827",
+                    backgroundColor: "#F9FAFB",
                     outline: "none",
+                    cursor: "pointer",
                   }}
+                  onFocus={(e) => e.currentTarget.style.border = "2px solid #DC2626"}
+                  onBlur={(e) => e.currentTarget.style.border = "1px solid #E5E7EB"}
                 >
                   <option value="name_asc">Name (A-Z)</option>
                   <option value="name_desc">Name (Z-A)</option>
@@ -895,56 +981,57 @@ export const CatalogTab = ({
             </div>
 
             {/* Action buttons (Add, CSV Export, Toggle View Mode) */}
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "1rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "auto" }}>
               {/* List/Grid view toggle */}
               <div style={{
                 display: "inline-flex",
-                backgroundColor: "#f1f5f9",
-                padding: "2px",
-                borderRadius: "8px",
-                border: "1px solid #e2e8f0",
-                marginRight: "0.5rem"
+                backgroundColor: "#F3F4F6",
+                padding: "3px",
+                borderRadius: "10px",
+                border: "1px solid #E5E7EB",
               }}>
                 <button
                   onClick={() => setCatalogViewMode("list")}
                   style={{
-                    padding: "0.35rem 0.65rem",
-                    borderRadius: "6px",
+                    height: "36px",
+                    padding: "0 12px",
+                    borderRadius: "8px",
                     border: "none",
-                    background: catalogViewMode === "list" ? "#ffffff" : "transparent",
-                    color: catalogViewMode === "list" ? "#210cae" : "#64748b",
+                    background: catalogViewMode === "list" ? "#FFFFFF" : "transparent",
+                    color: catalogViewMode === "list" ? "#111827" : "#6B7280",
                     fontWeight: 600,
-                    fontSize: "0.74rem",
+                    fontSize: "13px",
                     cursor: "pointer",
-                    boxShadow: catalogViewMode === "list" ? "0 1px 3px rgba(0,0,0,0.06)" : "none",
+                    boxShadow: catalogViewMode === "list" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
                     display: "flex",
                     alignItems: "center",
-                    gap: "0.25rem",
+                    gap: "6px",
                     transition: "all 0.15s ease",
                   }}
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>
                   List
                 </button>
                 <button
                   onClick={() => setCatalogViewMode("grid")}
                   style={{
-                    padding: "0.35rem 0.65rem",
-                    borderRadius: "6px",
+                    height: "36px",
+                    padding: "0 12px",
+                    borderRadius: "8px",
                     border: "none",
-                    background: catalogViewMode === "grid" ? "#ffffff" : "transparent",
-                    color: catalogViewMode === "grid" ? "#210cae" : "#64748b",
+                    background: catalogViewMode === "grid" ? "#FFFFFF" : "transparent",
+                    color: catalogViewMode === "grid" ? "#111827" : "#6B7280",
                     fontWeight: 600,
-                    fontSize: "0.74rem",
+                    fontSize: "13px",
                     cursor: "pointer",
-                    boxShadow: catalogViewMode === "grid" ? "0 1px 3px rgba(0,0,0,0.06)" : "none",
+                    boxShadow: catalogViewMode === "grid" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
                     display: "flex",
                     alignItems: "center",
-                    gap: "0.25rem",
+                    gap: "6px",
                     transition: "all 0.15s ease",
                   }}
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>
                   Grid
                 </button>
               </div>
@@ -952,23 +1039,25 @@ export const CatalogTab = ({
               <button
                 onClick={onExportCSV}
                 style={{
-                  padding: "0.5rem 0.85rem",
-                  borderRadius: 8,
-                  border: "1px solid #cbd5e1",
-                  background: "#ffffff",
-                  color: "#475569",
-                  fontSize: "0.82rem",
+                  height: "42px",
+                  padding: "0 16px",
+                  borderRadius: "10px",
+                  border: "1px solid #E5E7EB",
+                  background: "#FFFFFF",
+                  color: "#374151",
+                  fontSize: "14px",
                   fontWeight: 500,
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
-                  gap: "0.35rem",
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
+                  gap: "8px",
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                  transition: "all 0.15s ease",
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f8fafc"}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#ffffff"}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F9FAFB"}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#FFFFFF"}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
                 Export CSV
               </button>
 
@@ -976,31 +1065,34 @@ export const CatalogTab = ({
                 <button
                   onClick={onOpenAddModal}
                   style={{
+                    height: "42px",
                     display: "flex",
                     alignItems: "center",
-                    gap: "0.4rem",
-                    background: "linear-gradient(135deg, #210cae 0%, #4dc9e6 100%)",
-                    color: "#ffffff",
+                    gap: "8px",
+                    backgroundColor: "#6366F1",
+                    color: "#FFFFFF",
                     border: "none",
-                    borderRadius: 8,
-                    padding: "0.55rem 1.1rem",
-                    fontSize: "0.82rem",
+                    borderRadius: "10px",
+                    padding: "0 18px",
+                    fontSize: "14px",
                     fontWeight: 600,
                     cursor: "pointer",
-                    boxShadow: "0 2px 6px rgba(33,12,174,0.15)",
-                    transition: "transform 0.15s, box-shadow 0.2s",
+                    boxShadow: "0 2px 8px rgba(99, 102, 241, 0.25)",
+                    transition: "all 0.2s ease-in-out",
                   }}
                   onMouseEnter={(e) => {
                     (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)";
-                    (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 12px rgba(33,12,174,0.25)";
+                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#4F46E5";
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 14px rgba(99, 102, 241, 0.35)";
                   }}
                   onMouseLeave={(e) => {
                     (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-                    (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 2px 6px rgba(33,12,174,0.15)";
+                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#6366F1";
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 2px 8px rgba(99, 102, 241, 0.25)";
                   }}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                  Add Asset
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                  + Add Asset
                 </button>
               )}
             </div>
@@ -1317,10 +1409,10 @@ export const CatalogTab = ({
                   </div>
                 )}
 
-                <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.82rem" }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <th style={{ padding: "0.6rem 0.5rem", width: "44px", textAlign: "center" }}>
+                <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, textAlign: "left", fontSize: "14px" }}>
+                  <thead style={{ position: "sticky", top: 0, backgroundColor: "#F9FAFB", zIndex: 10 }}>
+                    <tr style={{ borderBottom: "1px solid #E5E7EB" }}>
+                      <th style={{ padding: "12px 16px", width: "48px", textAlign: "center", borderBottom: "1px solid #E5E7EB", position: "sticky", left: 0, backgroundColor: "#F9FAFB", zIndex: 11 }}>
                         <button
                           type="button"
                           onClick={onToggleSelectAll}
@@ -1330,8 +1422,8 @@ export const CatalogTab = ({
                             width: 20,
                             height: 20,
                             borderRadius: "50%",
-                            border: allSelected ? "2px solid #210cae" : "2px solid #94a3b8",
-                            backgroundColor: allSelected ? "#210cae" : "transparent",
+                            border: allSelected ? "2px solid #DC2626" : "2px solid #D1D5DB",
+                            backgroundColor: allSelected ? "#DC2626" : "transparent",
                             cursor: "pointer",
                             display: "inline-flex",
                             alignItems: "center",
@@ -1342,19 +1434,19 @@ export const CatalogTab = ({
                           }}
                         >
                           {allSelected && (
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
                               <polyline points="20 6 9 17 4 12" />
                             </svg>
                           )}
                         </button>
                       </th>
-                      <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Asset / SKU</th>
-                      <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Category</th>
-                      <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Category Type</th>
-                      <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Unit Price</th>
-                      <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Stock Level</th>
-                      <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600, textAlign: "right" }}>Lead Time</th>
-                      <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600, textAlign: "right" }}>Actions</th>
+                      <th style={{ padding: "12px 16px", color: "#6B7280", fontWeight: 600, fontSize: "12px", borderBottom: "1px solid #E5E7EB", position: "sticky", left: "48px", backgroundColor: "#F9FAFB", zIndex: 11 }}>Asset / SKU</th>
+                      <th style={{ padding: "12px 16px", color: "#6B7280", fontWeight: 600, fontSize: "12px", borderBottom: "1px solid #E5E7EB" }}>Category</th>
+                      <th style={{ padding: "12px 16px", color: "#6B7280", fontWeight: 600, fontSize: "12px", borderBottom: "1px solid #E5E7EB" }}>Category Type</th>
+                      <th style={{ padding: "12px 16px", color: "#6B7280", fontWeight: 600, fontSize: "12px", borderBottom: "1px solid #E5E7EB" }}>Unit Price</th>
+                      <th style={{ padding: "12px 16px", color: "#6B7280", fontWeight: 600, fontSize: "12px", borderBottom: "1px solid #E5E7EB" }}>Stock Level</th>
+                      <th style={{ padding: "12px 16px", color: "#6B7280", fontWeight: 600, fontSize: "12px", borderBottom: "1px solid #E5E7EB", textAlign: "right" }}>Lead Time</th>
+                      <th style={{ padding: "12px 16px", color: "#6B7280", fontWeight: 600, fontSize: "12px", borderBottom: "1px solid #E5E7EB", textAlign: "right" }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1366,11 +1458,11 @@ export const CatalogTab = ({
                       const reorderPt = siteStock ? siteStock.reorderPoint : (it.reorderPoint || 5);
                       const isSelected = selectedItemIds.includes(it.id);
 
-                      let stockColor = "#10b981", bg = "#d1fae5";
+                      let stockColor = "#047857", bg = "linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)", stockBorder = "#6EE7B7", stockLabel = "In Stock";
                       if (quantity === 0) {
-                        stockColor = "#ef4444"; bg = "#fee2e2";
+                        stockColor = "#BE123C"; bg = "linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%)"; stockBorder = "#FDA4AF"; stockLabel = "Out of Stock";
                       } else if (quantity <= reorderPt) {
-                        stockColor = "#f59e0b"; bg = "#fffbeb";
+                        stockColor = "#B45309"; bg = "linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)"; stockBorder = "#FCD34D"; stockLabel = "Low Stock";
                       }
 
                       const isConsumable = it.category?.type === "CONSUMABLE";
@@ -1379,12 +1471,18 @@ export const CatalogTab = ({
                         <tr key={it.id}
                           className="animated-row"
                           style={{
-                            borderBottom: "1px solid #f8fafc",
-                            backgroundColor: isSelected ? "rgba(33, 12, 174, 0.04)" : undefined,
-                            animationDelay: `${index * 0.04}s`,
+                            borderBottom: "1px solid #F3F4F6",
+                            backgroundColor: isSelected ? "#FEF2F2" : undefined,
+                            transition: "background-color 0.15s ease",
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isSelected) e.currentTarget.style.backgroundColor = "#F9FAFB";
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isSelected) e.currentTarget.style.backgroundColor = "transparent";
                           }}
                         >
-                          <td style={{ padding: "0.75rem 0.5rem", textAlign: "center" }}>
+                          <td style={{ padding: "14px 16px", textAlign: "center", borderBottom: "1px solid #F3F4F6", position: "sticky", left: 0, backgroundColor: isSelected ? "#FEF2F2" : "#FFFFFF", zIndex: 1 }}>
                             <button
                               type="button"
                               onClick={(e) => {
@@ -1396,143 +1494,180 @@ export const CatalogTab = ({
                                 width: 20,
                                 height: 20,
                                 borderRadius: "50%",
-                                border: isSelected ? "2px solid #210cae" : "2px solid #cbd5e1",
-                                backgroundColor: isSelected ? "#210cae" : "#ffffff",
+                                border: isSelected ? "2px solid #DC2626" : "2px solid #D1D5DB",
+                                backgroundColor: isSelected ? "#DC2626" : "#FFFFFF",
                                 cursor: "pointer",
                                 display: "inline-flex",
                                 alignItems: "center",
                                 justifyContent: "center",
                                 padding: 0,
                                 transition: "all 0.2s ease",
-                                boxShadow: isSelected ? "0 2px 5px rgba(33,12,174,0.3)" : "none",
                                 outline: "none",
-                              }}
-                              onMouseEnter={(e) => {
-                                if (!isSelected) {
-                                  e.currentTarget.style.borderColor = "#210cae";
-                                  e.currentTarget.style.backgroundColor = "#f0f4fe";
-                                }
-                              }}
-                              onMouseLeave={(e) => {
-                                if (!isSelected) {
-                                  e.currentTarget.style.borderColor = "#cbd5e1";
-                                  e.currentTarget.style.backgroundColor = "#ffffff";
-                                }
                               }}
                             >
                               {isSelected && (
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
                                   <polyline points="20 6 9 17 4 12" />
                                 </svg>
                               )}
                             </button>
                           </td>
-                          <td style={{ padding: "0.75rem 0.5rem", color: "#1e293b" }}>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
-                              <span style={{ fontWeight: 600, fontSize: "0.85rem" }}>{it.name}</span>
-                              <span style={{ fontSize: "0.68rem", color: "#64748b", fontFamily: "monospace" }}>SKU: {it.sku}</span>
+                          <td style={{ padding: "14px 16px", color: "#111827", borderBottom: "1px solid #F3F4F6", position: "sticky", left: "48px", backgroundColor: isSelected ? "#FEF2F2" : "#FFFFFF", zIndex: 1 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                              <div style={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: "50%",
+                                backgroundColor: isConsumable ? "#EFF6FF" : "#F5F3FF",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                                color: isConsumable ? "#1D4ED8" : "#6D28D9",
+                              }}>
+                                {getCategoryIcon(it.category?.name || "", it.name, 18)}
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                                <span style={{ fontWeight: 600, fontSize: "14px", color: "#111827" }}>{it.name}</span>
+                                <span style={{ fontSize: "12px", color: "#6B7280" }}>SKU: {it.sku}</span>
+                              </div>
                             </div>
                           </td>
-                          <td style={{ padding: "0.75rem 0.5rem", color: "#64748b" }}>{it.category?.name || "Uncategorized"}</td>
-                          <td style={{ padding: "0.75rem 0.5rem" }}>
-                            <span style={{
-                              display: "inline-block",
-                              padding: "0.15rem 0.4rem",
-                              borderRadius: 6,
-                              fontSize: "0.7rem",
-                              fontWeight: 600,
-                              backgroundColor: isConsumable ? "#fff3c7" : "#e0f2fe",
-                              color: isConsumable ? "#b45309" : "#0369a1",
-                            }}>
-                              {isConsumable ? "Consumable" : "Non-Consumable"}
-                            </span>
+                          <td style={{ padding: "14px 16px", color: "#6B7280", borderBottom: "1px solid #F3F4F6" }}>{it.category?.name || "Uncategorized"}</td>
+                          <td style={{ padding: "14px 16px", borderBottom: "1px solid #F3F4F6" }}>
+                            <AssetTypeBadge type={it.category?.type} categoryName={it.category?.name} size="sm" />
                           </td>
-                          <td style={{ padding: "0.75rem 0.5rem", fontWeight: 700 }}>
+                          <td style={{ padding: "14px 16px", fontWeight: 600, color: "#111827", borderBottom: "1px solid #F3F4F6" }}>
                             ₱{(it.unitPrice || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
-                          <td style={{ padding: "0.75rem 0.5rem" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                          <td style={{ padding: "14px 16px", borderBottom: "1px solid #F3F4F6" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                               <span style={{
                                 display: "inline-block",
-                                padding: "0.15rem 0.45rem",
-                                borderRadius: 6,
-                                fontSize: "0.72rem",
+                                padding: "3px 10px",
+                                borderRadius: "9999px",
+                                fontSize: "12px",
                                 fontWeight: 700,
-                                backgroundColor: bg,
+                                background: bg,
                                 color: stockColor,
+                                border: `1px solid ${stockBorder}`,
+                                boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
                               }}>
-                                {quantity}
+                                {quantity} ({stockLabel})
                               </span>
-                              <span style={{ fontSize: "0.68rem", color: "#94a3b8" }}>min {reorderPt}</span>
+                              <span style={{ fontSize: "12px", color: "#9CA3AF" }}>min {reorderPt}</span>
                             </div>
                           </td>
-                          <td style={{ padding: "0.75rem 0.5rem", color: "#64748b", textAlign: "right" }}>{it.leadTimeDays} {it.leadTimeDays === 1 ? "day" : "days"}</td>
-                          <td style={{ padding: "0.75rem 0.5rem", textAlign: "right" }}>
-                            <div style={{ display: "inline-flex", alignItems: "center", border: "1px solid #cbd5e1", borderRadius: "6px", overflow: "hidden", backgroundColor: "#ffffff", boxShadow: "0 1px 2px rgba(15,23,42,0.02)" }}>
-                              {[
-                                {
-                                  title: "Adjust stock levels",
-                                  icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>,
-                                  onClick: () => onOpenStockModal(it),
-                                  color: "#475569",
-                                  hoverBg: "#f1f5f9",
-                                  show: canAdjustStock
-                                },
-                                {
-                                  title: "View Asset Tags",
-                                  icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1" /></svg>,
-                                  onClick: () => onOpenViewTags(it),
-                                  color: "#210cae",
-                                  hoverBg: "rgba(33,12,174,0.06)",
-                                  show: it.category?.type === "NON_CONSUMABLE"
-                                },
-                                {
-                                  title: "Edit Item Info",
-                                  icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>,
-                                  onClick: () => onOpenEditModal(it),
-                                  color: "#475569",
-                                  hoverBg: "#f1f5f9",
-                                  show: canEditAddRemove
-                                },
-                                {
-                                  title: "View Change History",
-                                  icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>,
-                                  onClick: () => onOpenHistoryModal(it),
-                                  color: "#475569",
-                                  hoverBg: "#f1f5f9",
-                                  show: true
-                                },
-                                {
-                                  title: "Delete Item",
-                                  icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>,
-                                  onClick: () => onDeleteTarget("item", it.id, it.name),
-                                  color: "#dc2626",
-                                  hoverBg: "#fee2e2",
-                                  show: canEditAddRemove
-                                }
-                              ].filter(act => act.show).map((act, idx, arr) => (
+                          <td style={{ padding: "14px 16px", color: "#6B7280", textAlign: "right", borderBottom: "1px solid #F3F4F6" }}>{it.leadTimeDays} {it.leadTimeDays === 1 ? "day" : "days"}</td>
+                          <td style={{ padding: "14px 16px", textAlign: "right", borderBottom: "1px solid #F3F4F6" }}>
+                            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                              {canAdjustStock && (
                                 <button
-                                  key={idx}
-                                  onClick={(e) => { e.stopPropagation(); act.onClick(); }}
-                                  title={act.title}
+                                  onClick={() => onOpenStockModal(it)}
                                   style={{
-                                    background: "none",
+                                    height: "32px",
+                                    padding: "0 10px",
+                                    borderRadius: "6px",
+                                    backgroundColor: "#6366F1",
+                                    color: "#FFFFFF",
                                     border: "none",
+                                    fontSize: "12px",
+                                    fontWeight: 600,
                                     cursor: "pointer",
-                                    color: act.color,
-                                    padding: "6px 9px",
+                                    transition: "all 0.15s ease",
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#4F46E5"}
+                                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#6366F1"}
+                                >
+                                  Adjust Stock
+                                </button>
+                              )}
+                              {it.category?.type === "NON_CONSUMABLE" && (
+                                <button
+                                  onClick={() => onOpenViewTags(it)}
+                                  title="View Asset Tags"
+                                  style={{
+                                    width: "32px",
+                                    height: "32px",
+                                    borderRadius: "50%",
+                                    backgroundColor: "#FFFFFF",
+                                    border: "1px solid #E5E7EB",
+                                    cursor: "pointer",
+                                    color: "#374151",
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    borderRight: idx < arr.length - 1 ? "1px solid #cbd5e1" : "none",
-                                    transition: "background-color 0.15s ease",
                                   }}
-                                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = act.hoverBg}
-                                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F3F4F6"}
+                                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#FFFFFF"}
                                 >
-                                  {act.icon}
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1" /></svg>
                                 </button>
-                              ))}
+                              )}
+                              {canEditAddRemove && (
+                                <button
+                                  onClick={() => onOpenEditModal(it)}
+                                  title="Edit Item Info"
+                                  style={{
+                                    width: "32px",
+                                    height: "32px",
+                                    borderRadius: "50%",
+                                    backgroundColor: "#FFFFFF",
+                                    border: "1px solid #E5E7EB",
+                                    cursor: "pointer",
+                                    color: "#374151",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F3F4F6"}
+                                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#FFFFFF"}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
+                                </button>
+                              )}
+                              <button
+                                onClick={() => onOpenHistoryModal(it)}
+                                title="View Change History"
+                                style={{
+                                  width: "32px",
+                                  height: "32px",
+                                  borderRadius: "50%",
+                                  backgroundColor: "#FFFFFF",
+                                  border: "1px solid #E5E7EB",
+                                  cursor: "pointer",
+                                  color: "#374151",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F3F4F6"}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#FFFFFF"}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                              </button>
+                              {canEditAddRemove && (
+                                <button
+                                  onClick={() => onDeleteTarget("item", it.id, it.name)}
+                                  title="Delete Item"
+                                  style={{
+                                    width: "32px",
+                                    height: "32px",
+                                    borderRadius: "50%",
+                                    backgroundColor: "#FFFFFF",
+                                    border: "1px solid #FEE2E2",
+                                    cursor: "pointer",
+                                    color: "#DC2626",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#FEE2E2"}
+                                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#FFFFFF"}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1724,7 +1859,7 @@ export const CatalogTab = ({
                 <div style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))",
-                  gap: "1.1rem",
+                  gap: "24px",
                 }}>
                   {filteredItems.map((it) => {
                     const siteStock = (selectedSiteId && selectedSiteId !== "ALL") ? it.stockLevels?.find(sl => sl.siteId === selectedSiteId) : null;
@@ -1735,24 +1870,24 @@ export const CatalogTab = ({
                     const isSelected = selectedItemIds.includes(it.id);
                     const fillPct = quantity === 0 ? 0 : Math.min((quantity / Math.max(reorderPt * 2, 10)) * 100, 100);
 
-                    let stockBadgeColor = "#10b981";
-                    let stockBg = "#d1fae5";
+                    let stockBadgeColor = "#047857";
+                    let stockBg = "linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)";
+                    let stockBorder = "#6EE7B7";
                     let stockLabel = "In Stock";
-                    let headerGradient = "linear-gradient(135deg, rgba(224, 231, 255, 0.9) 0%, rgba(219, 234, 254, 0.85) 60%, rgba(224, 242, 254, 0.8) 100%)";
-                    let iconColor = "#210cae";
+                    let progressBarColor = "linear-gradient(90deg, #10B981 0%, #059669 100%)";
 
                     if (quantity === 0) {
-                      stockBadgeColor = "#ef4444";
-                      stockBg = "#fee2e2";
+                      stockBadgeColor = "#BE123C";
+                      stockBg = "linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%)";
+                      stockBorder = "#FDA4AF";
                       stockLabel = "Out of Stock";
-                      headerGradient = "linear-gradient(135deg, rgba(254, 226, 226, 0.9) 0%, rgba(254, 242, 242, 0.85) 100%)";
-                      iconColor = "#dc2626";
+                      progressBarColor = "#EF4444";
                     } else if (quantity <= reorderPt) {
-                      stockBadgeColor = "#f59e0b";
-                      stockBg = "#fffbeb";
+                      stockBadgeColor = "#B45309";
+                      stockBg = "linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)";
+                      stockBorder = "#FCD34D";
                       stockLabel = "Low Stock";
-                      headerGradient = "linear-gradient(135deg, rgba(254, 243, 199, 0.9) 0%, rgba(254, 249, 195, 0.85) 100%)";
-                      iconColor = "#d97706";
+                      progressBarColor = "linear-gradient(90deg, #F59E0B 0%, #D97706 100%)";
                     }
 
                     const isConsumable = it.category?.type === "CONSUMABLE";
@@ -1760,45 +1895,44 @@ export const CatalogTab = ({
                     return (
                       <div
                         key={it.id}
-                        className="catalog-card card-shine-effect"
+                        className="catalog-card"
                         onClick={() => onToggleSelectItem(it.id, showCircles)}
                         style={{
-                          backgroundColor: "transparent",
-                          borderRadius: 14,
-                          border: isSelected ? "2px solid #210cae" : "1px solid rgba(77, 201, 230, 0.4)",
+                          backgroundColor: "#FFFFFF",
+                          borderRadius: "16px",
+                          border: isSelected ? "2px solid #6366F1" : "1px solid #E5E7EB",
                           display: "flex",
                           flexDirection: "column",
                           position: "relative",
                           overflow: "hidden",
                           transition: "all 0.2s ease-in-out",
                           boxShadow: isSelected
-                            ? "0 0 0 3px rgba(33,12,174,0.1), 0 8px 20px rgba(33,12,174,0.08)"
-                            : "0 2px 8px rgba(33,12,174,0.04), 0 0 0 1px rgba(77,201,230,0.25)",
+                            ? "0 0 0 3px rgba(220, 38, 38, 0.15), 0 8px 24px rgba(0,0,0,.08)"
+                            : "0 4px 12px rgba(0,0,0,.05)",
                           cursor: "pointer",
                         }}
                         onMouseEnter={(e) => {
                           if (!isSelected) {
                             e.currentTarget.style.transform = "translateY(-3px)";
-                            e.currentTarget.style.boxShadow = "0 12px 24px rgba(33,12,174,0.1), 0 0 0 1px #4dc9e6";
+                            e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,.08)";
                           }
                         }}
                         onMouseLeave={(e) => {
                           if (!isSelected) {
                             e.currentTarget.style.transform = "translateY(0)";
-                            e.currentTarget.style.boxShadow = "0 2px 8px rgba(33,12,174,0.04), 0 0 0 1px rgba(77,201,230,0.25)";
+                            e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,.05)";
                           }
                         }}
                       >
-                        {/* Card Header with circular selection button + icon + badges */}
+                        {/* Card Header with circular selection button + icon + filled badges */}
                         <div style={{
-                          background: isSelected ? "linear-gradient(135deg, rgba(33,12,174,0.14) 0%, rgba(77,201,230,0.1) 100%)" : headerGradient,
-                          padding: "1rem 1.1rem 0.85rem",
+                          padding: "20px 24px 16px",
                           display: "flex",
                           alignItems: "flex-start",
-                          gap: "0.75rem",
-                          borderBottom: "1px solid rgba(77,201,230,0.25)",
+                          gap: "14px",
+                          borderBottom: "1px solid #F3F4F6",
                         }}>
-                          {/* Circular selection button to left of card - displayed ONLY when showCircles (multi-select mode) is true */}
+                          {/* Circular selection button to left of card - displayed ONLY when showCircles is true */}
                           {showCircles && (
                             <button
                               type="button"
@@ -1808,11 +1942,11 @@ export const CatalogTab = ({
                               }}
                               aria-label={`Select ${it.name}`}
                               style={{
-                                width: 20,
-                                height: 20,
+                                width: 22,
+                                height: 22,
                                 borderRadius: "50%",
-                                border: isSelected ? "2px solid #210cae" : "2px solid #94a3b8",
-                                backgroundColor: isSelected ? "#210cae" : "#ffffff",
+                                border: isSelected ? "2px solid #DC2626" : "2px solid #D1D5DB",
+                                backgroundColor: isSelected ? "#DC2626" : "#FFFFFF",
                                 cursor: "pointer",
                                 display: "flex",
                                 alignItems: "center",
@@ -1821,215 +1955,230 @@ export const CatalogTab = ({
                                 marginTop: "2px",
                                 padding: 0,
                                 transition: "all 0.2s ease",
-                                boxShadow: isSelected ? "0 2px 5px rgba(33,12,174,0.3)" : "none",
                                 outline: "none",
-                              }}
-                              onMouseEnter={(e) => {
-                                if (!isSelected) {
-                                  e.currentTarget.style.borderColor = "#210cae";
-                                  e.currentTarget.style.backgroundColor = "#f0f4fe";
-                                }
-                              }}
-                              onMouseLeave={(e) => {
-                                if (!isSelected) {
-                                  e.currentTarget.style.borderColor = "#94a3b8";
-                                  e.currentTarget.style.backgroundColor = "#ffffff";
-                                }
                               }}
                             >
                               {isSelected && (
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
                                   <polyline points="20 6 9 17 4 12" />
                                 </svg>
                               )}
                             </button>
                           )}
 
-                          {/* Category icon avatar */}
+                          {/* Large Lucide Product Icon in soft circular background */}
                           <div style={{
-                            width: 40, height: 40, borderRadius: 10,
-                            backgroundColor: isSelected ? "rgba(33,12,174,0.1)" : "rgba(255,255,255,0.8)",
-                            display: "flex", alignItems: "center", justifyContent: "center",
+                            width: 48,
+                            height: 48,
+                            borderRadius: "50%",
+                            backgroundColor: isConsumable ? "#EFF6FF" : "#F5F3FF",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
                             flexShrink: 0,
-                            color: isSelected ? "#210cae" : iconColor,
-                            border: "1px solid rgba(0,0,0,0.06)",
-                            boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                            color: isConsumable ? "#1D4ED8" : "#6D28D9",
                           }}>
-                            {getCategoryIcon(it.category?.name || "", it.name)}
+                            {getCategoryIcon(it.category?.name || "", it.name, 24)}
                           </div>
 
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.25rem" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", marginBottom: "6px" }}>
+                              {/* Category Type Badge */}
+                              <AssetTypeBadge type={it.category?.type} categoryName={it.category?.name} size="sm" />
+
+                              {/* Stock Status Badge */}
                               <span style={{
-                                padding: "0.18rem 0.55rem", borderRadius: 6,
-                                fontSize: "0.62rem", fontWeight: 800,
-                                letterSpacing: "0.04em",
-                                background: isConsumable 
-                                  ? "linear-gradient(135deg, #fff1f2 0%, #ffe4e6 60%, rgba(225, 29, 72, 0.15) 100%)" 
-                                  : "linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(148, 163, 184, 0.15) 100%)",
-                                color: isConsumable ? "#9f1239" : "#334155",
-                                border: isConsumable ? "1px solid rgba(225, 29, 72, 0.40)" : "1px solid rgba(148, 163, 184, 0.45)",
-                                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                              }}>
-                                {isConsumable ? "CONSUMABLE" : "NON-CONSUMABLE"}
-                              </span>
-                              <span style={{
-                                padding: "0.18rem 0.55rem", borderRadius: 6,
-                                fontSize: "0.62rem", fontWeight: 800,
-                                letterSpacing: "0.04em",
-                                background: stockLabel === "In Stock" 
-                                  ? "linear-gradient(135deg, #ffffff 0%, #f1f5f9 50%, rgba(20, 184, 166, 0.12) 100%)" 
-                                  : stockLabel === "Low Stock"
-                                  ? "linear-gradient(135deg, #fff1f2 0%, #ffe4e6 50%, rgba(225, 29, 72, 0.12) 100%)"
-                                  : "linear-gradient(135deg, #fff1f2 0%, #fecaca 50%, rgba(225, 29, 72, 0.25) 100%)",
-                                color: stockLabel === "In Stock" ? "#0f766e" : stockLabel === "Low Stock" ? "#9f1239" : "#881337",
-                                border: stockLabel === "In Stock" ? "1px solid rgba(20, 184, 166, 0.45)" : stockLabel === "Low Stock" ? "1px solid rgba(225, 29, 72, 0.40)" : "1px solid rgba(225, 29, 72, 0.60)",
-                                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                                padding: "3px 10px",
+                                borderRadius: "9999px",
+                                fontSize: "11px",
+                                fontWeight: 700,
+                                background: stockBg,
+                                color: stockBadgeColor,
+                                border: `1px solid ${stockBorder}`,
+                                boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
                               }}>
                                 {stockLabel}
                               </span>
                             </div>
                             <h4 style={{
-                              fontSize: "0.9rem", fontWeight: 700, color: "#0f172a",
-                              margin: 0, lineHeight: 1.3,
-                              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                              fontSize: "18px",
+                              fontWeight: 600,
+                              color: "#111827",
+                              margin: 0,
+                              lineHeight: 1.3,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
                             }}>
                               {it.name}
                             </h4>
-                            <span style={{ fontSize: "0.68rem", color: "#64748b", marginTop: "0.1rem", display: "block" }}>
+                            <span style={{ fontSize: "12px", color: "#6B7280", marginTop: "2px", display: "block" }}>
                               {it.category?.name || "Uncategorized"}
                             </span>
                           </div>
                         </div>
 
                         {/* Card Body */}
-                        <div style={{ padding: "0.85rem 1.1rem", display: "flex", flexDirection: "column", gap: "0.7rem", flex: 1 }}
+                        <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "16px", flex: 1 }}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {/* Asset Tag / SKU */}
+                          {/* SKU / Asset Tag */}
                           {it.sku && (
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-                                <circle cx="7" cy="7" r="1" />
-                              </svg>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>SKU:</span>
                               <code style={{
-                                fontSize: "0.72rem",
-                                fontWeight: 800,
-                                color: "#3730a3",
-                                fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-                                background: "linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 50%, #e0e7ff 100%)",
-                                border: "1px solid #a5b4fc",
-                                padding: "0.15rem 0.5rem",
-                                borderRadius: 6,
-                                letterSpacing: "0.04em",
-                                boxShadow: "0 1px 3px rgba(79, 70, 229, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.6)",
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                color: "#374151",
+                                fontFamily: "'Inter', monospace",
+                                backgroundColor: "#F3F4F6",
+                                padding: "2px 8px",
+                                borderRadius: "6px",
+                                border: "1px solid #E5E7EB",
                               }}>
                                 {it.sku}
                               </code>
                             </div>
                           )}
 
-                          {/* Supplier Badge */}
+                          {/* Dedicated Supplier Section */}
                           {it.supplier && (
-                            <div style={{ display: "flex", alignItems: "center" }}>
-                              <span style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "0.45rem",
-                                fontSize: "0.72rem", fontWeight: 700,
-                                color: "#881337",
-                                background: "linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.08) 100%)",
-                                border: "1px solid rgba(225, 29, 72, 0.35)",
-                                padding: "0.25rem 0.65rem",
-                                borderRadius: "9999px",
-                                boxShadow: "0 1px 4px rgba(225, 29, 72, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
-                                maxWidth: "100%",
-                              }}>
-                                <span style={{
-                                  width: 22, height: 22, borderRadius: 7,
-                                  background: "linear-gradient(135deg, #e11d48 0%, #9f1239 100%)",
-                                  color: "#ffffff",
-                                  fontSize: "0.7rem", fontWeight: 800,
-                                  display: "flex", alignItems: "center", justifyContent: "center",
-                                  flexShrink: 0, boxShadow: "0 2px 5px rgba(225, 29, 72, 0.3)"
+                            <div style={{
+                              backgroundColor: "#F9FAFB",
+                              borderRadius: "12px",
+                              padding: "12px 14px",
+                              border: "1px solid #E5E7EB",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                            }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                <div style={{
+                                  width: 28,
+                                  height: 28,
+                                  borderRadius: "6px",
+                                  backgroundColor: "#EEF2FF",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  color: "#6366F1",
+                                  flexShrink: 0,
                                 }}>
-                                  {it.supplier.name.charAt(0).toUpperCase()}
-                                </span>
-                                <span>{it.supplier.name}</span>
-                                {it.supplier.supplierId && (
-                                  <span style={{
-                                    display: "inline-flex", alignItems: "center", gap: "0.2rem",
-                                    padding: "0.1rem 0.4rem", borderRadius: "9999px",
-                                    backgroundColor: "rgba(225, 29, 72, 0.12)", color: "#9f1239",
-                                    border: "1px solid rgba(225, 29, 72, 0.25)",
-                                    fontSize: "0.62rem", fontWeight: 800,
-                                    fontFamily: "'JetBrains Mono', monospace"
-                                  }}>
-                                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1"/></svg>
-                                    <span>{it.supplier.supplierId}</span>
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
+                                    <path d="M9 22v-4h6v4" />
+                                    <path d="M8 6h.01" />
+                                    <path d="M16 6h.01" />
+                                    <path d="M12 6h.01" />
+                                    <path d="M12 10h.01" />
+                                    <path d="M12 14h.01" />
+                                    <path d="M16 10h.01" />
+                                    <path d="M16 14h.01" />
+                                    <path d="M8 10h.01" />
+                                    <path d="M8 14h.01" />
+                                  </svg>
+                                </div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                                  <span style={{ fontSize: "13px", fontWeight: 600, color: "#111827" }}>
+                                    {it.supplier.name}
                                   </span>
-                                )}
-                              </span>
+                                  {it.supplier.supplierId && (
+                                    <span style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "6px",
+                                      padding: "2px 8px 2px 3px",
+                                      borderRadius: "999px",
+                                      border: "1px solid #C7D2FE",
+                                      backgroundColor: "#EEF2FF",
+                                      width: "fit-content",
+                                    }}>
+                                      <span style={{
+                                        width: "18px",
+                                        height: "18px",
+                                        borderRadius: "50%",
+                                        border: "1.5px solid #818CF8",
+                                        backgroundColor: "#FFFFFF",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontSize: "9px",
+                                        fontWeight: 700,
+                                        color: "#4338CA",
+                                        flexShrink: 0,
+                                      }}>S</span>
+                                      <span style={{ fontSize: "11px", fontWeight: 600, color: "#4338CA" }}>
+                                        {it.supplier.supplierId}
+                                      </span>
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           )}
 
                           {/* Description */}
                           {it.description && (
                             <p style={{
-                              fontSize: "0.73rem", color: "#64748b", margin: 0,
-                              display: "-webkit-box", WebkitLineClamp: 2,
-                              WebkitBoxOrient: "vertical", overflow: "hidden",
+                              fontSize: "14px",
+                              color: "#6B7280",
+                              margin: 0,
+                              display: "-webkit-box",
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical",
+                              overflow: "hidden",
                               lineHeight: 1.5,
                             }}>
                               {it.description}
                             </p>
                           )}
 
-                          {/* Price + Lead Time row */}
+                          {/* Price + Lead Time Grid */}
                           <div style={{
-                            display: "grid", gridTemplateColumns: "1fr 1fr",
-                            gap: "0.5rem",
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr",
+                            gap: "12px",
                           }}>
                             <div style={{
-                              backgroundColor: "#f8fafc", borderRadius: 8, padding: "0.5rem 0.65rem",
-                              border: "1px solid #f1f5f9",
+                              backgroundColor: "#F9FAFB",
+                              borderRadius: "10px",
+                              padding: "10px 12px",
+                              border: "1px solid #E5E7EB",
                             }}>
-                              <span style={{ fontSize: "0.6rem", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", display: "block" }}>Unit Price</span>
-                              <span style={{ fontSize: "0.92rem", fontWeight: 800, color: "#1e293b" }}>
+                              <span style={{ fontSize: "11px", color: "#6B7280", fontWeight: 500, textTransform: "uppercase", display: "block" }}>Unit Price</span>
+                              <span style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
                                 ₱{(it.unitPrice || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
                             <div style={{
-                              backgroundColor: "#f8fafc", borderRadius: 8, padding: "0.5rem 0.65rem",
-                              border: "1px solid #f1f5f9",
+                              backgroundColor: "#F9FAFB",
+                              borderRadius: "10px",
+                              padding: "10px 12px",
+                              border: "1px solid #E5E7EB",
                             }}>
-                              <span style={{ fontSize: "0.6rem", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", display: "block" }}>Lead Time</span>
-                              <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#475569" }}>
+                              <span style={{ fontSize: "11px", color: "#6B7280", fontWeight: 500, textTransform: "uppercase", display: "block" }}>Lead Time</span>
+                              <span style={{ fontSize: "14px", fontWeight: 600, color: "#374151" }}>
                                 {it.leadTimeDays} {it.leadTimeDays === 1 ? "day" : "days"}
                               </span>
                             </div>
                           </div>
 
-                          {/* Stock level bar */}
-                          <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                          {/* 8px Animated Capacity Progress Bar */}
+                          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                                <span style={{ fontSize: "1.05rem", fontWeight: 800, color: quantity === 0 ? "#ef4444" : "#0f172a" }}>{quantity}</span>
-                                <span style={{ fontSize: "0.65rem", color: "#94a3b8" }}>/ min {reorderPt}</span>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <span style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>{quantity}</span>
+                                <span style={{ fontSize: "12px", color: "#6B7280" }}>/ min {reorderPt}</span>
                               </div>
-                              <span style={{ fontSize: "0.65rem", fontWeight: 700, color: stockBadgeColor }}>{Math.round(fillPct)}% capacity</span>
+                              <span style={{ fontSize: "12px", fontWeight: 600, color: stockBadgeColor }}>{Math.round(fillPct)}% capacity</span>
                             </div>
-                            <div style={{ width: "100%", height: "8px", backgroundColor: "#e2e8f0", borderRadius: "4px", border: "1px solid #cbd5e1", overflow: "hidden" }}>
+                            <div style={{ width: "100%", height: "8px", backgroundColor: "#E5E7EB", borderRadius: "4px", overflow: "hidden" }}>
                               <div style={{
-                                width: `${fillPct}%`, height: "100%",
-                                background: quantity === 0
-                                  ? "#ef4444"
-                                  : quantity <= reorderPt
-                                    ? "linear-gradient(90deg, #f59e0b, #fbbf24)"
-                                    : "linear-gradient(90deg, #94a3b8 0%, #64748b 50%, #334155 100%)",
+                                width: `${fillPct}%`,
+                                height: "100%",
+                                background: progressBarColor,
                                 borderRadius: "4px",
-                                transition: "width 0.35s ease",
+                                transition: "width 0.4s ease-in-out",
                               }} />
                             </div>
                           </div>
@@ -2037,14 +2186,16 @@ export const CatalogTab = ({
 
                         {/* Card Footer action bar */}
                         <div style={{
-                          display: "flex", alignItems: "center", justifyContent: "space-between",
-                          padding: "0.6rem 1.1rem",
-                          borderTop: "1px solid #f1f5f9",
-                          backgroundColor: "#fafbfc",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "16px 24px",
+                          borderTop: "1px solid #F3F4F6",
+                          backgroundColor: "#F9FAFB",
                         }}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {/* Adjust Stock */}
+                          {/* Primary Action Button: Adjust Stock */}
                           {canAdjustStock && (
                             <button
                               onClick={(e) => {
@@ -2052,21 +2203,36 @@ export const CatalogTab = ({
                                 onOpenStockModal(it);
                               }}
                               style={{
-                                display: "flex", alignItems: "center", gap: "0.3rem",
-                                background: "none", border: "none", cursor: "pointer",
-                                color: "#475569", fontSize: "0.72rem", fontWeight: 600,
-                                padding: "4px 6px", borderRadius: 5, transition: "all 0.15s ease",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                backgroundColor: "#6366F1",
+                                color: "#FFFFFF",
+                                border: "none",
+                                borderRadius: "8px",
+                                padding: "8px 14px",
+                                fontSize: "13px",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                boxShadow: "0 1px 3px rgba(99, 102, 241, 0.25)",
+                                transition: "all 0.15s ease",
                               }}
-                              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#f1f5f9"; e.currentTarget.style.color = "#0f172a"; }}
-                              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#475569"; }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = "#4F46E5";
+                                e.currentTarget.style.transform = "translateY(-1px)";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = "#6366F1";
+                                e.currentTarget.style.transform = "translateY(0)";
+                              }}
                             >
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                               Adjust Stock
                             </button>
                           )}
 
-                          {/* Right actions */}
-                          <div style={{ display: "flex", gap: "0.3rem", marginLeft: "auto" }}>
+                          {/* Secondary action icon buttons with soft circular hovers */}
+                          <div style={{ display: "flex", gap: "6px", marginLeft: "auto" }}>
                             {it.category?.type === "NON_CONSUMABLE" && (
                               <button
                                 onClick={(e) => {
@@ -2075,15 +2241,22 @@ export const CatalogTab = ({
                                 }}
                                 title="View Asset Tags"
                                 style={{
-                                  background: "#ffffff", border: "1px solid #e2e8f0", cursor: "pointer",
-                                  color: "#210cae", padding: "6px", borderRadius: "6px",
-                                  display: "flex", alignItems: "center", justifyContent: "center",
-                                  boxShadow: "0 1px 2px rgba(0,0,0,0.02)", transition: "all 0.15s ease",
+                                  width: "36px",
+                                  height: "36px",
+                                  borderRadius: "50%",
+                                  backgroundColor: "#FFFFFF",
+                                  border: "1px solid #E5E7EB",
+                                  cursor: "pointer",
+                                  color: "#374151",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  transition: "all 0.15s ease",
                                 }}
-                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "rgba(33,12,174,0.05)"; e.currentTarget.style.borderColor = "#210cae"; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#ffffff"; e.currentTarget.style.borderColor = "#e2e8f0"; }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#F3F4F6"; e.currentTarget.style.color = "#111827"; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#FFFFFF"; e.currentTarget.style.color = "#374151"; }}
                               >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1" /></svg>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><circle cx="7" cy="7" r="1" /></svg>
                               </button>
                             )}
                             {canEditAddRemove && (
@@ -2094,15 +2267,22 @@ export const CatalogTab = ({
                                 }}
                                 title="Edit Item"
                                 style={{
-                                  background: "#ffffff", border: "1px solid #e2e8f0", cursor: "pointer",
-                                  color: "#475569", padding: "6px", borderRadius: "6px",
-                                  display: "flex", alignItems: "center", justifyContent: "center",
-                                  boxShadow: "0 1px 2px rgba(0,0,0,0.02)", transition: "all 0.15s ease",
+                                  width: "36px",
+                                  height: "36px",
+                                  borderRadius: "50%",
+                                  backgroundColor: "#FFFFFF",
+                                  border: "1px solid #E5E7EB",
+                                  cursor: "pointer",
+                                  color: "#374151",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  transition: "all 0.15s ease",
                                 }}
-                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#f1f5f9"; e.currentTarget.style.borderColor = "#94a3b8"; e.currentTarget.style.color = "#0f172a"; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#ffffff"; e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.color = "#475569"; }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#F3F4F6"; e.currentTarget.style.color = "#111827"; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#FFFFFF"; e.currentTarget.style.color = "#374151"; }}
                               >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                               </button>
                             )}
 
@@ -2113,15 +2293,22 @@ export const CatalogTab = ({
                               }}
                               title="View Change History"
                               style={{
-                                background: "#ffffff", border: "1px solid #e2e8f0", cursor: "pointer",
-                                color: "#475569", padding: "6px", borderRadius: "6px",
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                boxShadow: "0 1px 2px rgba(0,0,0,0.02)", transition: "all 0.15s ease",
+                                width: "36px",
+                                height: "36px",
+                                borderRadius: "50%",
+                                backgroundColor: "#FFFFFF",
+                                border: "1px solid #E5E7EB",
+                                cursor: "pointer",
+                                color: "#374151",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                transition: "all 0.15s ease",
                               }}
-                              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#f1f5f9"; e.currentTarget.style.borderColor = "#94a3b8"; e.currentTarget.style.color = "#210cae"; }}
-                              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#ffffff"; e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.color = "#475569"; }}
+                              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#F3F4F6"; e.currentTarget.style.color = "#111827"; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#FFFFFF"; e.currentTarget.style.color = "#374151"; }}
                             >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
                             </button>
                             {canEditAddRemove && (
                               <button
@@ -2131,15 +2318,22 @@ export const CatalogTab = ({
                                 }}
                                 title="Delete Item"
                                 style={{
-                                  background: "#ffffff", border: "1px solid #e2e8f0", cursor: "pointer",
-                                  color: "#dc2626", padding: "6px", borderRadius: "6px",
-                                  display: "flex", alignItems: "center", justifyContent: "center",
-                                  boxShadow: "0 1px 2px rgba(0,0,0,0.02)", transition: "all 0.15s ease",
+                                  width: "36px",
+                                  height: "36px",
+                                  borderRadius: "50%",
+                                  backgroundColor: "#FFFFFF",
+                                  border: "1px solid #E5E7EB",
+                                  cursor: "pointer",
+                                  color: "#64748B",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  transition: "all 0.15s ease",
                                 }}
-                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#fee2e2"; e.currentTarget.style.borderColor = "#fca5a5"; e.currentTarget.style.color = "#b91c1c"; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#ffffff"; e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.color = "#dc2626"; }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#FEF2F2"; e.currentTarget.style.color = "#EF4444"; e.currentTarget.style.borderColor = "#FCA5A5"; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#FFFFFF"; e.currentTarget.style.color = "#64748B"; e.currentTarget.style.borderColor = "#E5E7EB"; }}
                               >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
                               </button>
                             )}
                           </div>
@@ -2317,7 +2511,7 @@ export const CatalogTab = ({
             backgroundColor: "#ffffff",
             borderRadius: "12px",
             boxShadow: "0 1px 2px rgba(15,23,42,0.02), 0 0 0 1px rgba(226,232,240,0.8)",
-            overflow: "hidden",
+            overflow: "visible",
           }}>
             {filteredDeployments.length === 0 ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "4rem 1rem", textAlign: "center" }}>
@@ -2328,7 +2522,7 @@ export const CatalogTab = ({
                 </span>
               </div>
             ) : (
-              <div style={{ overflowX: "auto", maxHeight: "550px", overflowY: "auto" }}>
+              <div style={{ overflowX: "auto", maxHeight: "550px", overflowY: "auto", borderRadius: "12px" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem", textAlign: "left" }}>
                   <thead style={{ position: "sticky", top: 0, backgroundColor: "#f8fafc", zIndex: 10, boxShadow: "0 1px 0 #e2e8f0" }}>
                     <tr>
@@ -2397,10 +2591,10 @@ export const CatalogTab = ({
                                   display: "inline-block",
                                   width: "fit-content",
                                   background: isConsumable 
-                                    ? "linear-gradient(135deg, #fff1f2 0%, #ffe4e6 60%, rgba(225, 29, 72, 0.15) 100%)" 
+                                    ? "linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)" 
                                     : "linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(148, 163, 184, 0.15) 100%)",
-                                  color: isConsumable ? "#9f1239" : "#334155",
-                                  border: isConsumable ? "1px solid rgba(225, 29, 72, 0.40)" : "1px solid rgba(148, 163, 184, 0.45)",
+                                  color: isConsumable ? "#B45309" : "#334155",
+                                  border: isConsumable ? "1px solid #FCD34D" : "1px solid rgba(148, 163, 184, 0.45)",
                                   boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
                                 }}>
                                   {isConsumable ? "CONSUMABLE" : "NON-CONSUMABLE"}
@@ -2416,7 +2610,8 @@ export const CatalogTab = ({
                             const isConsumable = catType === "CONSUMABLE";
                             
                             // Retrieve real asset tag for non-consumable items
-                            const displayTag = dep.assetTag || dep.rawRequest?.assetTag || dep.rawRequest?.asset?.tagCode || dep.rawRequest?.asset?.assetTag || (itemObj?.assets && itemObj.assets[0]?.tagCode) || (itemObj?.assets && itemObj.assets[0]?.assetTag) || `AST-${dep.id.substring(dep.id.length - 4).toUpperCase()}`;
+                            const fallbackId = (dep.id || "").substring((dep.id || "").length - 4).toUpperCase() || "0000";
+                            const displayTag = dep.assetTag || dep.rawRequest?.assetTag || dep.rawRequest?.asset?.tagCode || dep.rawRequest?.asset?.assetTag || (itemObj?.assets && itemObj.assets[0]?.tagCode) || (itemObj?.assets && itemObj.assets[0]?.assetTag) || `AST-${fallbackId}`;
 
                             if (isConsumable) {
                               return (
@@ -2448,23 +2643,26 @@ export const CatalogTab = ({
                         <td style={{ padding: "0.9rem 1.25rem" }}>
                           <span style={{
                             padding: "0.2rem 0.6rem",
-                            borderRadius: "12px",
+                            borderRadius: "9999px",
                             fontSize: "0.72rem",
                             fontWeight: 800,
                             letterSpacing: "0.04em",
                             background: dep.status === "RETURNED"
-                              ? (dep.returnCondition === "DAMAGED" ? "linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)" : dep.returnCondition === "MISSING" ? "linear-gradient(135deg, #fff1f2 0%, #fecaca 100%)" : "linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)")
-                              : "linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.12) 100%)",
+                              ? (dep.returnCondition === "DAMAGED" ? "linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)" : dep.returnCondition === "MISSING" ? "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)" : "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)")
+                              : "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
                             color: dep.status === "RETURNED"
-                              ? (dep.returnCondition === "DAMAGED" ? "#9f1239" : dep.returnCondition === "MISSING" ? "#881337" : "#334155")
-                              : "#be123c",
+                              ? (dep.returnCondition === "DAMAGED" ? "#991b1b" : dep.returnCondition === "MISSING" ? "#92400e" : "#065f46")
+                              : "#1e40af",
                             border: dep.status === "RETURNED"
-                              ? (dep.returnCondition === "DAMAGED" ? "1px solid rgba(225, 29, 72, 0.45)" : dep.returnCondition === "MISSING" ? "1px solid rgba(225, 29, 72, 0.60)" : "1px solid rgba(148, 163, 184, 0.45)")
-                              : "1px solid rgba(225, 29, 72, 0.40)",
-                            boxShadow: "0 1px 3px rgba(225, 29, 72, 0.10)"
+                              ? (dep.returnCondition === "DAMAGED" ? "1px solid #fca5a5" : dep.returnCondition === "MISSING" ? "1px solid #fcd34d" : "1px solid #6ee7b7")
+                              : "1px solid #93c5fd",
+                            boxShadow: dep.status === "RETURNED" ? "0 1px 3px rgba(16, 185, 129, 0.12)" : "0 1px 3px rgba(30, 64, 175, 0.10)",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
                           }}>
                             {dep.status === "RETURNED"
-                              ? (dep.returnCondition === "DAMAGED" ? "⚠️ DAMAGED" : dep.returnCondition === "MISSING" ? `❌ MISSING (${dep.missingCount || 1})` : "RETURNED")
+                              ? (dep.returnCondition === "DAMAGED" ? "⚠ DAMAGED" : dep.returnCondition === "MISSING" ? `✕ MISSING (${dep.missingCount || 1})` : "RETURNED")
                               : "ACTIVE"}
                           </span>
                         </td>
@@ -2492,20 +2690,9 @@ export const CatalogTab = ({
                                   boxShadow: "0 1px 3px rgba(225, 29, 72, 0.12)"
                                 }}
                               >
-                                ↩️ Return Asset
+                                Return Asset
                               </button>
-                            ) : (
-                              <span style={{
-                                padding: "0.2rem 0.5rem",
-                                borderRadius: "6px",
-                                fontSize: "0.72rem",
-                                fontWeight: 700,
-                                backgroundColor: "#f1f5f9",
-                                color: "#475569"
-                              }}>
-                                ✓ Returned
-                              </span>
-                            )}
+                            ) : null}
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();

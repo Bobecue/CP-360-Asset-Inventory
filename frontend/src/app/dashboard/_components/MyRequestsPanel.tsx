@@ -662,12 +662,13 @@ export function MyRequestsPanel({
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {myRequests.items.map(req => {
+              {myRequests.items.map((req, index) => {
                 const isCancellable = ['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'APPROVED', 'READY_FOR_PICKUP'].includes(req.status as string);
                 const isSelected = selectedReqIds.includes(req.id);
 
                 return (
                   <div
+                    className="animated-row"
                     key={req.id}
                     onClick={() => onRowClick && onRowClick(req)}
                     style={{
@@ -680,21 +681,32 @@ export function MyRequestsPanel({
                       gap: '0.6rem',
                       boxShadow: '0 2px 4px rgba(0,0,0,0.01)',
                       cursor: onRowClick ? 'pointer' : 'default',
-                      transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                      transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                      animationDelay: `${index * 0.04}s`
                     }}
                     onMouseEnter={(e) => { 
                       if (onRowClick && !isSelected) { 
                         e.currentTarget.style.borderColor = '#94a3b8'; 
                         e.currentTarget.style.transform = 'translateY(-4px)';
                         e.currentTarget.style.boxShadow = '0 10px 24px rgba(15, 23, 42, 0.08)';
-                      } 
+                      }
+                      const iconSpan = e.currentTarget.querySelector('.item-icon') as HTMLElement;
+                      if (iconSpan) {
+                        iconSpan.style.transform = 'scale(1.2) rotate(-5deg)';
+                        iconSpan.style.color = '#3b82f6';
+                      }
                     }}
                     onMouseLeave={(e) => { 
                       if (onRowClick && !isSelected) { 
                         e.currentTarget.style.borderColor = '#e2e8f0'; 
                         e.currentTarget.style.transform = 'translateY(0)';
                         e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.01)';
-                      } 
+                      }
+                      const iconSpan = e.currentTarget.querySelector('.item-icon') as HTMLElement;
+                      if (iconSpan) {
+                        iconSpan.style.transform = 'scale(1) rotate(0deg)';
+                        iconSpan.style.color = '#64748b';
+                      }
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
@@ -713,7 +725,7 @@ export function MyRequestsPanel({
                           }}
                           style={{ cursor: 'pointer', accentColor: '#3b82f6', width: '16px', height: '16px', marginTop: '0.2rem' }}
                         />
-                        <span style={{ color: '#64748b', display: 'flex', alignItems: 'center', marginTop: '0.15rem' }}>
+                        <span className="item-icon" style={{ color: '#64748b', display: 'flex', alignItems: 'center', marginTop: '0.15rem', transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
                           {getCategoryIcon(req.itemCategory, req.itemName)}
                         </span>
                         <div>

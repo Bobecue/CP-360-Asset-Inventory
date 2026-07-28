@@ -265,44 +265,44 @@ export const getRoleBadgeStyle = (role: string): React.CSSProperties => {
   switch (role) {
     case "SUPER_ADMIN":
       return {
-        background: "linear-gradient(135deg, #881337 0%, #be123c 50%, #e11d48 100%)",
+        background: "linear-gradient(135deg, #4F46E5 0%, #6366F1 50%, #818CF8 100%)",
         color: "#ffffff",
         fontWeight: 700,
         border: "1px solid rgba(255, 255, 255, 0.4)",
-        boxShadow: "0 2px 8px rgba(136, 19, 55, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3)",
+        boxShadow: "0 2px 8px rgba(99, 102, 241, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3)",
       };
     case "ADMIN": // Ops Manager
       return {
-        background: "linear-gradient(135deg, #fff1f2 0%, #ffe4e6 50%, rgba(225, 29, 72, 0.12) 100%)",
-        color: "#9f1239",
+        background: "linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 50%, rgba(99, 102, 241, 0.15) 100%)",
+        color: "#4338CA",
         fontWeight: 700,
-        border: "1px solid rgba(225, 29, 72, 0.45)",
-        boxShadow: "0 1px 4px rgba(225, 29, 72, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
+        border: "1px solid rgba(99, 102, 241, 0.4)",
+        boxShadow: "0 1px 4px rgba(99, 102, 241, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
       };
     case "INVENTORY_STAFF":
       return {
-        background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, rgba(225, 29, 72, 0.08) 100%)",
-        color: "#1e293b",
+        background: "linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, rgba(16, 185, 129, 0.12) 100%)",
+        color: "#15803D",
         fontWeight: 700,
-        border: "1px solid rgba(225, 29, 72, 0.35)",
-        boxShadow: "0 1px 4px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
+        border: "1px solid rgba(16, 185, 129, 0.4)",
+        boxShadow: "0 1px 4px rgba(16, 185, 129, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
       };
     case "TEAM_LEADER":
       return {
-        background: "linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.10) 100%)",
-        color: "#be123c",
+        background: "linear-gradient(135deg, #FAF5FF 0%, #F3E8FF 60%, rgba(168, 85, 247, 0.12) 100%)",
+        color: "#7E22CE",
         fontWeight: 700,
-        border: "1px solid rgba(225, 29, 72, 0.40)",
-        boxShadow: "0 1px 4px rgba(190, 18, 60, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
+        border: "1px solid rgba(168, 85, 247, 0.4)",
+        boxShadow: "0 1px 4px rgba(168, 85, 247, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
       };
     case "EMPLOYEE":
     default:
       return {
-        background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+        background: "linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)",
         color: "#334155",
         fontWeight: 600,
-        border: "1px solid rgba(148, 163, 184, 0.45)",
-        boxShadow: "0 1px 3px rgba(51, 65, 85, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
+        border: "1px solid #CBD5E1",
+        boxShadow: "0 1px 3px rgba(15, 23, 42, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
       };
   }
 };
@@ -405,23 +405,23 @@ export const EidBadge = ({ employeeId, size = "md" }: { employeeId?: string | nu
         gap: "0.3rem",
         padding: padding,
         borderRadius: "6px",
-        background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
-        color: "#1e293b",
-        border: "1px solid #cbd5e1",
+        background: "linear-gradient(135deg, #F8FAFC 0%, #EEF2FF 100%)",
+        color: "#4338CA",
+        border: "1px solid #C7D2FE",
         fontSize: fontSize,
         fontWeight: 700,
         fontFamily: "var(--font-geist-mono), monospace",
         letterSpacing: "0.03em",
-        boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
+        boxShadow: "0 1px 2px rgba(99, 102, 241, 0.08)",
         whiteSpace: "nowrap"
       }}
     >
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#e11d48" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.9 }}>
-        <rect x="3" y="4" width="18" height="16" rx="2" stroke="#e11d48" fill="rgba(225, 29, 72, 0.1)" />
-        <circle cx="9" cy="10" r="2" stroke="#e11d48" />
-        <line x1="15" y1="9" x2="17" y2="9" stroke="#be123c" strokeWidth="2" />
-        <line x1="15" y1="13" x2="17" y2="13" stroke="#be123c" strokeWidth="2" />
-        <line x1="7" y1="16" x2="17" y2="16" stroke="#e11d48" />
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.9 }}>
+        <rect x="3" y="4" width="18" height="16" rx="2" stroke="#6366F1" fill="rgba(99, 102, 241, 0.1)" />
+        <circle cx="9" cy="10" r="2" stroke="#6366F1" />
+        <line x1="15" y1="9" x2="17" y2="9" stroke="#4F46E5" strokeWidth="2" />
+        <line x1="15" y1="13" x2="17" y2="13" stroke="#4F46E5" strokeWidth="2" />
+        <line x1="7" y1="16" x2="17" y2="16" stroke="#6366F1" />
       </svg>
       <span>{employeeId}</span>
     </span>
@@ -478,16 +478,16 @@ export const SiteBadge = ({
         gap: "0.35rem",
         padding: size === "sm" ? "0.15rem 0.55rem" : "0.25rem 0.65rem",
         borderRadius: "9999px",
-        background: "linear-gradient(135deg, #ffffff 0%, #f1f5f9 50%, rgba(225, 29, 72, 0.08) 100%)",
-        border: "1px solid rgba(225, 29, 72, 0.35)",
-        boxShadow: "0 1px 4px rgba(225, 29, 72, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
+        background: "linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 50%, rgba(59, 130, 246, 0.08) 100%)",
+        border: "1px solid #BFDBFE",
+        boxShadow: "0 1px 4px rgba(59, 130, 246, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
         fontSize: size === "sm" ? "0.7rem" : "0.76rem",
-        color: "#0f172a",
+        color: "#1E40AF",
         fontWeight: 600,
         whiteSpace: "nowrap"
       }}
     >
-      <svg width={pinSize} height={pinSize} viewBox="0 0 24 24" fill="none" stroke="#e11d48" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+      <svg width={pinSize} height={pinSize} viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
         <circle cx="12" cy="10" r="3" />
       </svg>
@@ -496,12 +496,12 @@ export const SiteBadge = ({
           style={{
             fontSize: "0.65rem",
             fontWeight: 800,
-            background: "linear-gradient(135deg, #e11d48 0%, #9f1239 100%)",
+            background: "linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)",
             color: "#ffffff",
             padding: "0.08rem 0.4rem",
             borderRadius: "4px",
             letterSpacing: "0.04em",
-            boxShadow: "0 1px 3px rgba(225, 29, 72, 0.3)"
+            boxShadow: "0 1px 3px rgba(59, 130, 246, 0.3)"
           }}
         >
           {pfx}
@@ -531,22 +531,22 @@ export const AssetTagBadge = ({
 
   const variantStyles = {
     default: {
-      background: "linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.08) 100%)",
-      color: "#9f1239",
-      border: "1px solid rgba(225, 29, 72, 0.35)",
-      boxShadow: "0 1px 4px rgba(225, 29, 72, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9)"
+      background: "linear-gradient(135deg, #FFFFFF 0%, #EEF2FF 60%, rgba(99, 102, 241, 0.1) 100%)",
+      color: "#4338CA",
+      border: "1px solid #C7D2FE",
+      boxShadow: "0 1px 4px rgba(99, 102, 241, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9)"
     },
     dark: {
-      background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)",
-      color: "#f43f5e",
-      border: "1px solid rgba(244, 63, 94, 0.4)",
+      background: "linear-gradient(135deg, #0F172A 0%, #1E1B4B 100%)",
+      color: "#818CF8",
+      border: "1px solid rgba(129, 140, 248, 0.4)",
       boxShadow: "0 2px 6px rgba(15, 23, 42, 0.25)"
     },
     outline: {
       background: "#ffffff",
-      color: "#be123c",
-      border: "1px solid rgba(225, 29, 72, 0.3)",
-      boxShadow: "0 1px 3px rgba(225, 29, 72, 0.05)"
+      color: "#4F46E5",
+      border: "1px solid #C7D2FE",
+      boxShadow: "0 1px 3px rgba(99, 102, 241, 0.05)"
     }
   }[variant];
 
@@ -574,11 +574,65 @@ export const AssetTagBadge = ({
   );
 };
 
+export const AssetTypeBadge = ({ type, categoryName, size = "md" }: { type?: any; categoryName?: string; size?: "sm" | "md" | "lg" }) => {
+  const typeStr = typeof type === "string" ? type : type?.type || "";
+  const nameStr = categoryName || (typeof type === "object" ? type?.name : "") || "";
+  const isConsumable = typeStr === "CONSUMABLE" || nameStr.toLowerCase().includes("consumable");
+  const label = isConsumable ? "Consumable" : "Non-Consumable";
+
+  const sizeStyles = {
+    sm: { padding: "2px 8px", fontSize: "0.65rem" },
+    md: { padding: "3px 10px", fontSize: "0.72rem" },
+    lg: { padding: "4px 12px", fontSize: "0.8rem" },
+  }[size];
+
+  const badgeStyle: React.CSSProperties = isConsumable
+    ? {
+        background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
+        color: "#1d4ed8",
+        border: "1px solid rgba(59, 130, 246, 0.4)",
+        boxShadow: "0 1px 3px rgba(37, 99, 235, 0.12)",
+      }
+    : {
+        background: "linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)",
+        color: "#6d28d9",
+        border: "1px solid rgba(124, 58, 237, 0.4)",
+        boxShadow: "0 1px 3px rgba(109, 40, 217, 0.12)",
+      };
+
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "0.3rem",
+        borderRadius: "9999px",
+        fontWeight: 750,
+        letterSpacing: "0.02em",
+        whiteSpace: "nowrap",
+        userSelect: "none",
+        ...sizeStyles,
+        ...badgeStyle,
+      }}
+    >
+      <span
+        style={{
+          width: "6px",
+          height: "6px",
+          borderRadius: "50%",
+          backgroundColor: isConsumable ? "#2563eb" : "#7c3aed",
+        }}
+      />
+      <span>{label}</span>
+    </span>
+  );
+};
+
 export const getGeneratedPassword = (_eid?: string, _firstName?: string, _lastName?: string): string => {
   return "SuperAdmin360!";
 };
 
-export const getCategoryIcon = (categoryName?: string, itemName?: string, size = 18) => {
+export const getCategoryIcon = (categoryName?: string, itemName?: string, size = 20) => {
   const cat = (categoryName || "").toLowerCase();
   const item = (itemName || "").toLowerCase();
   const text = cat + " " + item;
@@ -586,20 +640,14 @@ export const getCategoryIcon = (categoryName?: string, itemName?: string, size =
   // 1. RAM / Memory Modules
   if (text.includes("ram") || text.includes("memory") || text.includes("ddr") || text.includes("dimm") || text.includes("s800") || text.includes("ramsta")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="6" width="20" height="12" rx="2" fill="url(#brand-grad-icon)" fillOpacity="0.15" stroke="#e11d48" />
-        <line x1="6" y1="18" x2="6" y2="21" stroke="#be123c" strokeWidth="2" />
-        <line x1="10" y1="18" x2="10" y2="21" stroke="#e11d48" strokeWidth="2" />
-        <line x1="14" y1="18" x2="14" y2="21" stroke="#be123c" strokeWidth="2" />
-        <line x1="18" y1="18" x2="18" y2="21" stroke="#e11d48" strokeWidth="2" />
-        <circle cx="7" cy="11" r="1.5" fill="#be123c" stroke="none" />
-        <circle cx="17" cy="11" r="1.5" fill="#e11d48" stroke="none" />
-        <defs>
-          <linearGradient id="brand-grad-icon" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#e11d48" />
-            <stop offset="100%" stopColor="#9f1239" />
-          </linearGradient>
-        </defs>
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" />
+        <line x1="6" y1="18" x2="6" y2="21" stroke="currentColor" strokeWidth="2" />
+        <line x1="10" y1="18" x2="10" y2="21" stroke="currentColor" strokeWidth="2" />
+        <line x1="14" y1="18" x2="14" y2="21" stroke="currentColor" strokeWidth="2" />
+        <line x1="18" y1="18" x2="18" y2="21" stroke="currentColor" strokeWidth="2" />
+        <circle cx="7" cy="11" r="1.5" fill="currentColor" stroke="none" />
+        <circle cx="17" cy="11" r="1.5" fill="currentColor" stroke="none" />
       </svg>
     );
   }
@@ -607,24 +655,24 @@ export const getCategoryIcon = (categoryName?: string, itemName?: string, size =
   // 2. SSD / NVMe / Hard Drives / Storage
   if (text.includes("ssd") || text.includes("nvme") || text.includes("hdd") || text.includes("hard drive") || text.includes("disk") || text.includes("storage") || text.includes("255gb") || text.includes("512gb") || text.includes("1tb")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="4" y="3" width="16" height="18" rx="2" fill="url(#brand-grad-icon)" fillOpacity="0.12" stroke="#e11d48" />
-        <circle cx="9" cy="12" r="2.5" stroke="#be123c" strokeWidth="1.8" />
-        <line x1="15" y1="8" x2="17" y2="8" stroke="#e11d48" strokeWidth="2" />
-        <line x1="15" y1="12" x2="17" y2="12" stroke="#be123c" strokeWidth="2" />
-        <line x1="15" y1="16" x2="17" y2="16" stroke="#e11d48" strokeWidth="2" />
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" />
+        <circle cx="9" cy="12" r="2.5" stroke="currentColor" strokeWidth="2" />
+        <line x1="15" y1="8" x2="17" y2="8" stroke="currentColor" strokeWidth="2" />
+        <line x1="15" y1="12" x2="17" y2="12" stroke="currentColor" strokeWidth="2" />
+        <line x1="15" y1="16" x2="17" y2="16" stroke="currentColor" strokeWidth="2" />
       </svg>
     );
   }
 
-  // 3. Desktop PC / Towers
+  // 3. Desktop PC / System Units / Towers
   if (text.includes("desktop") || text.includes("system unit") || text.includes("tower") || text.includes("pc") || text.includes("workstation") || text.includes("dell")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="5" y="2" width="14" height="20" rx="2" fill="url(#brand-grad-icon)" fillOpacity="0.12" stroke="#e11d48" />
-        <circle cx="12" cy="6" r="1.25" fill="#be123c" />
-        <line x1="9" y1="11" x2="15" y2="11" stroke="#e11d48" />
-        <line x1="9" y1="15" x2="15" y2="15" stroke="#be123c" />
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="5" y="2" width="14" height="20" rx="2" stroke="currentColor" />
+        <circle cx="12" cy="6" r="1.5" fill="currentColor" />
+        <line x1="9" y1="11" x2="15" y2="11" stroke="currentColor" />
+        <line x1="9" y1="15" x2="15" y2="15" stroke="currentColor" />
       </svg>
     );
   }
@@ -632,10 +680,10 @@ export const getCategoryIcon = (categoryName?: string, itemName?: string, size =
   // 4. Laptops / MacBooks
   if (text.includes("laptop") || text.includes("notebook") || text.includes("macbook") || text.includes("thinkpad") || text.includes("computer")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="4" width="18" height="12" rx="2" fill="url(#brand-grad-icon)" fillOpacity="0.15" stroke="#e11d48" />
-        <line x1="2" y1="20" x2="22" y2="20" stroke="#be123c" strokeWidth="2.2" />
-        <line x1="10" y1="16" x2="14" y2="16" stroke="#e11d48" strokeWidth="1.8" />
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="12" rx="2" stroke="currentColor" />
+        <line x1="2" y1="20" x2="22" y2="20" stroke="currentColor" strokeWidth="2.5" />
+        <line x1="10" y1="16" x2="14" y2="16" stroke="currentColor" strokeWidth="2" />
       </svg>
     );
   }
@@ -643,10 +691,10 @@ export const getCategoryIcon = (categoryName?: string, itemName?: string, size =
   // 5. Monitors / Displays
   if (text.includes("monitor") || text.includes("display") || text.includes("screen") || text.includes("tv")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="3" width="20" height="14" rx="2" fill="url(#brand-grad-icon)" fillOpacity="0.12" stroke="#e11d48" />
-        <line x1="12" y1="17" x2="12" y2="21" stroke="#be123c" strokeWidth="2" />
-        <line x1="8" y1="21" x2="16" y2="21" stroke="#e11d48" strokeWidth="2" />
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" />
+        <line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" strokeWidth="2" />
+        <line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" strokeWidth="2" />
       </svg>
     );
   }
@@ -654,10 +702,10 @@ export const getCategoryIcon = (categoryName?: string, itemName?: string, size =
   // 6. Printers / Scanners
   if (text.includes("printer") || text.includes("scanner") || text.includes("laserjet") || text.includes("inkjet") || text.includes("copier")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="6 9 6 2 18 2 18 9" stroke="#e11d48" />
-        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" fill="url(#brand-grad-icon)" fillOpacity="0.12" stroke="#e11d48" />
-        <rect x="6" y="14" width="12" height="8" rx="1" stroke="#be123c" strokeWidth="2" />
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="6 9 6 2 18 2 18 9" stroke="currentColor" />
+        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" stroke="currentColor" />
+        <rect x="6" y="14" width="12" height="8" rx="1" stroke="currentColor" strokeWidth="2" />
       </svg>
     );
   }
@@ -665,10 +713,10 @@ export const getCategoryIcon = (categoryName?: string, itemName?: string, size =
   // 7. Networking / Routers / Cables
   if (text.includes("network") || text.includes("router") || text.includes("switch") || text.includes("cable") || text.includes("ethernet") || text.includes("hdmi") || text.includes("usb")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2v8M18 12a6 6 0 0 1-6 6M6 12a6 6 0 0 0 6 6M12 18v4" stroke="#e11d48" />
-        <rect x="6" y="2" width="4" height="4" rx="1" fill="#be123c" stroke="none" />
-        <rect x="14" y="2" width="4" height="4" rx="1" fill="#e11d48" stroke="none" />
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2v8M18 12a6 6 0 0 1-6 6M6 12a6 6 0 0 0 6 6M12 18v4" stroke="currentColor" />
+        <rect x="6" y="2" width="4" height="4" rx="1" fill="currentColor" stroke="none" />
+        <rect x="14" y="2" width="4" height="4" rx="1" fill="currentColor" stroke="none" />
       </svg>
     );
   }
@@ -676,10 +724,10 @@ export const getCategoryIcon = (categoryName?: string, itemName?: string, size =
   // 8. Mice / Pointers
   if (text.includes("mouse") || text.includes("mice") || text.includes("pointer") || text.includes("trackpad") || text.includes("logitech") || text.includes("op-720")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="6" y="3" width="12" height="18" rx="6" fill="url(#brand-grad-icon)" fillOpacity="0.15" stroke="#e11d48" />
-        <line x1="12" y1="3" x2="12" y2="8" stroke="#be123c" strokeWidth="2.2" />
-        <path d="M6 9h12" stroke="#e11d48" strokeWidth="1.5" />
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="6" y="3" width="12" height="18" rx="6" stroke="currentColor" />
+        <line x1="12" y1="3" x2="12" y2="8" stroke="currentColor" strokeWidth="2" />
+        <path d="M6 9h12" stroke="currentColor" strokeWidth="1.5" />
       </svg>
     );
   }
@@ -687,10 +735,10 @@ export const getCategoryIcon = (categoryName?: string, itemName?: string, size =
   // 9. Headsets / Audio
   if (text.includes("headset") || text.includes("headphone") || text.includes("audio") || text.includes("earphone") || text.includes("jabra")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 18v-6a9 9 0 0 1 18 0v6" stroke="#e11d48" />
-        <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3v5z" fill="url(#brand-grad-icon)" fillOpacity="0.3" stroke="#e11d48" />
-        <path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3v5z" fill="url(#brand-grad-icon)" fillOpacity="0.3" stroke="#be123c" />
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 18v-6a9 9 0 0 1 18 0v6" stroke="currentColor" />
+        <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3v5z" stroke="currentColor" />
+        <path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3v5z" stroke="currentColor" />
       </svg>
     );
   }
@@ -698,13 +746,13 @@ export const getCategoryIcon = (categoryName?: string, itemName?: string, size =
   // 10. Keyboards
   if (text.includes("keyboard") || text.includes("keypad") || text.includes("kbd")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="6" width="20" height="12" rx="2" fill="url(#brand-grad-icon)" fillOpacity="0.1" stroke="#e11d48" />
-        <circle cx="6" cy="10" r="0.75" fill="#be123c" stroke="none" />
-        <circle cx="10" cy="10" r="0.75" fill="#e11d48" stroke="none" />
-        <circle cx="14" cy="10" r="0.75" fill="#e11d48" stroke="none" />
-        <circle cx="18" cy="10" r="0.75" fill="#be123c" stroke="none" />
-        <line x1="8" y1="14" x2="16" y2="14" stroke="#be123c" strokeWidth="2" />
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" />
+        <circle cx="6" cy="10" r="0.75" fill="currentColor" stroke="none" />
+        <circle cx="10" cy="10" r="0.75" fill="currentColor" stroke="none" />
+        <circle cx="14" cy="10" r="0.75" fill="currentColor" stroke="none" />
+        <circle cx="18" cy="10" r="0.75" fill="currentColor" stroke="none" />
+        <line x1="8" y1="14" x2="16" y2="14" stroke="currentColor" strokeWidth="2" />
       </svg>
     );
   }
@@ -712,25 +760,19 @@ export const getCategoryIcon = (categoryName?: string, itemName?: string, size =
   // 11. Office Supplies & Consumables
   if (text.includes("pen") || text.includes("ink") || text.includes("paper") || text.includes("stationery") || text.includes("office") || text.includes("consumable")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 20h9" stroke="#be123c" strokeWidth="2" />
-        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" fill="url(#brand-grad-icon)" fillOpacity="0.2" stroke="#e11d48" />
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 20h9" stroke="currentColor" strokeWidth="2" />
+        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" />
       </svg>
     );
   }
 
-  // Default fallback asset box icon with Crimson Red & Silver gradient
+  // Default fallback asset box icon
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 8L12 3L3 8L12 13L21 8Z" fill="url(#brand-grad-default)" fillOpacity="0.2" stroke="#e11d48" />
-      <path d="M21 16V8L12 13V21L21 16Z" stroke="#e11d48" />
-      <path d="M3 8V16L12 21V13L3 8Z" stroke="#be123c" />
-      <defs>
-        <linearGradient id="brand-grad-default" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#e11d48" />
-          <stop offset="100%" stopColor="#d1d5db" />
-        </linearGradient>
-      </defs>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 8L12 3L3 8L12 13L21 8Z" stroke="currentColor" />
+      <path d="M21 16V8L12 13V21L21 16Z" stroke="currentColor" />
+      <path d="M3 8V16L12 21V13L3 8Z" stroke="currentColor" />
     </svg>
   );
 };
@@ -740,7 +782,7 @@ export const getDepartmentIcon = (departmentName?: string, size = 16) => {
 
   if (n.includes("recruit") || n.includes("hr") || n.includes("talent") || n.includes("people")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
         <circle cx="8.5" cy="7" r="4"/>
         <line x1="20" y1="8" x2="20" y2="14"/>
@@ -751,7 +793,7 @@ export const getDepartmentIcon = (departmentName?: string, size = 16) => {
 
   if (n.includes("it") || n.includes("tech") || n.includes("system") || n.includes("information")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
         <line x1="8" y1="21" x2="16" y2="21"/>
         <line x1="12" y1="17" x2="12" y2="21"/>
@@ -761,17 +803,17 @@ export const getDepartmentIcon = (departmentName?: string, size = 16) => {
 
   if (n.includes("social") || n.includes("media") || n.includes("marketing") || n.includes("design")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#db2777" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
         <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-        <circle cx="18" cy="4" r="3" fill="#ec4899" stroke="none"/>
+        <circle cx="18" cy="4" r="3" fill="#A855F7" stroke="none"/>
       </svg>
     );
   }
 
   if (n.includes("engage") || n.includes("success") || n.includes("client") || n.includes("customer")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#e11d48" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#EC4899" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.72-8.72 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
       </svg>
     );
@@ -779,7 +821,7 @@ export const getDepartmentIcon = (departmentName?: string, size = 16) => {
 
   if (n.includes("finance") || n.includes("account") || n.includes("billing")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <line x1="12" y1="1" x2="12" y2="23"/>
         <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
       </svg>
@@ -788,7 +830,7 @@ export const getDepartmentIcon = (departmentName?: string, size = 16) => {
 
   if (n.includes("logistics") || n.includes("inventory") || n.includes("operation") || n.includes("ops")) {
     return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
         <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
         <line x1="12" y1="22.08" x2="12" y2="12"/>
@@ -797,7 +839,7 @@ export const getDepartmentIcon = (departmentName?: string, size = 16) => {
   }
 
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
       <circle cx="9" cy="7" r="4"/>
       <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>

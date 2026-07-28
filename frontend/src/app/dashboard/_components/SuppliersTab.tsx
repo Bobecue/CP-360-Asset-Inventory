@@ -276,7 +276,7 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-module-flip">
       {/* Header & Actions */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 animated-mesh-background p-6 rounded-2xl border border-gray-100 dark:border-gray-700/60 shadow-sm">
         <div>
@@ -413,8 +413,12 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700/60">
-                {filteredSuppliers.map((s) => (
-                  <tr key={s.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-700/30 transition-colors">
+                {filteredSuppliers.map((s, index) => (
+                  <tr 
+                    key={s.id} 
+                    className="animated-row hover:bg-gray-50/80 dark:hover:bg-gray-700/30 transition-colors"
+                    style={{ animationDelay: `${index * 0.04}s` }}
+                  >
                     <td className="px-6 py-4 font-mono text-xs">
                       {s.supplierId ? (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800/60 shadow-xs">

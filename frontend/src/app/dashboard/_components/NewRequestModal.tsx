@@ -138,8 +138,7 @@ export function NewRequestModal({ open, onClose, inventoryItems, sites, onSubmit
         </div>
 
         {/* Form Body */}
-        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', padding: '1.5rem', gap: '1.25rem' }}>
           {reqFormError && (
             <div style={{ padding: '0.75rem 1rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', borderRadius: 8, fontSize: '0.82rem', fontWeight: 500 }}>
               ⚠ {reqFormError}
@@ -199,8 +198,6 @@ export function NewRequestModal({ open, onClose, inventoryItems, sites, onSubmit
               />
             </div>
 
-
-
             {/* Site input */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
               <label htmlFor="site-input" style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Site *</label>
@@ -232,11 +229,11 @@ export function NewRequestModal({ open, onClose, inventoryItems, sites, onSubmit
               />
             </div>
           </div>
-          </div>
+        </div>
 
-          {/* Footer actions */}
-          <div style={{ position: 'sticky', bottom: 0, padding: '1.25rem 1.5rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', backgroundColor: '#f8fafc', zIndex: 10 }}>
-            <button
+        {/* Footer actions */}
+        <div style={{ position: 'sticky', bottom: 0, padding: '1.25rem 1.5rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', backgroundColor: '#f8fafc', zIndex: 10 }}>
+          <button
             type="button"
             onClick={onClose}
             style={{ padding: '0.5rem 1rem', border: '1px solid #cbd5e1', color: '#475569', backgroundColor: '#ffffff', borderRadius: 8, fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}
@@ -248,23 +245,35 @@ export function NewRequestModal({ open, onClose, inventoryItems, sites, onSubmit
             onClick={handleSubmit}
             disabled={isSubmitting || !reqItemId || reqQuantity < 1 || !reqSiteId.trim() || reqReason.trim().length < 10}
             style={{
-              backgroundColor: '#E85D00',
+              backgroundColor: '#6366F1',
               color: '#ffffff',
               border: 'none',
               borderRadius: 8,
-              padding: '0.5rem 1.25rem',
-              fontSize: '0.82rem',
+              padding: '0.6rem 1.25rem',
               fontWeight: 600,
-              cursor: (isSubmitting || !reqItemId || reqQuantity < 1 || !reqSiteId.trim() || reqReason.trim().length < 10) ? 'not-allowed' : 'pointer',
-              opacity: (isSubmitting || !reqItemId || reqQuantity < 1 || !reqSiteId.trim() || reqReason.trim().length < 10) ? 0.5 : 1,
-              transition: 'all 0.15s ease'
+              fontSize: '0.875rem',
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              boxShadow: '0 2px 4px rgba(99, 102, 241, 0.2)',
+              transition: 'all 0.2s ease',
+              opacity: isSubmitting ? 0.7 : 1
+            }}
+            onMouseEnter={(e) => {
+              if (!isSubmitting) {
+                e.currentTarget.style.backgroundColor = '#4F46E5';
+                e.currentTarget.style.boxShadow = '0 4px 8px rgba(99, 102, 241, 0.3)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isSubmitting) {
+                e.currentTarget.style.backgroundColor = '#6366F1';
+                e.currentTarget.style.boxShadow = '0 2px 4px rgba(99, 102, 241, 0.2)';
+              }
             }}
           >
             {isSubmitting ? 'Submitting...' : 'Submit Request'}
           </button>
         </div>
       </div>
-    </div>
     </div>
   );
 }

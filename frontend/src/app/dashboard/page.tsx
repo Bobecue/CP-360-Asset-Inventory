@@ -2215,6 +2215,7 @@ export default function DashboardPage() {
           flex: 1,
           padding: "1.5rem 2rem",
           overflowY: "auto",
+          scrollbarGutter: "stable",
           backgroundColor: "transparent",
           display: "flex",
           flexDirection: "column",

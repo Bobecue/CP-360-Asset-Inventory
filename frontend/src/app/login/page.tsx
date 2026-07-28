@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { InfiniteGridBackground } from "@/components/ui/infinite-grid-background";
 
@@ -72,9 +72,16 @@ export default function LoginPage() {
     }
   }
 
+  useEffect(() => {
+    document.body.classList.add("login-page-body");
+    return () => {
+      document.body.classList.remove("login-page-body");
+    };
+  }, []);
+
   return (
     <main
-      className="animate-brand-mesh moving-shine-overlay"
+      className="animate-brand-mesh moving-shine-overlay login-page-root"
       style={{
         minHeight: "100vh",
         display: "flex",
@@ -83,32 +90,32 @@ export default function LoginPage() {
         position: "relative",
         overflow: "hidden",
         padding: "2rem 1rem",
-        background: "linear-gradient(135deg, #ffffff 0%, #faf8ff 25%, #fff5f5 50%, #f0f7ff 75%, #f8fafc 100%)",
+        backgroundImage: "linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%)",
         backgroundSize: "300% 300%",
       }}
     >
       <InfiniteGridBackground />
 
-      {/* Vibrant floating background Orbs featuring ContactPoint360 Red, Royal Indigo, and Sky Blue */}
+      {/* Ambient floating background Orbs featuring Enterprise Indigo & Slate */}
       <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
         <div style={{
           position: "absolute", top: "-10%", left: "-5%",
           width: 500, height: 500, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(255,42,42,0.12) 0%, rgba(33,12,174,0.08) 50%, transparent 75%)",
+          background: "radial-gradient(circle, rgba(99,102,241,0.08) 0%, rgba(148,163,184,0.06) 50%, transparent 75%)",
           animation: "floatA 12s ease-in-out infinite",
           filter: "blur(20px)",
         }} />
         <div style={{
           position: "absolute", bottom: "-12%", right: "-5%",
           width: 450, height: 450, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(77,201,230,0.14) 0%, rgba(33,12,174,0.1) 50%, transparent 75%)",
+          background: "radial-gradient(circle, rgba(225,29,72,0.05) 0%, rgba(203,213,225,0.1) 50%, transparent 75%)",
           animation: "floatB 15s ease-in-out infinite",
           filter: "blur(20px)",
         }} />
         <div style={{
           position: "absolute", top: "35%", left: "50%",
           width: 300, height: 300, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(255,42,42,0.08) 0%, rgba(77,201,230,0.08) 60%, transparent 80%)",
+          background: "radial-gradient(circle, rgba(79,70,229,0.06) 0%, rgba(148,163,184,0.08) 60%, transparent 80%)",
           animation: "floatA 10s ease-in-out infinite reverse",
           filter: "blur(15px)",
         }} />
@@ -116,26 +123,28 @@ export default function LoginPage() {
 
       {/* ── Card ── */}
       <div
-        className="relative z-10 card-shine-effect"
+        className="relative z-10 card-shine-effect login-card no-silver-red"
         style={{
           position: "relative", zIndex: 1,
           width: "100%", maxWidth: 440,
           borderRadius: 24,
-          border: "1px solid rgba(77, 201, 230, 0.3)",
-          boxShadow: "0 20px 50px -10px rgba(33, 12, 174, 0.12), 0 8px 24px -4px rgba(255, 42, 42, 0.08)",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 20px 45px -10px rgba(15, 23, 42, 0.08), 0 8px 24px -4px rgba(99, 102, 241, 0.05)",
           padding: "3.2rem 2.5rem 2.5rem",
           overflow: "hidden",
+          backgroundColor: "#ffffff",
+          backdropFilter: "blur(12px)",
         }}
       >
         {/* Top glowing multi-brand line */}
         <div style={{
           position: "absolute", top: 0, left: 0, right: 0, height: 5,
-          background: "linear-gradient(90deg, #4dc9e6 0%, #210cae 35%, #ff2a2a 70%, #4dc9e6 100%)",
+          background: "linear-gradient(90deg, #4f46e5 0%, #e11d48 50%, #3b82f6 100%)",
           backgroundSize: "200% 100%",
           animation: "mesh-gradient-move 4s linear infinite",
           borderTopLeftRadius: 24,
           borderTopRightRadius: 24,
-          boxShadow: "0 2px 10px rgba(255, 42, 42, 0.4)",
+          boxShadow: "0 2px 8px rgba(79, 70, 229, 0.2)",
         }} />
 
         {/* Brand heading + Logo */}
@@ -148,17 +157,17 @@ export default function LoginPage() {
               width: "auto",
               objectFit: "contain",
               marginBottom: "1rem",
-              filter: "drop-shadow(0 2px 8px rgba(33, 12, 174, 0.08))",
+              filter: "drop-shadow(0 2px 6px rgba(15, 23, 42, 0.06))",
             }} 
           />
           <h1 style={{
             fontSize: "1.4rem", fontWeight: 800,
-            color: "#1e293b", letterSpacing: "-0.02em",
+            color: "#0f172a", letterSpacing: "-0.02em",
             margin: 0, marginBottom: "0.3rem",
           }}>
             CP360 Asset Inventory
           </h1>
-          <p style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: 400, margin: 0 }}>
+          <p style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: 500, margin: 0 }}>
             Sign in to your workspace
           </p>
         </div>
@@ -166,13 +175,13 @@ export default function LoginPage() {
         {/* Error banner */}
         {error && (
           <div role="alert" style={{
-            background: "#fff5f5",
+            background: "#fef2f2",
             border: "1px solid #fecaca",
             borderRadius: 8,
             padding: "0.65rem 1rem",
             marginBottom: "1.25rem",
             display: "flex", alignItems: "center", gap: "0.5rem",
-            color: "#dc2626", fontSize: "0.82rem", fontWeight: 500,
+            color: "#991b1b", fontSize: "0.82rem", fontWeight: 600,
           }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -187,13 +196,13 @@ export default function LoginPage() {
         {/* Success banner */}
         {isSuccess && (
           <div role="status" style={{
-            background: "#ecfdf5",
-            border: "1px solid #a7f3d0",
+            background: "#f0fdf4",
+            border: "1px solid #bbf7d0",
             borderRadius: 8,
             padding: "0.65rem 1rem",
             marginBottom: "1.25rem",
             display: "flex", alignItems: "center", gap: "0.5rem",
-            color: "#047857", fontSize: "0.82rem", fontWeight: 500,
+            color: "#166534", fontSize: "0.82rem", fontWeight: 600,
           }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -209,7 +218,7 @@ export default function LoginPage() {
           {/* Email */}
           <div style={{ marginBottom: "1rem" }}>
             <label htmlFor="login-email" style={{
-              display: "block", fontSize: "0.75rem", fontWeight: 600,
+              display: "block", fontSize: "0.75rem", fontWeight: 700,
               color: "#475569", marginBottom: "0.45rem",
               letterSpacing: "0.05em", textTransform: "uppercase",
             }}>
@@ -218,7 +227,7 @@ export default function LoginPage() {
             <div className="input-container" style={{ position: "relative" }}>
               <span aria-hidden style={{
                 position: "absolute", left: 13, top: "50%",
-                transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none",
+                transform: "translateY(-50%)", color: "#64748b", pointerEvents: "none",
               }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -234,16 +243,25 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
                 required
-                className="search-glow"
                 style={{
                   width: "100%", boxSizing: "border-box",
                   padding: "0.75rem 1rem 0.75rem 2.6rem",
                   borderRadius: 10,
-                  border: "1px solid #e2e8f0",
+                  border: "1px solid #cbd5e1",
                   background: "#ffffff",
-                  color: "#1e293b",
+                  color: "#0f172a",
                   fontSize: "0.92rem",
                   outline: "none",
+                  boxShadow: "inset 0 1px 2px rgba(0,0,0,0.02)",
+                  transition: "all 0.2s ease",
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = "#6366f1";
+                  e.currentTarget.style.boxShadow = "0 0 0 3px rgba(99, 102, 241, 0.15)";
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = "#cbd5e1";
+                  e.currentTarget.style.boxShadow = "inset 0 1px 2px rgba(0,0,0,0.02)";
                 }}
               />
             </div>
@@ -252,7 +270,7 @@ export default function LoginPage() {
           {/* Password */}
           <div style={{ marginBottom: "1.5rem" }}>
             <label htmlFor="login-password" style={{
-              display: "block", fontSize: "0.75rem", fontWeight: 600,
+              display: "block", fontSize: "0.75rem", fontWeight: 700,
               color: "#475569", marginBottom: "0.45rem",
               letterSpacing: "0.05em", textTransform: "uppercase",
             }}>
@@ -261,7 +279,7 @@ export default function LoginPage() {
             <div className="input-container" style={{ position: "relative" }}>
               <span aria-hidden style={{
                 position: "absolute", left: 13, top: "50%",
-                transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none",
+                transform: "translateY(-50%)", color: "#64748b", pointerEvents: "none",
               }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -277,16 +295,25 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="search-glow"
                 style={{
                   width: "100%", boxSizing: "border-box",
                   padding: "0.75rem 2.6rem 0.75rem 2.6rem",
                   borderRadius: 10,
-                  border: "1px solid #e2e8f0",
+                  border: "1px solid #cbd5e1",
                   background: "#ffffff",
-                  color: "#1e293b",
+                  color: "#0f172a",
                   fontSize: "0.92rem",
                   outline: "none",
+                  boxShadow: "inset 0 1px 2px rgba(0,0,0,0.02)",
+                  transition: "all 0.2s ease",
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = "#6366f1";
+                  e.currentTarget.style.boxShadow = "0 0 0 3px rgba(99, 102, 241, 0.15)";
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = "#cbd5e1";
+                  e.currentTarget.style.boxShadow = "inset 0 1px 2px rgba(0,0,0,0.02)";
                 }}
               />
               <button
@@ -298,11 +325,11 @@ export default function LoginPage() {
                   position: "absolute", right: 12, top: "50%",
                   transform: "translateY(-50%)",
                   background: "none", border: "none", cursor: "pointer",
-                  color: "#94a3b8", padding: 4, display: "flex", alignItems: "center",
+                  color: "#64748b", padding: 4, display: "flex", alignItems: "center",
                   transition: "color 0.2s",
                 }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#210cae")}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#94a3b8")}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#4f46e5")}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#64748b")}
               >
                 {showPassword ? (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -314,7 +341,7 @@ export default function LoginPage() {
                 ) : (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z" />
                     <circle cx="12" cy="12" r="3" />
                   </svg>
                 )}
@@ -327,27 +354,33 @@ export default function LoginPage() {
             id="login-submit-btn"
             type="submit"
             disabled={isLoading}
-            className={isLoading ? "click-active" : "animate-gradient-shift click-active card-shine-effect"}
+            className={isLoading ? "click-active" : "click-active card-shine-effect"}
             style={{
               width: "100%",
-              padding: "0.8rem 1rem",
+              padding: "0.85rem 1rem",
               borderRadius: 10,
-              border: "1px solid rgba(255, 255, 255, 0.6)",
-              backgroundColor: isLoading ? "rgba(33,12,174,0.15)" : "rgba(255, 255, 255, 0.25)",
-              backgroundImage: isLoading
-                ? "none"
-                : "linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(225, 29, 72, 0.20) 50%, rgba(77, 201, 230, 0.25) 100%)",
-              backgroundSize: "200% 200%",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-              color: "#1e293b",
+              border: "none",
+              background: "linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)",
+              color: "#ffffff",
               fontSize: "0.95rem",
               fontWeight: 700,
               cursor: isLoading ? "not-allowed" : "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
-              boxShadow: "0 4px 16px rgba(33,12,174,0.1), 0 0 10px rgba(59,130,246,0.15)",
+              boxShadow: "0 4px 14px rgba(79, 70, 229, 0.35)",
               letterSpacing: "0.01em",
               transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              if (!isLoading) {
+                e.currentTarget.style.background = "linear-gradient(135deg, #4338ca 0%, #2563eb 100%)";
+                e.currentTarget.style.boxShadow = "0 6px 20px rgba(79, 70, 229, 0.45)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isLoading) {
+                e.currentTarget.style.background = "linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)";
+                e.currentTarget.style.boxShadow = "0 4px 14px rgba(79, 70, 229, 0.35)";
+              }
             }}
           >
             {isLoading ? (
@@ -407,7 +440,7 @@ export default function LoginPage() {
           animation: gradient-shift 15s ease infinite;
         }
         .input-container:focus-within svg {
-          color: #210cae !important;
+          color: #4f46e5 !important;
         }
         .input-container svg {
           transition: color 0.25s ease;

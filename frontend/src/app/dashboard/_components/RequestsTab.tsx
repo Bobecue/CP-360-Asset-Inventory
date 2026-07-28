@@ -208,17 +208,17 @@ export function RequestsTab({
       );
     }
     const conf: Record<RequestStatus, { bg: string; color: string; border: string; label: string }> = {
-      PENDING: { bg: 'linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)', color: '#9f1239', border: 'rgba(225, 29, 72, 0.40)', label: 'Pending Staff Approval' },
-      PENDING_OPS_APPROVAL: { bg: 'linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)', color: '#881337', border: 'rgba(225, 29, 72, 0.45)', label: 'Pending Ops Approval' },
-      APPROVED: { bg: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.12) 100%)', color: '#be123c', border: 'rgba(225, 29, 72, 0.35)', label: 'Approved' },
-      READY_FOR_PICKUP: { bg: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.15) 100%)', color: '#e11d48', border: 'rgba(225, 29, 72, 0.40)', label: 'Ready for Pickup' },
-      PENDING_PROCUREMENT: { bg: 'linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)', color: '#9f1239', border: 'rgba(225, 29, 72, 0.40)', label: 'Pending Procurement' },
-      RELEASED: { bg: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.12) 100%)', color: '#be123c', border: 'rgba(225, 29, 72, 0.35)', label: 'Released' },
-      AWAITING_CONFIRMATION: { bg: 'linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)', color: '#9f1239', border: 'rgba(225, 29, 72, 0.40)', label: 'Awaiting Confirmation' },
-      ITEM_RECEIVED: { bg: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.10) 100%)', color: '#be123c', border: 'rgba(225, 29, 72, 0.35)', label: 'Item Received' },
-      REJECTED: { bg: 'linear-gradient(135deg, #fff1f2 0%, #fecaca 100%)', color: '#881337', border: 'rgba(225, 29, 72, 0.60)', label: 'Rejected' },
-      RETURNED: { bg: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(225, 29, 72, 0.12) 100%)', color: '#be123c', border: 'rgba(225, 29, 72, 0.35)', label: 'Returned' },
-      CANCELLED: { bg: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)', color: '#475569', border: 'rgba(148, 163, 184, 0.45)', label: 'Cancelled' },
+      PENDING: { bg: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', color: '#c2410c', border: '#fdba74', label: 'Pending Staff Approval' },
+      PENDING_OPS_APPROVAL: { bg: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', color: '#6b21a8', border: '#d8b4fe', label: 'Pending Ops Approval' },
+      APPROVED: { bg: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', color: '#1d4ed8', border: '#93c5fd', label: 'Approved' },
+      READY_FOR_PICKUP: { bg: 'linear-gradient(135deg, #ecfeff 0%, #cffafe 100%)', color: '#0e7490', border: '#67e8f9', label: 'Ready for Pickup' },
+      PENDING_PROCUREMENT: { bg: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)', color: '#6d28d9', border: '#c4b5fd', label: 'Pending Procurement' },
+      RELEASED: { bg: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', color: '#15803d', border: '#86efac', label: 'Released' },
+      AWAITING_CONFIRMATION: { bg: 'linear-gradient(135deg, #fefce8 0%, #fef08a 100%)', color: '#a16207', border: '#fde047', label: 'Awaiting Confirmation' },
+      ITEM_RECEIVED: { bg: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)', color: '#047857', border: '#6ee7b7', label: 'Item Received' },
+      REJECTED: { bg: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)', color: '#b91c1c', border: '#fca5a5', label: 'Rejected' },
+      RETURNED: { bg: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)', color: '#065f46', border: '#6ee7b7', label: 'Returned' },
+      CANCELLED: { bg: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)', color: '#475569', border: '#cbd5e1', label: 'Cancelled' },
     };
     const s = conf[status];
     return (
@@ -1281,7 +1281,7 @@ export function RequestsTab({
             display: 'flex',
             alignItems: 'center',
             gap: '0.35rem',
-            backgroundColor: '#E85D00',
+            backgroundColor: '#6366F1',
             color: '#ffffff',
             border: 'none',
             borderRadius: 8,
@@ -1289,18 +1289,18 @@ export function RequestsTab({
             fontSize: '0.82rem',
             fontWeight: 600,
             cursor: 'pointer',
-            transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
-            boxShadow: '0 2px 4px rgba(232, 93, 0, 0.15)'
+            transition: 'all 0.2s ease',
+            boxShadow: '0 2px 4px rgba(99, 102, 241, 0.2)'
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#C94E00';
-            e.currentTarget.style.transform = 'translateY(-1px) scale(1.02)';
-            e.currentTarget.style.boxShadow = '0 4px 8px rgba(232, 93, 0, 0.25)';
+            e.currentTarget.style.backgroundColor = '#4F46E5';
+            e.currentTarget.style.transform = 'translateY(-1px)';
+            e.currentTarget.style.boxShadow = '0 4px 8px rgba(99, 102, 241, 0.3)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#E85D00';
-            e.currentTarget.style.transform = 'translateY(0) scale(1)';
-            e.currentTarget.style.boxShadow = '0 2px 4px rgba(232, 93, 0, 0.15)';
+            e.currentTarget.style.backgroundColor = '#6366F1';
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 2px 4px rgba(99, 102, 241, 0.2)';
           }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

@@ -565,12 +565,16 @@ export const LowStockAlertsTab = ({
                 </tr>
               </thead>
               <tbody>
-                {filteredAlerts.map((item) => {
+                {filteredAlerts.map((item, index) => {
                   const isCritical = item.severity === "CRITICAL";
                   const percent = Math.min(100, Math.round((item.currentQuantity / Math.max(1, item.reorderPoint)) * 100));
 
                   return (
-                    <tr key={item.id} className="table-row-hover" style={{ transition: "background-color 0.15s ease" }}>
+                    <tr 
+                      key={item.id} 
+                      className="animated-row table-row-hover" 
+                      style={{ transition: "background-color 0.15s ease", animationDelay: `${index * 0.04}s` }}
+                    >
                       {/* Item Info */}
                       <td style={{ padding: "0.85rem 1rem" }}>
                         <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.88rem" }}>{item.name}</div>

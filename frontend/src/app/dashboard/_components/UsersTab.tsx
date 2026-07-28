@@ -30,7 +30,7 @@ export const UsersTab = ({
   onToggleUserActive,
 }: UsersTabProps) => {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+    <div className="animate-module-flip" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       
       {/* Warnings & Notices */}
       {isUsingMockData && (

@@ -42,48 +42,53 @@ export const TopBar = ({
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
-    <header className="topbar-responsive moving-shine-overlay topbar-brand-bg" style={{
+    <header style={{
       height: 64,
-      borderBottom: "1px solid #e2e8f0",
+      backgroundColor: "#FFFFFF",
+      borderBottom: "1px solid #E2E8F0",
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
       padding: "0 1.5rem",
-      boxShadow: "0 2px 10px rgba(33, 12, 174, 0.03)",
+      boxShadow: "0 1px 3px rgba(15, 23, 42, 0.03)",
       position: "relative",
       zIndex: 20
     }}>
+      {/* Animated Scan Beam Line for Top Bar Bottom Edge */}
+      <div className="topbar-scan-beam" />
       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
         <button
           onClick={onToggleSidebar}
+          className="interactive-element"
           style={{
-            background: "linear-gradient(135deg, rgba(225, 29, 72, 0.08) 0%, rgba(148, 163, 184, 0.1) 100%)",
-            border: "1px solid rgba(225, 29, 72, 0.25)",
+            backgroundColor: "#FFFFFF",
+            border: "1px solid #E2E8F0",
             cursor: "pointer",
-            color: "#e11d48",
+            color: "#64748B",
             display: "flex",
             alignItems: "center",
-            padding: 6,
-            borderRadius: 8,
-            transition: "all 0.2s ease"
+            padding: 8,
+            borderRadius: 10,
+            transition: "all 0.15s ease",
+            boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)"
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "#fff1f2";
-            e.currentTarget.style.borderColor = "rgba(225, 29, 72, 0.45)";
+            e.currentTarget.style.backgroundColor = "#F8FAFC";
+            e.currentTarget.style.borderColor = "#CBD5E1";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "transparent";
-            e.currentTarget.style.borderColor = "rgba(225, 29, 72, 0.25)";
+            e.currentTarget.style.backgroundColor = "#FFFFFF";
+            e.currentTarget.style.borderColor = "#E2E8F0";
           }}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="3" y1="12" x2="21" y2="12" stroke="#e11d48" /><line x1="3" y1="6" x2="21" y2="6" stroke="#be123c" /><line x1="3" y1="18" x2="21" y2="18" stroke="#be123c" />
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" />
           </svg>
         </button>
         <h2 style={{
           fontSize: "1.15rem",
           fontWeight: 800,
-          color: "#0f172a",
+          color: "#0F172A",
           margin: 0,
           letterSpacing: "-0.01em"
         }}>
@@ -91,63 +96,67 @@ export const TopBar = ({
         </h2>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: "1.25rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
         {/* Notification Bell */}
         <div style={{ position: "relative" }}>
           <button
             onClick={onToggleNotifications}
+            className="interactive-element"
             style={{
-              background: isNotificationsOpen ? "rgba(225, 29, 72, 0.12)" : "transparent",
-              border: "1px solid rgba(225, 29, 72, 0.25)",
+              backgroundColor: isNotificationsOpen ? "#F8FAFC" : "#FFFFFF",
+              border: "1px solid #E2E8F0",
               cursor: "pointer",
-              color: "#e11d48", display: "flex", alignItems: "center", padding: 7,
-              borderRadius: 8, position: "relative",
-              transition: "all 0.15s ease"
+              color: "#64748B",
+              display: "flex",
+              alignItems: "center",
+              padding: 8,
+              borderRadius: 10,
+              position: "relative",
+              transition: "all 0.15s ease",
+              boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)"
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fff1f2")}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = isNotificationsOpen ? "rgba(225, 29, 72, 0.12)" : "transparent")}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#F8FAFC";
+              e.currentTarget.style.borderColor = "#CBD5E1";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = isNotificationsOpen ? "#F8FAFC" : "#FFFFFF";
+              e.currentTarget.style.borderColor = "#E2E8F0";
+            }}
           >
-            <span
-              key={unreadCount > 0 ? "has-unread" : "no-unread"}
-              className={unreadCount > 0 ? "animate-bell" : ""}
-              style={{ display: "inline-flex", alignItems: "center" }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" stroke="#e11d48"/><path d="M13.73 21a2 2 0 0 1-3.46 0" stroke="#be123c"/>
+            <span style={{ display: "inline-flex", alignItems: "center" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
               </svg>
             </span>
             {unreadCount > 0 && (
               <span style={{
-                position: "absolute", top: -2, right: -2,
-                background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
-                color: "#ffffff",
-                fontSize: "0.62rem", fontWeight: 800,
-                borderRadius: "50%", width: 17, height: 17,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                boxShadow: "0 2px 6px rgba(239, 68, 68, 0.4), 0 0 0 2px #ffffff"
-              }}>
-                {unreadCount}
-              </span>
+                position: "absolute", top: 6, right: 6,
+                backgroundColor: "#EF4444",
+                borderRadius: "50%", width: 7, height: 7,
+                boxShadow: "0 0 0 2px #FFFFFF"
+              }} />
             )}
           </button>
 
           {isNotificationsOpen && (
             <div style={{
-              position: "absolute", right: 0, top: 44, width: "320px",
-              backgroundColor: "#ffffff", borderRadius: "12px",
-              boxShadow: "0 12px 30px -4px rgba(33, 12, 174, 0.15), 0 0 0 1px rgba(77, 201, 230, 0.3)",
+              position: "absolute", right: 0, top: 46, width: "320px",
+              backgroundColor: "#FFFFFF", borderRadius: "12px",
+              boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)",
+              border: "1px solid #E2E8F0",
               zIndex: 200, display: "flex", flexDirection: "column", overflow: "hidden"
             }}>
               <div style={{
                 display: "flex", justifyContent: "space-between", alignItems: "center",
-                padding: "0.75rem 1rem", borderBottom: "1px solid #f1f5f9", backgroundColor: "#f8fafc"
+                padding: "0.75rem 1rem", borderBottom: "1px solid #E2E8F0", backgroundColor: "#F8FAFC"
               }}>
-                <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#0f172a" }}>Notifications</span>
+                <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#0F172A" }}>Notifications</span>
                 {unreadCount > 0 && (
                   <button
                     onClick={onMarkAllRead}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "#210cae", fontSize: "0.7rem", fontWeight: 600, padding: "2px 4px", borderRadius: "4px" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#e8e6f8")}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "#6366F1", fontSize: "0.7rem", fontWeight: 600, padding: "2px 4px", borderRadius: "4px" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#EEF2FF")}
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                   >
                     Mark all read
@@ -155,79 +164,38 @@ export const TopBar = ({
                 )}
               </div>
 
-              <div style={{ maxHeight: "280px", overflowY: "auto" }}>
+              <div style={{ maxHeight: "320px", overflowY: "auto" }}>
                 {notifications.length === 0 ? (
-                  <div style={{ padding: "2rem 1rem", textAlign: "center", color: "#94a3b8", fontSize: "0.76rem" }}>
-                    No notifications yet.
+                  <div style={{ padding: "1.5rem", textAlign: "center", color: "#64748B", fontSize: "0.8rem" }}>
+                    No notifications
                   </div>
                 ) : (
-                  notifications.map(n => (
+                  notifications.map((n) => (
                     <div
                       key={n.id}
-                      onClick={() => onMarkRead(n.id)}
+                      onClick={() => !n.isRead && onMarkRead(n.id)}
                       style={{
-                        padding: "0.75rem 1rem", borderBottom: "1px solid #f8fafc",
-                        cursor: "pointer", backgroundColor: n.isRead ? "transparent" : "rgba(33, 12, 174, 0.02)",
-                        display: "flex", flexDirection: "column", gap: "0.15rem", transition: "background-color 0.15s"
+                        padding: "0.75rem 1rem",
+                        borderBottom: "1px solid #F1F5F9",
+                        backgroundColor: n.isRead ? "#FFFFFF" : "#F8FAFC",
+                        cursor: n.isRead ? "default" : "pointer",
+                        transition: "background-color 0.15s ease",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "0.2rem"
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#fafafa"}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = n.isRead ? "transparent" : "rgba(33, 12, 174, 0.02)"}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
-                        <span style={{ fontSize: "0.78rem", fontWeight: n.isRead ? 600 : 700, color: n.isRead ? "#475569" : "#0f172a" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: "0.8rem", fontWeight: n.isRead ? 600 : 700, color: "#0F172A" }}>
                           {n.title}
                         </span>
-                        {!n.isRead && <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#210cae", flexShrink: 0, marginTop: 5 }} />}
+                        {!n.isRead && (
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#EF4444" }} />
+                        )}
                       </div>
-                      {(() => {
-                        const isLowStock = n.title?.toLowerCase().includes("low stock");
-                        if (isLowStock) {
-                          const match = n.message.match(/at\s+["“]?([^"”\.]+?)["”]?\s+(has|dropped|is)/i) || 
-                                        n.message.match(/at\s+["“]?([^"”\.]+?)["”]?$/i) ||
-                                        n.message.match(/site\s+["“]?([^"”\.]+?)["”]?/i);
-                          const siteName = match ? match[1].trim() : null;
-
-                          if (siteName) {
-                            const escapedSite = siteName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                            const regex = new RegExp(`(at\\s+["“]?${escapedSite}["”]?|${escapedSite})`, 'i');
-                            const parts = n.message.split(regex);
-
-                            return (
-                              <span style={{ fontSize: "0.72rem", color: "#64748b", lineHeight: 1.45 }}>
-                                {parts.map((part, idx) => {
-                                  if (part.toLowerCase() === siteName.toLowerCase() || part.toLowerCase() === `at "${siteName.toLowerCase()}"` || part.toLowerCase() === `at ${siteName.toLowerCase()}`) {
-                                    return (
-                                      <span key={idx} style={{
-                                        fontSize: "0.68rem",
-                                        fontWeight: 800,
-                                        padding: "0.1rem 0.45rem",
-                                        borderRadius: "4px",
-                                        backgroundColor: "#eef2ff",
-                                        color: "#210cae",
-                                        border: "1px solid #c7d2fe",
-                                        margin: "0 0.15rem",
-                                        display: "inline-flex",
-                                        alignItems: "center",
-                                        gap: "0.2rem"
-                                      }}>
-                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#210cae" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                                          <circle cx="12" cy="10" r="3" />
-                                        </svg>
-                                        <span>{siteName}</span>
-                                      </span>
-                                    );
-                                  }
-                                  return <span key={idx}>{part}</span>;
-                                })}
-                              </span>
-                            );
-                          }
-                        }
-                        return <span style={{ fontSize: "0.72rem", color: "#64748b", lineHeight: 1.3 }}>{n.message}</span>;
-                      })()}
-                      <span style={{ fontSize: "0.62rem", color: "#cbd5e1", marginTop: "0.1rem" }}>
-                        {new Date(n.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      <span style={{ fontSize: "0.75rem", color: "#64748B" }}>{n.message}</span>
+                      <span style={{ fontSize: "0.68rem", color: "#94A3B8", marginTop: "2px" }}>
+                        {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
                   ))
@@ -237,34 +205,39 @@ export const TopBar = ({
           )}
         </div>
 
-        {/* Profile Info */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", borderLeft: "1px solid #e2e8f0", paddingLeft: "1rem" }}>
+        {/* User Info Header Section */}
+        {currentUser && (
           <div style={{
-            width: 34, height: 34, borderRadius: "50%",
-            background: "linear-gradient(135deg, #210cae 0%, #4dc9e6 100%)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#ffffff", fontWeight: 700, fontSize: "0.82rem",
-            boxShadow: "0 2px 6px rgba(33, 12, 174, 0.2)"
+            display: "flex",
+            alignItems: "center",
+            gap: "0.65rem"
           }}>
-            {(currentUser?.name || "SA").split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase()}
-          </div>
-          <div className="hide-on-mobile" style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-              <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b", lineHeight: 1.1 }}>
-                {currentUser?.name || "Super Admin"}
+            <div style={{
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              background: "linear-gradient(135deg, #3B82F6 0%, #00C6FF 100%)",
+              color: "#FFFFFF",
+              fontWeight: 800,
+              fontSize: "0.85rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 2px 8px rgba(59, 130, 246, 0.35)",
+              flexShrink: 0
+            }}>
+              {(currentUser.name || "SU").substring(0, 2).toUpperCase()}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+              <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "#0F172A", lineHeight: 1.25 }}>
+                {currentUser.name}
               </span>
-              {currentUser?.employeeId && (
-                <EidBadge employeeId={currentUser.employeeId} size="sm" />
-              )}
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-              <RoleBadge role={currentUser?.role || "SUPER_ADMIN"} size="sm" />
-              {currentUser?.site && (
-                <SiteBadge site={currentUser.site} size="sm" />
-              )}
+              <span style={{ fontSize: "0.72rem", color: "#64748B", lineHeight: 1.2 }}>
+                {currentUser.department || "IT Department"}
+              </span>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </header>
   );
