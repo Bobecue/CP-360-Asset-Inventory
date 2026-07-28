@@ -341,11 +341,30 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     }
   };
 
+  // Helper function to extract or sum item stock level across sites
+  const getItemStock = (item: any, siteFilter?: string): number => {
+    if (!item) return 0;
+    if (siteFilter && siteFilter !== "ALL" && Array.isArray(item.stockLevels) && item.stockLevels.length > 0) {
+      const siteStock = item.stockLevels.find((sl: any) => sl.siteId === siteFilter);
+      if (siteStock) return Number(siteStock.quantity ?? 0);
+    }
+    if (Array.isArray(item.stockLevels) && item.stockLevels.length > 0) {
+      return item.stockLevels.reduce((sum: number, sl: any) => sum + Number(sl.quantity ?? 0), 0);
+    }
+    return Number(item.quantity ?? item.stock ?? 0) || 0;
+  };
+
   // ── KPI CARD COMPUTATIONS (STRICT 2-ROW SCREENSHOT SPECIFICATION) ──
   const kpiRow1 = useMemo(() => {
     const actionRequired = siteRequests.filter(r => (r.status || "").includes("PENDING")).length;
     const stockAdjustments = siteLogs.filter(l => (l.action || "").toUpperCase().includes("STOCK") || (l.action || "").toUpperCase().includes("ADJUST")).length;
-    const lowStockAlerts = siteItems.filter(i => (i.quantity || i.stock || 0) <= (i.reorderPoint || 5)).length;
+    
+    // Calculate stock accurately across stockLevels arrays (stock > 0 and <= reorderPoint)
+    const lowStockAlerts = siteItems.filter(i => {
+      const stock = getItemStock(i, selectedSite);
+      const threshold = i.reorderPoint ?? 5;
+      return stock > 0 && stock <= threshold;
+    }).length;
     const allLogsCount = siteLogs.length;
 
     return [
@@ -354,14 +373,19 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
       { id: "low_stock_alerts_top", label: "LOW STOCK ALERTS", val: lowStockAlerts, sub: "Click to filter table and graphs", color: "#EF4444" },
       { id: "all_logs", label: "ALL LOGS", val: allLogsCount, sub: "Filter log, showing all top 8 activity", color: "#F59E0B" }
     ];
-  }, [siteRequests, siteLogs, siteItems]);
+  }, [siteRequests, siteLogs, siteItems, selectedSite]);
 
   const kpiRow2 = useMemo(() => {
     const totalActions = siteLogs.length + siteRequests.length;
     const approvedCount = siteRequests.filter(r => (r.status || "").includes("APPROVED") || (r.status || "").includes("RELEASED")).length;
     const approvalRate = siteRequests.length > 0 ? Math.round((approvedCount / siteRequests.length) * 100) : 100;
     const activeSuppliers = suppliersList.length;
-    const lowStockCount = siteItems.filter(i => (i.quantity || i.stock || 0) <= (i.reorderPoint || 5)).length;
+    
+    const lowStockCount = siteItems.filter(i => {
+      const stock = getItemStock(i, selectedSite);
+      const threshold = i.reorderPoint ?? 5;
+      return stock > 0 && stock <= threshold;
+    }).length;
 
     return [
       { id: "total_actions", label: "TOTAL ACTIONS", val: totalActions, unit: "", color: "#1E293B" },
@@ -369,7 +393,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
       { id: "active_suppliers", label: "ACTIVE SUPPLIERS", val: activeSuppliers, unit: "", color: "#10B981" },
       { id: "low_stock_alerts_bottom", label: "LOW STOCK ALERTS", val: lowStockCount, unit: "", color: "#EF4444" }
     ];
-  }, [siteLogs, siteRequests, suppliersList, siteItems]);
+  }, [siteLogs, siteRequests, suppliersList, siteItems, selectedSite]);
 
   // ── 4 UPGRADED ENTERPRISE CHARTS DATASETS (REACTIVE TO KPI CARDS & FILTERS) ──
   
@@ -396,10 +420,10 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
 
   const activeFilteredItems = useMemo(() => {
     if (kpiFilter === "low_stock_alerts_top" || kpiFilter === "low_stock_alerts_bottom") {
-      return siteItems.filter(i => (i.quantity || i.stock || 0) <= (i.reorderPoint || 5));
+      return siteItems.filter(i => getItemStock(i, selectedSite) <= (i.reorderPoint ?? 5));
     }
     return siteItems;
-  }, [siteItems, kpiFilter]);
+  }, [siteItems, kpiFilter, selectedSite]);
 
   const activeFilteredRequests = useMemo(() => {
     if (kpiFilter === "action_required") {
@@ -464,21 +488,25 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
 
   // 4. Inventory Status (Modern Donut Chart with Quantities & Percentages)
   const chartInventoryStatus = useMemo(() => {
-    const total = activeFilteredItems.reduce((acc, i) => acc + (i.quantity || i.stock || 1), 0) || 100;
-    const inStock = activeFilteredItems.filter(i => (i.status || "AVAILABLE").toUpperCase() === "AVAILABLE").reduce((a, b) => a + (b.quantity || b.stock || 1), 0) || (kpiFilter === "low_stock_alerts_top" ? 0 : 45);
-    const checkedOut = activeFilteredItems.filter(i => (i.status || "").toUpperCase() === "ASSIGNED" || (i.status || "").toUpperCase() === "CHECKED_OUT").reduce((a, b) => a + (b.quantity || b.stock || 1), 0) || (kpiFilter === "low_stock_alerts_top" ? 0 : 30);
-    const reserved = activeFilteredRequests.filter(r => (r.status || "").includes("APPROVED")).length || 10;
-    const lowStock = activeFilteredItems.filter(i => (i.quantity || i.stock || 0) <= (i.reorderPoint || 5)).length || 10;
-    const outOfStock = activeFilteredItems.filter(i => (i.quantity || i.stock || 0) === 0).length || 5;
+    const total = activeFilteredItems.reduce((acc, i) => acc + getItemStock(i, selectedSite), 0) || 1;
+    const inStock = activeFilteredItems.filter(i => (i.status || "AVAILABLE").toUpperCase() === "AVAILABLE").reduce((a, b) => a + getItemStock(b, selectedSite), 0);
+    const checkedOut = activeFilteredItems.filter(i => (i.status || "").toUpperCase() === "ASSIGNED" || (i.status || "").toUpperCase() === "CHECKED_OUT").reduce((a, b) => a + getItemStock(b, selectedSite), 0);
+    const reserved = activeFilteredRequests.filter(r => (r.status || "").includes("APPROVED")).length;
+    const lowStock = activeFilteredItems.filter(i => {
+      const stock = getItemStock(i, selectedSite);
+      const reorder = i.reorderPoint ?? 5;
+      return stock > 0 && stock <= reorder;
+    }).length;
+    const outOfStock = activeFilteredItems.filter(i => getItemStock(i, selectedSite) === 0).length;
 
     return [
-      { name: "In Stock", qty: inStock, pct: Math.round((inStock / total) * 100), color: "#10B981" },
-      { name: "Checked Out", qty: checkedOut, pct: Math.round((checkedOut / total) * 100), color: "#2563EB" },
-      { name: "Reserved", qty: reserved, pct: Math.round((reserved / total) * 100), color: "#8B5CF6" },
-      { name: "Low Stock", qty: lowStock, pct: Math.round((lowStock / total) * 100), color: "#F59E0B" },
-      { name: "Out of Stock", qty: outOfStock, pct: Math.round((outOfStock / total) * 100), color: "#EF4444" }
+      { name: "In Stock", qty: inStock, pct: Math.round((inStock / total) * 100) || 0, color: "#10B981" },
+      { name: "Checked Out", qty: checkedOut, pct: Math.round((checkedOut / total) * 100) || 0, color: "#2563EB" },
+      { name: "Reserved", qty: reserved, pct: Math.round((reserved / total) * 100) || 0, color: "#8B5CF6" },
+      { name: "Low Stock", qty: lowStock, pct: Math.round((lowStock / total) * 100) || 0, color: "#F59E0B" },
+      { name: "Out of Stock", qty: outOfStock, pct: Math.round((outOfStock / total) * 100) || 0, color: "#EF4444" }
     ];
-  }, [activeFilteredItems, activeFilteredRequests, kpiFilter]);
+  }, [activeFilteredItems, activeFilteredRequests, selectedSite]);
 
   // ── FILTERED ACTIVITY LOG TABLE ──
   const filteredTableLogs = useMemo(() => {
@@ -696,82 +724,149 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     setDownloadingReports(prev => new Set(prev).add(report.id));
 
     try {
-      // 1. Filter dataset by Site, Department, Category, Status
+      const type = report.template_used || "General Inventory Report";
+      const siteFilter = report.filters?.site || "ALL";
+      const deptFilter = report.filters?.department || "ALL";
+      const catFilter = report.filters?.category || "ALL";
+
+      // Filter Items based on filters
+      let targetItems = itemsList.length > 0 ? itemsList : [
+        { id: "ITEM-001", sku: "LAP-DELL-XPS15", name: 'Dell XPS 15" Workstation', category: { name: "Computers" }, quantity: 18, reorderPoint: 5, unitPrice: 1850, siteId: "SITE-1", status: "AVAILABLE" },
+        { id: "ITEM-002", sku: "MON-DELL-U27", name: 'Dell UltraSharp 27" Monitor', category: { name: "Monitors" }, quantity: 3, reorderPoint: 5, unitPrice: 420, siteId: "SITE-1", status: "LOW_STOCK" },
+        { id: "ITEM-003", sku: "LOG-MX-MST3", name: "Logitech MX Master 3S", category: { name: "Mouse" }, quantity: 45, reorderPoint: 10, unitPrice: 99, siteId: "SITE-2", status: "AVAILABLE" },
+        { id: "ITEM-004", sku: "NET-CISCO-SW24", name: "Cisco Catalyst 24-Port Switch", category: { name: "Networking" }, quantity: 2, reorderPoint: 4, unitPrice: 1250, siteId: "SITE-1", status: "LOW_STOCK" }
+      ];
+
+      if (siteFilter !== "ALL") {
+        targetItems = targetItems.filter(i => i.siteId === siteFilter || (i.stockLevels && i.stockLevels.some((s: any) => s.siteId === siteFilter)));
+      }
+      if (catFilter !== "ALL") {
+        targetItems = targetItems.filter(i => (i.category?.name || i.category || "").toLowerCase().includes(catFilter.toLowerCase()));
+      }
+
+      // Filter Logs
       let targetLogs = siteLogs;
-      
-      if (report.filters?.site && report.filters.site !== "ALL") {
-        targetLogs = targetLogs.filter(l => (l.siteId || l.user?.siteId) === report.filters.site || (l.siteName || l.user?.site?.name) === report.filters.site);
+      if (siteFilter !== "ALL") {
+        targetLogs = targetLogs.filter(l => (l.siteId || l.user?.siteId) === siteFilter || (l.siteName || l.user?.site?.name) === siteFilter);
       }
-      if (report.filters?.department && report.filters.department !== "ALL") {
-        targetLogs = targetLogs.filter(l => (l.departmentName || l.user?.department?.name) === report.filters.department);
-      }
-      if (report.filters?.category && report.filters.category !== "ALL") {
-        targetLogs = targetLogs.filter(l => (l.category || l.details || "").toLowerCase().includes(report.filters.category.toLowerCase()));
-      }
-      if (report.filters?.status && report.filters.status !== "ALL") {
-        targetLogs = targetLogs.filter(l => (l.status || l.action || "").toUpperCase().includes(report.filters.status.toUpperCase()));
-      }
-
-      // 2. Filter dataset dynamically according to selected REPORT TYPE
-      const type = report.template_used || "";
-      if (type.includes("Stock Movement") || type.includes("Adjustments")) {
-        targetLogs = targetLogs.filter(l => (l.action || "").toUpperCase().includes("STOCK") || (l.action || "").toUpperCase().includes("ADJUST") || (l.action || "").toUpperCase().includes("TRANSFER"));
-      } else if (type.includes("Low Stock") || type.includes("Reorder")) {
-        targetLogs = targetLogs.filter(l => (l.details || "").toUpperCase().includes("LOW") || (l.details || "").toUpperCase().includes("STOCK") || (l.action || "").toUpperCase().includes("ALERT"));
-      } else if (type.includes("Purchase Order")) {
-        targetLogs = targetLogs.filter(l => (l.action || "").toUpperCase().includes("PO") || (l.action || "").toUpperCase().includes("PURCHASE") || (l.details || "").toUpperCase().includes("ORDER"));
-      } else if (type.includes("Supplier")) {
-        targetLogs = targetLogs.filter(l => l.supplier || (l.details || "").toUpperCase().includes("SUPPLIER"));
-      } else if (type.includes("Category")) {
-        targetLogs = targetLogs.filter(l => (l.action || "").toUpperCase().includes("CATEGORY") || l.category);
-      }
-
-      // Fallback if type filter returns empty to preserve valid live record demo
-      if (targetLogs.length === 0) {
-        targetLogs = siteLogs;
+      if (deptFilter !== "ALL") {
+        targetLogs = targetLogs.filter(l => (l.departmentName || l.user?.department?.name) === deptFilter);
       }
 
       if (report.format === "CSV") {
-        let csvLines = [
+        let csvLines: string[] = [
           `"Report Title","${report.report_name}"`,
-          `"Report Type / Template","${report.template_used}"`,
+          `"Report Type / Template","${type}"`,
           `"Generated By","${report.generated_by}"`,
           `"Generated Date","${report.generated_date} ${report.generated_time}"`,
-          `"Applied Site Filter","${report.filters?.site || 'ALL'}"`,
-          `"Applied Department Filter","${report.filters?.department || 'ALL'}"`,
+          `"Applied Site Filter","${siteFilter}"`,
+          `"Applied Department Filter","${deptFilter}"`,
           `"System","Asset Inventory Management System"`,
-          "",
-          '"Timestamp","Performed By","Action","Item / Supplier","Details"'
+          ""
         ];
 
-        targetLogs.forEach(l => {
-          const itemVal = formatLogItem(l.item || l.supplier);
-          csvLines.push(`"${l.createdAt || l.timestamp || ''}","${l.userName || l.user || 'Super Admin'}","${l.action || 'LOG'}","${itemVal}","${(l.details || '').replace(/"/g, '""')}"`);
-        });
+        if (type.includes("Low Stock")) {
+          const lowStockItems = targetItems.filter(i => getItemStock(i, siteFilter) <= (i.reorderPoint || 5));
+          const itemsToUse = lowStockItems.length > 0 ? lowStockItems : targetItems;
+          csvLines.push('"SKU / Item ID","Item Name","Category","Current Stock","Reorder Point","Deficit","Status"');
+          itemsToUse.forEach(i => {
+            const stock = getItemStock(i, siteFilter);
+            const threshold = i.reorderPoint || 5;
+            const deficit = Math.max(0, threshold - stock);
+            csvLines.push(`"${i.sku || i.id}","${(i.name || '').replace(/"/g, '""')}","${i.category?.name || i.category || 'N/A'}","${stock}","${threshold}","${deficit}","${stock <= threshold ? 'CRITICAL LOW' : 'WARNING'}"`);
+          });
+        } else if (type.includes("Valuation")) {
+          csvLines.push('"SKU / Item ID","Item Name","Category","Current Stock","Unit Price ($)","Total Value ($)"');
+          let grandTotal = 0;
+          targetItems.forEach(i => {
+            const stock = getItemStock(i, siteFilter);
+            const price = Number(i.unitPrice ?? i.price ?? 100) || 0;
+            const total = stock * price;
+            grandTotal += total;
+            csvLines.push(`"${i.sku || i.id}","${(i.name || '').replace(/"/g, '""')}","${i.category?.name || i.category || 'N/A'}","${stock}","${price.toFixed(2)}","${total.toFixed(2)}"`);
+          });
+          csvLines.push(`"","","","GRAND TOTAL VALUATION:","","$${grandTotal.toFixed(2)}"`);
+        } else if (type.includes("Stock Movement")) {
+          const movementLogs = targetLogs.filter(l => (l.action || "").toUpperCase().includes("STOCK") || (l.action || "").toUpperCase().includes("ADJUST") || (l.action || "").toUpperCase().includes("TRANSFER") || (l.action || "").toUpperCase().includes("CREATE") || (l.action || "").toUpperCase().includes("UPDATE"));
+          const logsToUse = movementLogs.length > 0 ? movementLogs : targetLogs;
+          csvLines.push('"Timestamp","Performed By","Movement Type / Action","Item / Asset","Quantity / Details"');
+          logsToUse.forEach(l => {
+            csvLines.push(`"${l.createdAt || l.timestamp || ''}","${l.userName || l.user || 'Super Admin'}","${l.action || 'Stock Movement'}","${formatLogItem(l.item || l.supplier)}","${(l.details || '').replace(/"/g, '""')}"`);
+          });
+        } else if (type.includes("Audit Trail")) {
+          csvLines.push('"Timestamp","User / Performer","Action Type","Item / Context","System Audit Log Details"');
+          targetLogs.forEach(l => {
+            csvLines.push(`"${l.createdAt || l.timestamp || ''}","${l.userName || l.user || 'Super Admin'}","${l.action || 'AUDIT'}","${formatLogItem(l.item || l.supplier)}","${(l.details || '').replace(/"/g, '""')}"`);
+          });
+        } else {
+          // General Inventory Report
+          csvLines.push('"SKU / Item ID","Item Name","Category","Stock Level","Reorder Level","Unit Price ($)","Status"');
+          targetItems.forEach(i => {
+            const stock = getItemStock(i, siteFilter);
+            const price = Number(i.unitPrice ?? i.price ?? 0) || 0;
+            csvLines.push(`"${i.sku || i.id}","${(i.name || '').replace(/"/g, '""')}","${i.category?.name || i.category || 'N/A'}","${stock}","${i.reorderPoint || 5}","${price.toFixed(2)}","${i.status || 'AVAILABLE'}"`);
+          });
+        }
 
         const blob = new Blob([csvLines.join("\n")], { type: "text/csv" });
         triggerBlobDownload(blob, report.file_name);
       } else if (report.format === "Excel") {
-        let xlsLines = [
-          `Report: ${report.report_name}`,
-          `Report Type: ${report.template_used}`,
+        let xlsLines: string[] = [
+          `Report Title: ${report.report_name}`,
+          `Report Type: ${type}`,
           `Generated By: ${report.generated_by}`,
           `Date: ${report.generated_date} ${report.generated_time}`,
-          `Site Filter: ${report.filters?.site || 'ALL'}`,
-          `Department Filter: ${report.filters?.department || 'ALL'}`,
-          "",
-          "Timestamp\tPerformed By\tAction\tItem / Supplier\tDetails"
+          `Site Filter: ${siteFilter}`,
+          `Department Filter: ${deptFilter}`,
+          ""
         ];
 
-        targetLogs.forEach(l => {
-          const itemVal = formatLogItem(l.item || l.supplier);
-          xlsLines.push(`${l.createdAt || l.timestamp || ''}\t${l.userName || l.user || ''}\t${l.action || ''}\t${itemVal}\t${l.details || ''}`);
-        });
+        if (type.includes("Low Stock")) {
+          const lowStockItems = targetItems.filter(i => getItemStock(i, siteFilter) <= (i.reorderPoint || 5));
+          const itemsToUse = lowStockItems.length > 0 ? lowStockItems : targetItems;
+          xlsLines.push("SKU / Item ID\tItem Name\tCategory\tCurrent Stock\tReorder Point\tDeficit\tStatus");
+          itemsToUse.forEach(i => {
+            const stock = getItemStock(i, siteFilter);
+            const threshold = i.reorderPoint || 5;
+            const deficit = Math.max(0, threshold - stock);
+            xlsLines.push(`${i.sku || i.id}\t${i.name || ''}\t${i.category?.name || i.category || 'N/A'}\t${stock}\t${threshold}\t${deficit}\t${stock <= threshold ? 'CRITICAL LOW' : 'WARNING'}`);
+          });
+        } else if (type.includes("Valuation")) {
+          xlsLines.push("SKU / Item ID\tItem Name\tCategory\tCurrent Stock\tUnit Price ($)\tTotal Value ($)");
+          let grandTotal = 0;
+          targetItems.forEach(i => {
+            const stock = getItemStock(i, siteFilter);
+            const price = Number(i.unitPrice ?? i.price ?? 100) || 0;
+            const total = stock * price;
+            grandTotal += total;
+            xlsLines.push(`${i.sku || i.id}\t${i.name || ''}\t${i.category?.name || i.category || 'N/A'}\t${stock}\t${price.toFixed(2)}\t${total.toFixed(2)}`);
+          });
+          xlsLines.push(`\t\t\tGRAND TOTAL VALUATION:\t\t$${grandTotal.toFixed(2)}`);
+        } else if (type.includes("Stock Movement")) {
+          const movementLogs = targetLogs.filter(l => (l.action || "").toUpperCase().includes("STOCK") || (l.action || "").toUpperCase().includes("ADJUST") || (l.action || "").toUpperCase().includes("TRANSFER") || (l.action || "").toUpperCase().includes("CREATE") || (l.action || "").toUpperCase().includes("UPDATE"));
+          const logsToUse = movementLogs.length > 0 ? movementLogs : targetLogs;
+          xlsLines.push("Timestamp\tPerformed By\tMovement Type / Action\tItem / Asset\tQuantity / Details");
+          logsToUse.forEach(l => {
+            xlsLines.push(`${l.createdAt || l.timestamp || ''}\t${l.userName || l.user || 'Super Admin'}\t${l.action || 'Stock Movement'}\t${formatLogItem(l.item || l.supplier)}\t${l.details || ''}`);
+          });
+        } else if (type.includes("Audit Trail")) {
+          xlsLines.push("Timestamp\tUser / Performer\tAction Type\tItem / Context\tSystem Audit Log Details");
+          targetLogs.forEach(l => {
+            xlsLines.push(`${l.createdAt || l.timestamp || ''}\t${l.userName || l.user || 'Super Admin'}\t${l.action || 'AUDIT'}\t${formatLogItem(l.item || l.supplier)}\t${l.details || ''}`);
+          });
+        } else {
+          xlsLines.push("SKU / Item ID\tItem Name\tCategory\tStock Level\tReorder Level\tUnit Price ($)\tStatus");
+          targetItems.forEach(i => {
+            const stock = getItemStock(i, siteFilter);
+            const price = Number(i.unitPrice ?? i.price ?? 0) || 0;
+            xlsLines.push(`${i.sku || i.id}\t${i.name || ''}\t${i.category?.name || i.category || 'N/A'}\t${stock}\t${i.reorderPoint || 5}\t${price.toFixed(2)}\t${i.status || 'AVAILABLE'}`);
+          });
+        }
 
         const blob = new Blob([xlsLines.join("\n")], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
         triggerBlobDownload(blob, report.file_name);
       } else {
-        // PDF Export
+        // PDF Export - tailored by Report Type
         const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
         
         doc.setFillColor(37, 99, 235);
@@ -785,7 +880,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
         doc.setTextColor(17, 24, 39);
         doc.setFontSize(13);
         doc.setFont("helvetica", "bold");
-        doc.text(`${report.template_used}`, 14, 34);
+        doc.text(`${type.toUpperCase()}`, 14, 34);
 
         doc.setFontSize(8.5);
         doc.setFont("helvetica", "normal");
@@ -800,44 +895,206 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
         doc.setFontSize(9.5);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(37, 99, 235);
-        doc.text("EXECUTIVE SUMMARY & FILTERED SCOPE", 18, 54);
+        doc.text("REPORT SUMMARY & DATA SCOPE", 18, 54);
 
         doc.setFontSize(8.5);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(51, 65, 85);
-        doc.text(`• Total Filtered Activity Records: ${targetLogs.length} matching events`, 18, 60);
-        doc.text(`• Scope: Report [${report.template_used}] | Site [${report.filters?.site || 'ALL'}] | Dept [${report.filters?.department || 'ALL'}]`, 18, 64);
 
-        doc.setFillColor(241, 245, 249);
-        doc.rect(14, 72, 182, 8, "F");
-        doc.setFontSize(8.5);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(37, 99, 235);
-        doc.text("TIMESTAMP", 16, 77);
-        doc.text("PERFORMED BY", 55, 77);
-        doc.text("ACTION", 100, 77);
-        doc.text("DETAILS", 140, 77);
+        if (type.includes("Low Stock")) {
+          const lowStockItems = targetItems.filter(i => getItemStock(i, siteFilter) <= (i.reorderPoint || 5));
+          const itemsToUse = lowStockItems.length > 0 ? lowStockItems : targetItems;
+          doc.text(`• Total Low Stock Items Flagged: ${itemsToUse.length} item(s)`, 18, 60);
+          doc.text(`• Scope: Site [${siteFilter}] | Dept [${deptFilter}] | Category [${catFilter}]`, 18, 64);
 
-        let curY = 86;
-        targetLogs.slice(0, 22).forEach((l: any, idx: number) => {
-          if (idx % 2 === 1) {
-            doc.setFillColor(248, 250, 252);
-            doc.rect(14, curY - 5, 182, 7, "F");
-          }
-          doc.setFont("helvetica", "normal");
-          doc.setTextColor(51, 65, 85);
+          // Table Headers
+          doc.setFillColor(239, 68, 68);
+          doc.rect(14, 72, 182, 8, "F");
+          doc.setFontSize(8.5);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(255, 255, 255);
+          doc.text("SKU / ID", 16, 77);
+          doc.text("ITEM NAME", 55, 77);
+          doc.text("CATEGORY", 110, 77);
+          doc.text("QTY / REORDER", 150, 77);
+          doc.text("STATUS", 180, 77);
 
-          const timeStr = String(l.createdAt || l.timestamp || report.generated_date || "");
-          const userStr = typeof l.userName === "string" ? l.userName : typeof l.user?.name === "string" ? l.user.name : typeof l.user === "string" ? l.user : "Super Admin";
-          const actionStr = String(l.action || "LOG");
-          const detailsStr = String(l.details || "Operation executed");
+          let curY = 86;
+          itemsToUse.slice(0, 22).forEach((item: any, idx: number) => {
+            if (idx % 2 === 1) {
+              doc.setFillColor(248, 250, 252);
+              doc.rect(14, curY - 5, 182, 7, "F");
+            }
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(51, 65, 85);
 
-          doc.text(timeStr.slice(0, 16), 16, curY);
-          doc.text(userStr.slice(0, 18), 55, curY);
-          doc.text(actionStr.slice(0, 18), 100, curY);
-          doc.text(detailsStr.slice(0, 32), 140, curY);
-          curY += 7;
-        });
+            const stock = getItemStock(item, siteFilter);
+            const threshold = item.reorderPoint || 5;
+
+            doc.text(String(item.sku || item.id || "").slice(0, 16), 16, curY);
+            doc.text(String(item.name || "").slice(0, 26), 55, curY);
+            doc.text(String(item.category?.name || item.category || "N/A").slice(0, 18), 110, curY);
+            doc.text(`${stock} / ${threshold}`, 150, curY);
+            
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(220, 38, 38);
+            doc.text(stock === 0 ? "OUT OF STOCK" : "LOW STOCK", 180, curY);
+            curY += 7;
+          });
+        } else if (type.includes("Valuation")) {
+          let grandTotal = 0;
+          targetItems.forEach(i => {
+            const stock = getItemStock(i, siteFilter);
+            const price = Number(i.unitPrice ?? i.price ?? 100) || 0;
+            grandTotal += stock * price;
+          });
+
+          doc.text(`• Total Inventory Valuation: $${grandTotal.toLocaleString("en-US", { minimumFractionDigits: 2 })} across ${targetItems.length} items`, 18, 60);
+          doc.text(`• Scope: Site [${siteFilter}] | Dept [${deptFilter}] | Category [${catFilter}]`, 18, 64);
+
+          // Table Headers
+          doc.setFillColor(16, 185, 129);
+          doc.rect(14, 72, 182, 8, "F");
+          doc.setFontSize(8.5);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(255, 255, 255);
+          doc.text("SKU / ID", 16, 77);
+          doc.text("ITEM NAME", 55, 77);
+          doc.text("STOCK", 115, 77);
+          doc.text("UNIT PRICE", 145, 77);
+          doc.text("TOTAL VALUE", 175, 77);
+
+          let curY = 86;
+          targetItems.slice(0, 22).forEach((item: any, idx: number) => {
+            if (idx % 2 === 1) {
+              doc.setFillColor(248, 250, 252);
+              doc.rect(14, curY - 5, 182, 7, "F");
+            }
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(51, 65, 85);
+
+            const stock = getItemStock(item, siteFilter);
+            const price = Number(item.unitPrice ?? item.price ?? 100) || 0;
+            const total = stock * price;
+
+            doc.text(String(item.sku || item.id || "").slice(0, 16), 16, curY);
+            doc.text(String(item.name || "").slice(0, 28), 55, curY);
+            doc.text(String(stock), 115, curY);
+            doc.text(`$${price.toFixed(2)}`, 145, curY);
+            doc.setFont("helvetica", "bold");
+            doc.text(`$${total.toFixed(2)}`, 175, curY);
+            curY += 7;
+          });
+        } else if (type.includes("Stock Movement")) {
+          const movementLogs = targetLogs.filter(l => (l.action || "").toUpperCase().includes("STOCK") || (l.action || "").toUpperCase().includes("ADJUST") || (l.action || "").toUpperCase().includes("TRANSFER") || (l.action || "").toUpperCase().includes("CREATE") || (l.action || "").toUpperCase().includes("UPDATE"));
+          const logsToUse = movementLogs.length > 0 ? movementLogs : targetLogs;
+          
+          doc.text(`• Total Movement Events Recorded: ${logsToUse.length} transactions`, 18, 60);
+          doc.text(`• Scope: Site [${siteFilter}] | Dept [${deptFilter}] | Category [${catFilter}]`, 18, 64);
+
+          // Table Headers
+          doc.setFillColor(37, 99, 235);
+          doc.rect(14, 72, 182, 8, "F");
+          doc.setFontSize(8.5);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(255, 255, 255);
+          doc.text("TIMESTAMP", 16, 77);
+          doc.text("PERFORMED BY", 55, 77);
+          doc.text("MOVEMENT TYPE", 100, 77);
+          doc.text("ITEM / DETAILS", 140, 77);
+
+          let curY = 86;
+          logsToUse.slice(0, 22).forEach((l: any, idx: number) => {
+            if (idx % 2 === 1) {
+              doc.setFillColor(248, 250, 252);
+              doc.rect(14, curY - 5, 182, 7, "F");
+            }
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(51, 65, 85);
+
+            const timeStr = String(l.createdAt || l.timestamp || report.generated_date || "");
+            const userStr = typeof l.userName === "string" ? l.userName : typeof l.user?.name === "string" ? l.user.name : typeof l.user === "string" ? l.user : "Super Admin";
+            const actionStr = String(l.action || "Stock Movement");
+            const detailsStr = String(l.details || formatLogItem(l.item));
+
+            doc.text(timeStr.slice(0, 16), 16, curY);
+            doc.text(userStr.slice(0, 18), 55, curY);
+            doc.text(actionStr.slice(0, 18), 100, curY);
+            doc.text(detailsStr.slice(0, 32), 140, curY);
+            curY += 7;
+          });
+        } else if (type.includes("Audit Trail")) {
+          doc.text(`• Total Audit Logs Compiled: ${targetLogs.length} activity records`, 18, 60);
+          doc.text(`• Scope: Site [${siteFilter}] | Dept [${deptFilter}]`, 18, 64);
+
+          // Table Headers
+          doc.setFillColor(79, 70, 229);
+          doc.rect(14, 72, 182, 8, "F");
+          doc.setFontSize(8.5);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(255, 255, 255);
+          doc.text("TIMESTAMP", 16, 77);
+          doc.text("USER / ROLE", 55, 77);
+          doc.text("ACTION", 100, 77);
+          doc.text("AUDIT DETAILS", 140, 77);
+
+          let curY = 86;
+          targetLogs.slice(0, 22).forEach((l: any, idx: number) => {
+            if (idx % 2 === 1) {
+              doc.setFillColor(248, 250, 252);
+              doc.rect(14, curY - 5, 182, 7, "F");
+            }
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(51, 65, 85);
+
+            const timeStr = String(l.createdAt || l.timestamp || report.generated_date || "");
+            const userStr = typeof l.userName === "string" ? l.userName : typeof l.user?.name === "string" ? l.user.name : typeof l.user === "string" ? l.user : "Super Admin";
+            const actionStr = String(l.action || "AUDIT");
+            const detailsStr = String(l.details || "Operation logged");
+
+            doc.text(timeStr.slice(0, 16), 16, curY);
+            doc.text(userStr.slice(0, 18), 55, curY);
+            doc.text(actionStr.slice(0, 18), 100, curY);
+            doc.text(detailsStr.slice(0, 32), 140, curY);
+            curY += 7;
+          });
+        } else {
+          // General Inventory Report
+          doc.text(`• Total Items in Catalog: ${targetItems.length} items evaluated`, 18, 60);
+          doc.text(`• Scope: Site [${siteFilter}] | Dept [${deptFilter}] | Category [${catFilter}]`, 18, 64);
+
+          // Table Headers
+          doc.setFillColor(37, 99, 235);
+          doc.rect(14, 72, 182, 8, "F");
+          doc.setFontSize(8.5);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(255, 255, 255);
+          doc.text("SKU / ID", 16, 77);
+          doc.text("ITEM NAME", 55, 77);
+          doc.text("CATEGORY", 115, 77);
+          doc.text("STOCK", 155, 77);
+          doc.text("STATUS", 175, 77);
+
+          let curY = 86;
+          targetItems.slice(0, 22).forEach((item: any, idx: number) => {
+            if (idx % 2 === 1) {
+              doc.setFillColor(248, 250, 252);
+              doc.rect(14, curY - 5, 182, 7, "F");
+            }
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(51, 65, 85);
+
+            const stock = getItemStock(item, siteFilter);
+
+            doc.text(String(item.sku || item.id || "").slice(0, 16), 16, curY);
+            doc.text(String(item.name || "").slice(0, 28), 55, curY);
+            doc.text(String(item.category?.name || item.category || "N/A").slice(0, 18), 115, curY);
+            doc.text(String(stock), 155, curY);
+            doc.setFont("helvetica", "bold");
+            doc.text(String(item.status || "AVAILABLE"), 175, curY);
+            curY += 7;
+          });
+        }
 
         doc.setFontSize(8);
         doc.setFont("helvetica", "normal");
