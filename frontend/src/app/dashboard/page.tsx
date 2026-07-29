@@ -23,6 +23,7 @@ import { CatalogTab } from "./_components/CatalogTab";
 import { ComingSoonPlaceholder } from "./_components/ComingSoonPlaceholder";
 import { ItemHistoryModal } from "./_components/modals/ItemHistoryModal";
 import { ReportsTab } from "./_components/ReportsTab";
+import OpexTab from "./_components/OpexTab";
 import { ScanModal } from "./_components/modals/ScanModal";
 import { ScanOperationsTab } from "./_components/ScanOperationsTab";
 import { OfflineWarningScreen } from "./_components/OfflineWarningScreen";
@@ -2141,6 +2142,12 @@ export default function DashboardPage() {
             categories={categories}
             catalogItems={catalogItems}
             onRefreshCatalog={fetchItems}
+          />
+        );
+      case "opex":
+        return (
+          <OpexTab
+            currentUser={currentUser}
           />
         );
       default:
