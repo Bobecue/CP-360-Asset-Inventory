@@ -58,6 +58,7 @@ model Site {
   assets          Asset[]
   purchaseOrders  PurchaseOrder[]
   receivingReports ReceivingReport[]
+  opexEntries      OpexEntry[]
 
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -98,6 +99,11 @@ model User {
   requestEvents     RequestEvent[]
   assetEvents       AssetEvent[]
 
+  // OPEX relations
+  opexEntriesEntered OpexEntry[]      @relation("OpexEncoder")
+  opexEntriesApproved OpexEntry[]     @relation("OpexApprover")
+  monthlyCloses       MonthlyClose[]  @relation("OpexLocker")
+
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
@@ -119,6 +125,7 @@ model Supplier {
   assets         Asset[]
   items          Item[]          @relation("ItemSupplier")
   purchaseOrders PurchaseOrder[]
+  opexEntries    OpexEntry[]
 
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
@@ -392,10 +399,11 @@ model AuditLog {
 }
 
 model Department {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String      @id @default(uuid())
+  name        String      @unique
+  opexEntries OpexEntry[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
   @@map("departments")
 }
@@ -438,5 +446,98 @@ model AssetEvent {
   createdAt DateTime      @default(now())
 
   @@map("asset_events")
+}
+
+enum OpexUnit {
+  PC
+  PACK
+  BOX
+  TAB
+  SACH
+  CAP
+  NEB
+  SET
+  ROLL
+  UNIT
+}
+
+enum OpexCategory {
+  MEDICAL_PHARMACY
+  SECURITY_UNIFORM
+  OFFICE_SUPPLIES
+  IT_PERIPHERALS
+  MAINTENANCE_REPAIRS
+  UTILITIES
+  FACILITIES
+  MISCELLANEOUS
+}
+
+enum OpexStatus {
+  PENDING
+  OK
+  FOR_REVIEW
+  REJECTED
+}
+
+model OpexEntry {
+  id                String       @id @default(uuid())
+  itemDescription   String
+  brand             String?
+  unitPrice         Decimal      @db.Decimal(12, 2)
+  qty               Decimal      @db.Decimal(12, 2)
+  unit              OpexUnit     @default(PC)
+  category          OpexCategory @default(OFFICE_SUPPLIES)
+  total             Decimal      @db.Decimal(12, 2)
+  status            OpexStatus   @default(PENDING)
+  sourceDocumentUrl String?
+  transactionDate   DateTime     @default(now())
+  rejectionReason   String?
+  isCapex           Boolean      @default(false)
+
+  // Relations & Fallbacks
+  supplierId        String?
+  supplier          Supplier?    @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  supplierName      String?
+
+  departmentId      String?
+  department        Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  destinationName   String?
+
+  siteId            String?
+  site              Site?        @relation(fields: [siteId], references: [id], onDelete: SetNull)
+
+  enteredByUserId   String
+  enteredByUser     User         @relation("OpexEncoder", fields: [enteredByUserId], references: [id])
+
+  approvedByUserId  String?
+  approvedByUser    User?        @relation("OpexApprover", fields: [approvedByUserId], references: [id])
+
+  monthlyCloseId    String?
+  monthlyClose      MonthlyClose? @relation(fields: [monthlyCloseId], references: [id], onDelete: SetNull)
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@map("opex_entries")
+}
+
+model MonthlyClose {
+  id              String      @id @default(uuid())
+  year            Int
+  month           Int
+  yearMonth       String      @unique // e.g. "2026-07"
+  lockedAt        DateTime    @default(now())
+
+  lockedByUserId  String
+  lockedByUser    User        @relation("OpexLocker", fields: [lockedByUserId], references: [id])
+
+  summarySnapshot Json        // Immutable rollup & metadata snapshot
+
+  entries         OpexEntry[]
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@map("monthly_closes")
 }
 

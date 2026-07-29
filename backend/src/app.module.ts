@@ -14,6 +14,7 @@ import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module';
 import { ReceivingModule } from './receiving/receiving.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
+import { OpexModule } from './opex/opex.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { SuppliersModule } from './suppliers/suppliers.module';
     PurchaseOrdersModule,
     ReceivingModule,
     SuppliersModule,
+    OpexModule,
   ],
   controllers: [AppController],
   providers: [AppService],
