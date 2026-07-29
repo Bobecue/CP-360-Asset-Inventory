@@ -46,7 +46,7 @@ export function InfiniteGridBackground({
       <div
         className="absolute inset-0"
         style={{
-          background: `radial-gradient(circle at center, hsl(var(--background) / 0.3) 0%, transparent 65%, hsl(var(--background)) 100%)`,
+          backgroundImage: `radial-gradient(circle at center, hsl(var(--background) / 0.3) 0%, transparent 65%, hsl(var(--background)) 100%)`,
         }}
       />
     </div>

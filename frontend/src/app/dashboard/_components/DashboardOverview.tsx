@@ -65,32 +65,32 @@ function AnimatedMetricCard({
     <div
       className="metric-card"
       style={{
-        backgroundColor: bgColor,
-        borderRadius: 14,
-        padding: "1.25rem 1.5rem",
+        backgroundColor: "#FFFFFF",
+        borderRadius: 12,
+        padding: "1.15rem 1.25rem",
         display: "flex",
         flexDirection: "column",
         gap: "0.35rem",
         position: "relative",
         border: "1px solid #E2E8F0",
-        boxShadow: "0 1px 3px rgba(15,23,42,0.05)",
+        borderTop: `3px solid ${accentColor}`,
+        boxShadow: "0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02)",
+        transition: "transform 0.2s ease, box-shadow 0.2s ease",
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#64748B" }}>
+        <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.04em" }}>
           {title}
         </span>
         <div style={{
-          width: 32,
-          height: 32,
+          width: 34,
+          height: 34,
           borderRadius: 8,
-          backgroundColor: "#F8FAFC",
+          backgroundColor: `${accentColor}14`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           color: accentColor,
-          border: "1px solid #E2E8F0",
-          boxShadow: "0 1px 2px rgba(15,23,42,0.04)"
         }}>
           {icon || (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -99,14 +99,14 @@ function AnimatedMetricCard({
           )}
         </div>
       </div>
-      <span style={{ fontSize: "32px", fontWeight: 700, color: "#0F172A", letterSpacing: "-0.02em", marginTop: "0.25rem" }}>
+      <span style={{ fontSize: "1.75rem", fontWeight: 700, color: "#0F172A", letterSpacing: "-0.03em", marginTop: "0.15rem", lineHeight: 1.1 }}>
         {animated.toLocaleString()}
       </span>
-      <span style={{ fontSize: "0.78rem", color: "#64748B", fontWeight: 500 }}>
+      <span style={{ fontSize: "0.75rem", color: "#64748B", fontWeight: 500 }}>
         {desc}
       </span>
       {showProgressBar && (
-        <div style={{ height: 8, width: "100%", backgroundColor: "#F1F5F9", borderRadius: 9999, overflow: "hidden", marginTop: "0.5rem" }}>
+        <div style={{ height: 6, width: "100%", backgroundColor: "#F1F5F9", borderRadius: 9999, overflow: "hidden", marginTop: "0.5rem" }}>
           <div style={{
             height: "100%",
             width: `${fillWidth}%`,
@@ -341,29 +341,79 @@ export const DashboardOverview = ({
   return (
     <div className="animate-module-flip" style={{ padding: "0.5rem 0" }}>
       {/* Site Filter Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-        <div>
-          <h1 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#111827", margin: 0 }}>Dashboard Overview</h1>
-          <span style={{ fontSize: "0.85rem", color: "#6B7280", fontWeight: 400 }}>
-            Real-time stock and request metrics scoped by site location.
-          </span>
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: "1.25rem",
+        padding: "1rem 1.25rem",
+        backgroundColor: "#FFFFFF",
+        borderRadius: "12px",
+        border: "1px solid #E2E8F0",
+        boxShadow: "0 1px 3px rgba(15, 23, 42, 0.03)"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <div style={{
+            width: 40,
+            height: 40,
+            borderRadius: 10,
+            backgroundColor: "#EFF6FF",
+            color: "#2563EB",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            border: "1px solid #DBEAFE"
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="7" rx="1"/>
+              <rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="14" y="14" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/>
+            </svg>
+          </div>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <h1 style={{ fontSize: "1.15rem", fontWeight: 700, color: "#0F172A", margin: 0 }}>Dashboard Overview</h1>
+              <span style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.35rem",
+                padding: "0.15rem 0.5rem",
+                borderRadius: "9999px",
+                backgroundColor: "#ECFDF5",
+                color: "#059669",
+                fontSize: "0.7rem",
+                fontWeight: 600,
+                border: "1px solid #A7F3D0"
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "#10B981" }} />
+                Live Feed
+              </span>
+            </div>
+            <p style={{ fontSize: "0.8rem", color: "#64748B", margin: 0, marginTop: "0.1rem" }}>
+              Real-time stock and request metrics scoped by site location.
+            </p>
+          </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <label htmlFor="site-filter" style={{ fontSize: "0.85rem", fontWeight: 600, color: "#374151" }}>Site Filter:</label>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+          <label htmlFor="site-filter" style={{ fontSize: "0.8rem", fontWeight: 600, color: "#475569" }}>
+            Site Filter:
+          </label>
           <select
             id="site-filter"
             value={selectedSiteId || "ALL"}
             onChange={(e) => handleSetSelectedSiteId(e.target.value)}
             style={{
-              padding: "0.45rem 1.75rem 0.45rem 0.75rem",
+              padding: "0.4rem 1.75rem 0.4rem 0.75rem",
               borderRadius: "8px",
-              border: "1px solid #D1D5DB",
-              fontSize: "0.85rem",
-              fontWeight: 500,
+              border: "1px solid #CBD5E1",
+              fontSize: "0.82rem",
+              fontWeight: 600,
               backgroundColor: "#FFFFFF",
-              color: "#111827",
+              color: "#0F172A",
               outline: "none",
               cursor: "pointer",
+              boxShadow: "0 1px 2px rgba(15,23,42,0.04)"
             }}
           >
             <option value="ALL">All Sites</option>
@@ -377,14 +427,14 @@ export const DashboardOverview = ({
       </div>
 
       {/* Specified Enterprise KPI Cards Row 1 & 2 */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem", marginBottom: "1.5rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", marginBottom: "1.25rem" }}>
         {/* Pending Staff Review */}
         <AnimatedMetricCard
           idx={0}
           title="Pending Staff Review"
           rawValue={metrics.awaitingStaffCount}
           desc="Inventory staff to review"
-          bgColor="#EFF6FF"
+          bgColor="#FFFFFF"
           accentColor="#2563EB"
           icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
         />
@@ -395,7 +445,7 @@ export const DashboardOverview = ({
           title="Awaiting Manager Sign-off"
           rawValue={metrics.awaitingOpsCount}
           desc="Final approval pending"
-          bgColor="#FFF7ED"
+          bgColor="#FFFFFF"
           accentColor="#EA580C"
           icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EA580C" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>}
         />
@@ -406,7 +456,7 @@ export const DashboardOverview = ({
           title="Total Cataloged Assets"
           rawValue={metrics.totalAssets}
           desc={`+${metrics.assetsThisWeek} registered this week`}
-          bgColor="#ECFDF5"
+          bgColor="#FFFFFF"
           accentColor="#059669"
           icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>}
         />
@@ -417,7 +467,7 @@ export const DashboardOverview = ({
           title="Active Workstations"
           rawValue={metrics.activeCheckouts}
           desc={`${metrics.utilizationRate}% total utilization rate`}
-          bgColor="#F5F3FF"
+          bgColor="#FFFFFF"
           accentColor="#7C3AED"
           showProgressBar={true}
           progressBarValue={metrics.utilizationRate}
@@ -430,33 +480,74 @@ export const DashboardOverview = ({
           title="Low Stock Alerts"
           rawValue={metrics.lowStockAlertsCount}
           desc="Items below threshold point"
-          bgColor="#FEF2F2"
+          bgColor="#FFFFFF"
           accentColor="#DC2626"
           icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2"><path d="M10.29 3.86L1.82 18C1.5 18.55 1.9 19.25 2.53 19.25H21.47C22.1 19.25 22.5 18.55 22.18 18L13.71 3.86C13.01 2.71 10.99 2.71 10.29 3.86Z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="16.5" r="0.8" fill="currentColor"/></svg>}
         />
-      </div>      {/* Grid Layout: Recent Requests & Low Stock Alerts */}
-      <div className="dashboard-layout-grid" style={{ display: "grid", gap: "1.5rem", alignItems: "start", marginBottom: "1.75rem" }}>
+      </div>
+
+      {/* Grid Layout: Recent Requests & Low Stock Alerts */}
+      <div className="dashboard-layout-grid" style={{ display: "grid", gap: "1.25rem", alignItems: "start", marginBottom: "1.25rem" }}>
         {/* Recent Request Transactions */}
         <section
           style={{
             backgroundColor: "#FFFFFF",
-            borderRadius: 14,
-            border: "1px solid #E5E7EB",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-            padding: "1.5rem",
+            borderRadius: 12,
+            border: "1px solid #E2E8F0",
+            boxShadow: "0 1px 3px rgba(15,23,42,0.04)",
+            padding: "1.25rem",
           }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-            <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#111827", margin: 0 }}>Recent Request Transactions</h3>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <div style={{
+                width: 28,
+                height: 28,
+                borderRadius: 6,
+                backgroundColor: "#EFF6FF",
+                color: "#2563EB",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+              </div>
+              <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0F172A", margin: 0 }}>Recent Request Transactions</h3>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
               <button
                 onClick={() => fetchDashboardSummary(false)}
                 title="Refresh dashboard"
                 style={{
-                  padding: "0.4rem 0.75rem",
-                  borderRadius: 8,
-                  border: "1px solid #E5E7EB",
+                  padding: "0.35rem 0.65rem",
+                  borderRadius: 6,
+                  border: "1px solid #E2E8F0",
                   backgroundColor: "#FFFFFF",
-                  color: "#374151",
+                  color: "#475569",
+                  fontSize: "0.78rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.3rem",
+                  transition: "all 0.15s ease"
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                Refresh
+              </button>
+              <button
+                onClick={onViewRequests}
+                style={{
+                  padding: "0.35rem 0.65rem",
+                  borderRadius: 6,
+                  border: "1px solid #DBEAFE",
+                  backgroundColor: "#EFF6FF",
+                  color: "#2563EB",
                   fontSize: "0.78rem",
                   fontWeight: 600,
                   cursor: "pointer",
@@ -465,50 +556,46 @@ export const DashboardOverview = ({
                   gap: "0.3rem"
                 }}
               >
-                ↻ Refresh
-              </button>
-              <span style={{ fontSize: "0.8rem", color: "#DC2626", cursor: "pointer", fontWeight: 600 }}
-                onClick={onViewRequests}
-              >
                 View All Orders →
-              </span>
+              </button>
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: "1rem", marginBottom: "1.25rem", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap" }}>
             <input
               type="text"
-              placeholder="Search order ID or requester"
+              placeholder="Search order ID or requester..."
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              className="search-glow"
               style={{
                 flex: 1,
-                minWidth: "200px",
-                padding: "0.4rem 0.75rem",
+                minWidth: "180px",
+                height: "36px",
+                padding: "0 0.75rem",
                 borderRadius: "8px",
-                border: "1px solid #cbd5e1",
+                border: "1px solid #CBD5E1",
                 fontSize: "0.82rem",
                 outline: "none",
-                color: "#1e293b",
-                backgroundColor: "#ffffff",
-                boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+                color: "#0F172A",
+                backgroundColor: "#FFFFFF",
+                boxShadow: "0 1px 2px rgba(15,23,42,0.03)",
               }}
             />
             <select
               value={selectedTableSite}
               onChange={(e) => setSelectedTableSite(e.target.value)}
               style={{
-                padding: "0.4rem 1.75rem 0.4rem 0.75rem",
+                height: "36px",
+                padding: "0 1.75rem 0 0.75rem",
                 borderRadius: "8px",
-                border: "1px solid #cbd5e1",
+                border: "1px solid #CBD5E1",
                 fontSize: "0.82rem",
                 fontWeight: 600,
-                backgroundColor: "#ffffff",
-                color: "#1e293b",
+                backgroundColor: "#FFFFFF",
+                color: "#0F172A",
                 outline: "none",
                 cursor: "pointer",
-                boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+                boxShadow: "0 1px 2px rgba(15,23,42,0.03)",
               }}
             >
               <option value="">All Sites</option>
@@ -520,19 +607,20 @@ export const DashboardOverview = ({
               value={selectedTableStatus}
               onChange={(e) => setSelectedTableStatus(e.target.value)}
               style={{
-                padding: "0.4rem 1.75rem 0.4rem 0.75rem",
+                height: "36px",
+                padding: "0 1.75rem 0 0.75rem",
                 borderRadius: "8px",
-                border: "1px solid #cbd5e1",
+                border: "1px solid #CBD5E1",
                 fontSize: "0.82rem",
                 fontWeight: 600,
-                backgroundColor: "#ffffff",
-                color: "#1e293b",
+                backgroundColor: "#FFFFFF",
+                color: "#0F172A",
                 outline: "none",
                 cursor: "pointer",
-                boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+                boxShadow: "0 1px 2px rgba(15,23,42,0.03)",
               }}
             >
-              <option value="">All Requests</option>
+              <option value="">All Statuses</option>
               <option value="PENDING">Pending</option>
               <option value="APPROVED">Approved</option>
               <option value="READY_FOR_PICKUP">Ready for Pickup</option>
@@ -671,50 +759,68 @@ export const DashboardOverview = ({
 
         {/* Low Stock Alerts */}
         <section
-          className="animated-mesh-background"
           style={{
+            backgroundColor: "#FFFFFF",
             borderRadius: 12,
-            boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(77,201,230,0.3)",
-            padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem",
+            border: "1px solid #E2E8F0",
+            boxShadow: "0 1px 3px rgba(15,23,42,0.04)",
+            padding: "1.25rem", display: "flex", flexDirection: "column", gap: "0.85rem",
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>Low-Stock Alerts</h3>
-            <span style={{ fontSize: "0.7rem", fontWeight: 700, backgroundColor: lowStockAlerts.length > 0 ? "#fee2e2" : "#f1f5f9", color: lowStockAlerts.length > 0 ? "#991b1b" : "#475569", padding: "0.15rem 0.4rem", borderRadius: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <div style={{
+                width: 28,
+                height: 28,
+                borderRadius: 6,
+                backgroundColor: "#FEF2F2",
+                color: "#DC2626",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18C1.5 18.55 1.9 19.25 2.53 19.25H21.47C22.1 19.25 22.5 18.55 22.18 18L13.71 3.86C13.01 2.71 10.99 2.71 10.29 3.86Z"/><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="16.5" r="0.8" fill="currentColor"/></svg>
+              </div>
+              <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0F172A", margin: 0 }}>Low-Stock Alerts</h3>
+            </div>
+            <span style={{ fontSize: "0.72rem", fontWeight: 700, backgroundColor: lowStockAlerts.length > 0 ? "#FEF2F2" : "#F1F5F9", color: lowStockAlerts.length > 0 ? "#991B1B" : "#475569", border: lowStockAlerts.length > 0 ? "1px solid #FECACA" : "1px solid #E2E8F0", padding: "0.15rem 0.5rem", borderRadius: 9999 }}>
               {lowStockAlerts.length} Warning(s)
             </span>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem", maxHeight: "380px", overflowY: "auto", paddingRight: "0.25rem" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem", maxHeight: "380px", overflowY: "auto", paddingRight: "0.25rem" }}>
             {lowStockAlerts.length === 0 ? (
-              <div style={{ padding: "1.5rem", textAlign: "center", color: "#94a3b8", fontSize: "0.8rem" }}>
+              <div style={{ padding: "2rem 1rem", textAlign: "center", color: "#94A3B8", fontSize: "0.8rem", backgroundColor: "#F8FAFC", borderRadius: 8, border: "1px dashed #E2E8F0" }}>
                 All cataloged items are adequately stocked.
               </div>
             ) : (
               sortedLowStockAlerts.map((alert: any, idx: number) => (
                 <div key={idx}
-                  className={alert.stock === 0 ? "metric-card hover-glow-card alert-critical-pulse" : "metric-card hover-glow-card alert-warning-pulse"}
                   style={{
-                    padding: "0.85rem", borderRadius: 8, border: "1px solid #f1f5f9",
-                    borderLeftWidth: "4px",
-                    display: "flex", flexDirection: "column", gap: "0.35rem",
+                    padding: "0.75rem 0.85rem",
+                    borderRadius: 8,
+                    backgroundColor: alert.stock === 0 ? "#FEF2F2" : "#FFFBEB",
+                    border: alert.stock === 0 ? "1px solid #FCA5A5" : "1px solid #FDE68A",
+                    borderLeft: alert.stock === 0 ? "4px solid #DC2626" : "4px solid #D97706",
+                    display: "flex", flexDirection: "column", gap: "0.3rem",
+                    transition: "all 0.15s ease"
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
-                    <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#1e293b", lineHeight: 1.2 }}>{alert.name}</span>
+                    <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#0F172A", lineHeight: 1.2 }}>{alert.name}</span>
                     <span style={{
-                      fontSize: "0.7rem",
-                      fontWeight: 600,
-                      backgroundColor: alert.stock === 0 ? "#fee2e2" : "#fef3c7",
-                      color: alert.stock === 0 ? "#b91c1c" : "#b45309",
-                      padding: "0.15rem 0.5rem",
-                      borderRadius: "6px",
+                      fontSize: "0.68rem",
+                      fontWeight: 700,
+                      backgroundColor: alert.stock === 0 ? "#DC2626" : "#D97706",
+                      color: "#FFFFFF",
+                      padding: "0.1rem 0.45rem",
+                      borderRadius: "9999px",
                       whiteSpace: "nowrap"
                     }}>
                       {alert.stock === 0 ? "Critical" : "Low"}
                     </span>
                   </div>
-                  <div style={{ fontSize: "0.72rem", color: "#64748b" }}>
-                    SKU: {alert.sku} {alert.site ? `· ${alert.site}` : ''} · current stock {alert.stock} / min {alert.min}
+                  <div style={{ fontSize: "0.72rem", color: "#475569", fontWeight: 500 }}>
+                    SKU: <span style={{ fontFamily: "monospace", fontWeight: 600 }}>{alert.sku}</span> {alert.site ? `· ${alert.site}` : ''} · current stock <strong style={{ color: alert.stock === 0 ? "#DC2626" : "#D97706" }}>{alert.stock}</strong> / min {alert.min}
                   </div>
                 </div>
               ))
@@ -725,19 +831,35 @@ export const DashboardOverview = ({
 
       {/* New Section: Recent Asset Deployments Table */}
       <section
-        className="animated-mesh-background"
         style={{
+          backgroundColor: "#FFFFFF",
           borderRadius: 12,
-          boxShadow: "0 2px 10px rgba(15,23,42,0.02), 0 0 0 1px rgba(77,201,230,0.3)",
-          padding: "1.5rem",
+          border: "1px solid #E2E8F0",
+          boxShadow: "0 1px 3px rgba(15,23,42,0.04)",
+          padding: "1.25rem",
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <span style={{ fontSize: "1.1rem" }}>🚀</span>
-            <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>Recent Asset Deployments</h3>
+            <div style={{
+              width: 28,
+              height: 28,
+              borderRadius: 6,
+              backgroundColor: "#F5F3FF",
+              color: "#7C3AED",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0F172A", margin: 0 }}>Recent Asset Deployments</h3>
+            </div>
           </div>
-          <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>
+          <span style={{ fontSize: "0.75rem", color: "#64748B", fontWeight: 500 }}>
             Active & Returned Hardware Custodians
           </span>
         </div>

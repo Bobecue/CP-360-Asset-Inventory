@@ -304,7 +304,7 @@ export class ItemsService {
       await tx.auditLog.create({
         data: {
           action: "ITEM_CREATED",
-          details: `Item "${item.name}" (SKU: ${item.sku}) was created.`,
+          details: `Item "${item.name}"${item.sku ? ` (SKU: ${item.sku})` : ""} was created.`,
           userId: meta?.userId || null,
           itemId: item.id,
           itemName: item.name,

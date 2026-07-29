@@ -162,6 +162,44 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     return String(val);
   };
 
+  // Helper to format Action names (remove underscores and format nicely)
+  const formatAction = (actionStr?: string) => {
+    if (!actionStr) return "ITEM CREATED";
+    return String(actionStr).replace(/_/g, " ").trim();
+  };
+
+  // Helper to format Details neatly (remove (SKU: null) or raw null strings and clean whitespace)
+  const formatDetails = (detailsStr?: string) => {
+    if (!detailsStr) return "System action recorded successfully";
+    let str = String(detailsStr)
+      .replace(/\s*\(SKU:\s*null\)/gi, "")
+      .replace(/\s*\(SKU:\s*undefined\)/gi, "")
+      .replace(/SKU:\s*null/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!str) return "System action recorded successfully";
+    return str;
+  };
+
+  // Helper to format log timestamps cleanly
+  const formatLogTimestamp = (dateStr?: string) => {
+    if (!dateStr) return "Jul 28, 2026, 02:14 AM";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleString("en-US", {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
   // ── Fetch Live System Data ──
   const fetchData = async () => {
     setIsLoading(true);
@@ -1227,6 +1265,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
               const elem = document.getElementById("generate-reports-card");
               if (elem) elem.scrollIntoView({ behavior: "smooth" });
             }}
+            className="glitter-action-btn"
             style={{
               display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.5rem 1.1rem",
               borderRadius: "10px", backgroundColor: "#2563EB", border: "none",
@@ -1257,6 +1296,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           {kpiRow1.map((kpi) => (
             <div
               key={kpi.id}
+              className="glitter-grid-card"
               onClick={() => {
                 setKpiFilter(kpiFilter === kpi.id ? null : kpi.id);
                 showNotification(`Filtered table by '${kpi.label}'`);
@@ -1287,6 +1327,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           {kpiRow2.map((kpi) => (
             <div
               key={kpi.id}
+              className="glitter-grid-card"
               style={{
                 backgroundColor: "#FFFFFF", borderRadius: "12px", padding: "1rem 1.25rem",
                 border: "1px solid #E2E8F0", transition: "all 200ms ease", boxShadow: "0 1px 2px rgba(0,0,0,0.03)"
@@ -1515,25 +1556,34 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                       animationDelay: `${idx * 0.04}s`
                     }}
                   >
-                    <td style={{ padding: "0.9rem 1.25rem", fontSize: "12px", color: "#64748B" }}>
-                      {log.createdAt || log.timestamp || "Jul 28, 2026, 02:14 AM"}
+                    <td style={{ padding: "0.9rem 1.25rem", fontSize: "12px", color: "#64748B", whiteSpace: "nowrap" }}>
+                      {formatLogTimestamp(log.createdAt || log.timestamp)}
                     </td>
                     <td style={{ padding: "0.9rem 1.25rem", fontSize: "13px", fontWeight: 600, color: "#1E293B" }}>
                       {log.userName || log.user?.name || log.user || "Super Admin"}
                     </td>
                     <td style={{ padding: "0.9rem 1.25rem", fontSize: "12px" }}>
-                      <span style={{
+                      <span className="glitter-status-badge" style={{
                         padding: "0.2rem 0.6rem", borderRadius: "6px", fontWeight: 600, fontSize: "11px",
-                        backgroundColor: "#EFF6FF", color: "#2563EB", border: "1px solid #BFDBFE"
+                        backgroundColor: "#EFF6FF", color: "#2563EB", border: "1px solid #BFDBFE",
+                        letterSpacing: "0.02em"
                       }}>
-                        {log.action || "Item Created"}
+                        {formatAction(log.action)}
                       </span>
                     </td>
                     <td style={{ padding: "0.9rem 1.25rem", fontSize: "12px", color: "#2563EB", fontWeight: 600 }}>
-                      {formatLogItem(log.item || log.supplier)}
+                      <span className="glitter-supplier-name-badge" style={{ padding: "0.15rem 0.4rem", borderRadius: "4px" }}>
+                        {formatLogItem(log.item || log.supplier)}
+                      </span>
                     </td>
-                    <td style={{ padding: "0.9rem 1.25rem", fontSize: "12px", color: "#475569", maxWidth: "380px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {log.details || "System action recorded successfully"}
+                    <td
+                      title={formatDetails(log.details)}
+                      style={{
+                        padding: "0.9rem 1.25rem", fontSize: "12px", color: "#475569",
+                        maxWidth: "420px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"
+                      }}
+                    >
+                      {formatDetails(log.details)}
                     </td>
                   </tr>
                 ))
@@ -1633,6 +1683,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           <button
             onClick={() => handleExecuteGenerate("PDF")}
             disabled={isGenerating}
+            className="glitter-action-btn"
             style={{
               padding: "0.65rem 1.4rem", borderRadius: "10px", backgroundColor: "#2563EB", border: "none",
               color: "#FFFFFF", fontSize: "13px", fontWeight: 600, cursor: "pointer",
@@ -1646,6 +1697,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           <button
             onClick={() => handleExecuteGenerate("Excel")}
             disabled={isGenerating}
+            className="glitter-action-btn"
             style={{
               padding: "0.65rem 1.4rem", borderRadius: "10px", backgroundColor: "#059669", border: "none",
               color: "#FFFFFF", fontSize: "13px", fontWeight: 600, cursor: "pointer",
@@ -1659,6 +1711,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           <button
             onClick={() => handleExecuteGenerate("CSV")}
             disabled={isGenerating}
+            className="glitter-action-btn"
             style={{
               padding: "0.65rem 1.4rem", borderRadius: "10px", backgroundColor: "#EA580C", border: "none",
               color: "#FFFFFF", fontSize: "13px", fontWeight: 600, cursor: "pointer",
@@ -1681,6 +1734,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
           </div>
           <button
             onClick={() => { resetSchedForm(); setIsScheduleModalOpen(true); }}
+            className="glitter-action-btn"
             style={{
               padding: "0.5rem 1rem", borderRadius: "8px", backgroundColor: "#2563EB", color: "#FFFFFF",
               border: "none", fontSize: "12px", fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.4rem"
@@ -1723,7 +1777,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                     <td style={{ padding: "0.85rem 1rem", fontSize: "12px", color: "#64748B" }}>{s.nextRun}</td>
                     <td style={{ padding: "0.85rem 1rem", fontSize: "12px", color: "#64748B" }}>{s.lastRun || "Never"}</td>
                     <td style={{ padding: "0.85rem 1rem", fontSize: "11px" }}>
-                      <span style={{
+                      <span className="glitter-status-badge" style={{
                         padding: "0.2rem 0.6rem", borderRadius: "6px", fontWeight: 600,
                         backgroundColor: s.enabled ? "#ECFDF5" : "#FEF2F2",
                         color: s.enabled ? "#10B981" : "#EF4444",
@@ -1735,16 +1789,16 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                     <td style={{ padding: "0.85rem 1rem", fontSize: "12px", color: "#64748B" }}>{s.createdBy}</td>
                     <td style={{ padding: "0.85rem 1rem", textAlign: "right" }}>
                       <div style={{ display: "flex", gap: "0.35rem", justifyContent: "flex-end" }}>
-                        <button onClick={() => handleRunNowSchedule(s)} title="Run Now" style={{ padding: "0.35rem 0.6rem", borderRadius: "6px", backgroundColor: "#2563EB", color: "#FFFFFF", border: "none", fontSize: "11px", fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.2rem" }}>
+                        <button onClick={() => handleRunNowSchedule(s)} className="glitter-action-btn" title="Run Now" style={{ padding: "0.35rem 0.6rem", borderRadius: "6px", backgroundColor: "#2563EB", color: "#FFFFFF", border: "none", fontSize: "11px", fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.2rem" }}>
                           <Play size={11} /> Run Now
                         </button>
-                        <button onClick={() => handleTogglePauseSchedule(s)} title={s.enabled ? "Pause Schedule" : "Resume Schedule"} style={{ padding: "0.35rem 0.6rem", borderRadius: "6px", backgroundColor: s.enabled ? "#F59E0B" : "#10B981", color: "#FFFFFF", border: "none", fontSize: "11px", fontWeight: 600, cursor: "pointer" }}>
+                        <button onClick={() => handleTogglePauseSchedule(s)} className="glitter-action-btn" title={s.enabled ? "Pause Schedule" : "Resume Schedule"} style={{ padding: "0.35rem 0.6rem", borderRadius: "6px", backgroundColor: s.enabled ? "#F59E0B" : "#10B981", color: "#FFFFFF", border: "none", fontSize: "11px", fontWeight: 600, cursor: "pointer" }}>
                           {s.enabled ? "Pause" : "Resume"}
                         </button>
-                        <button onClick={() => handleEditSchedule(s)} title="Edit Schedule" style={{ padding: "0.35rem 0.6rem", borderRadius: "6px", backgroundColor: "#F1F5F9", color: "#475569", border: "1px solid #CBD5E1", fontSize: "11px", fontWeight: 600, cursor: "pointer" }}>
+                        <button onClick={() => handleEditSchedule(s)} className="glitter-action-btn" title="Edit Schedule" style={{ padding: "0.35rem 0.6rem", borderRadius: "6px", backgroundColor: "#F1F5F9", color: "#475569", border: "1px solid #CBD5E1", fontSize: "11px", fontWeight: 600, cursor: "pointer" }}>
                           Edit
                         </button>
-                        <button onClick={() => handleDeleteSchedule(s.id, s.name)} title="Delete Schedule" style={{ padding: "0.35rem 0.6rem", borderRadius: "6px", backgroundColor: "#FEF2F2", color: "#EF4444", border: "1px solid #FECACA", fontSize: "11px", fontWeight: 600, cursor: "pointer" }}>
+                        <button onClick={() => handleDeleteSchedule(s.id, s.name)} className="glitter-action-btn" title="Delete Schedule" style={{ padding: "0.35rem 0.6rem", borderRadius: "6px", backgroundColor: "#FEF2F2", color: "#EF4444", border: "1px solid #FECACA", fontSize: "11px", fontWeight: 600, cursor: "pointer" }}>
                           <Trash2 size={11} />
                         </button>
                       </div>
@@ -2014,11 +2068,11 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
                 <button onClick={() => setSelectedLogRow(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "#94A3B8" }}><X size={18} /></button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", fontSize: "13px" }}>
-                <div><strong>Timestamp:</strong> {selectedLogRow.createdAt || selectedLogRow.timestamp}</div>
+                <div><strong>Timestamp:</strong> {formatLogTimestamp(selectedLogRow.createdAt || selectedLogRow.timestamp)}</div>
                 <div><strong>Performed By:</strong> {selectedLogRow.userName || selectedLogRow.user?.name || selectedLogRow.user}</div>
-                <div><strong>Action:</strong> {selectedLogRow.action}</div>
+                <div><strong>Action:</strong> {formatAction(selectedLogRow.action)}</div>
                 <div><strong>Item / Supplier:</strong> {formatLogItem(selectedLogRow.item || selectedLogRow.supplier)}</div>
-                <div><strong>Details:</strong> {selectedLogRow.details}</div>
+                <div><strong>Details:</strong> {formatDetails(selectedLogRow.details)}</div>
               </div>
               <div style={{ marginTop: "1.5rem", textAlign: "right" }}>
                 <button onClick={() => setSelectedLogRow(null)} style={{ padding: "0.5rem 1.2rem", borderRadius: "8px", backgroundColor: "#2563EB", color: "#FFFFFF", border: "none", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>Close</button>

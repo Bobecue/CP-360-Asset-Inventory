@@ -2140,10 +2140,11 @@ export const CatalogTab = ({
                             gap: "12px",
                           }}>
                             <div style={{
-                              backgroundColor: "#F9FAFB",
+                              backgroundColor: "#F8FAFC",
                               borderRadius: "10px",
                               padding: "10px 12px",
-                              border: "1px solid #E5E7EB",
+                              border: "1px solid #E2E8F0",
+                              boxShadow: "inset 0 1px 1px rgba(255,255,255,0.95), 0 2px 6px rgba(15,23,42,0.03)"
                             }}>
                               <span style={{ fontSize: "11px", color: "#6B7280", fontWeight: 500, textTransform: "uppercase", display: "block" }}>Unit Price</span>
                               <span style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
@@ -2151,10 +2152,11 @@ export const CatalogTab = ({
                               </span>
                             </div>
                             <div style={{
-                              backgroundColor: "#F9FAFB",
+                              backgroundColor: "#F8FAFC",
                               borderRadius: "10px",
                               padding: "10px 12px",
-                              border: "1px solid #E5E7EB",
+                              border: "1px solid #E2E8F0",
+                              boxShadow: "inset 0 1px 1px rgba(255,255,255,0.95), 0 2px 6px rgba(15,23,42,0.03)"
                             }}>
                               <span style={{ fontSize: "11px", color: "#6B7280", fontWeight: 500, textTransform: "uppercase", display: "block" }}>Lead Time</span>
                               <span style={{ fontSize: "14px", fontWeight: 600, color: "#374151" }}>
@@ -2206,14 +2208,17 @@ export const CatalogTab = ({
                               style={{
                                 display: "inline-flex",
                                 alignItems: "center",
-                                gap: "6px",
+                                justifyContent: "center",
+                                gap: "5px",
                                 backgroundColor: "#6366F1",
                                 color: "#FFFFFF",
                                 border: "none",
                                 borderRadius: "8px",
-                                padding: "8px 14px",
-                                fontSize: "13px",
+                                padding: "7px 11px",
+                                fontSize: "12px",
                                 fontWeight: 600,
+                                whiteSpace: "nowrap",
+                                flexShrink: 0,
                                 cursor: "pointer",
                                 boxShadow: "0 1px 3px rgba(99, 102, 241, 0.25)",
                                 transition: "all 0.15s ease",
@@ -2233,7 +2238,7 @@ export const CatalogTab = ({
                           )}
 
                           {/* Secondary action icon buttons with soft circular hovers */}
-                          <div style={{ display: "flex", gap: "6px", marginLeft: "auto" }}>
+                          <div style={{ display: "flex", gap: "5px", marginLeft: "auto", flexShrink: 0, flexWrap: "nowrap" }}>
                             {it.category?.type === "NON_CONSUMABLE" && (
                               <button
                                 onClick={(e) => {

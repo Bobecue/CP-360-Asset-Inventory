@@ -81,7 +81,7 @@ export default function LoginPage() {
 
   return (
     <main
-      className="animate-brand-mesh moving-shine-overlay login-page-root"
+      className="glitter-sidebar-bg login-page-root"
       style={{
         minHeight: "100vh",
         display: "flex",
@@ -90,8 +90,7 @@ export default function LoginPage() {
         position: "relative",
         overflow: "hidden",
         padding: "2rem 1rem",
-        backgroundImage: "linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%)",
-        backgroundSize: "300% 300%",
+        backgroundColor: "#0B1220",
       }}
     >
       <InfiniteGridBackground />
@@ -101,73 +100,75 @@ export default function LoginPage() {
         <div style={{
           position: "absolute", top: "-10%", left: "-5%",
           width: 500, height: 500, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(99,102,241,0.08) 0%, rgba(148,163,184,0.06) 50%, transparent 75%)",
+          backgroundImage: "radial-gradient(circle, rgba(99,102,241,0.18) 0%, rgba(148,163,184,0.06) 50%, transparent 75%)",
           animation: "floatA 12s ease-in-out infinite",
-          filter: "blur(20px)",
+          filter: "blur(25px)",
         }} />
         <div style={{
           position: "absolute", bottom: "-12%", right: "-5%",
           width: 450, height: 450, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(225,29,72,0.05) 0%, rgba(203,213,225,0.1) 50%, transparent 75%)",
+          backgroundImage: "radial-gradient(circle, rgba(236,72,153,0.12) 0%, rgba(203,213,225,0.05) 50%, transparent 75%)",
           animation: "floatB 15s ease-in-out infinite",
-          filter: "blur(20px)",
+          filter: "blur(25px)",
         }} />
         <div style={{
           position: "absolute", top: "35%", left: "50%",
-          width: 300, height: 300, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(79,70,229,0.06) 0%, rgba(148,163,184,0.08) 60%, transparent 80%)",
+          width: 350, height: 350, borderRadius: "50%",
+          backgroundImage: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, rgba(148,163,184,0.08) 60%, transparent 80%)",
           animation: "floatA 10s ease-in-out infinite reverse",
-          filter: "blur(15px)",
+          filter: "blur(20px)",
         }} />
       </div>
 
       {/* ── Card ── */}
       <div
-        className="relative z-10 card-shine-effect login-card no-silver-red"
+        className="relative z-10 login-card"
         style={{
           position: "relative", zIndex: 1,
           width: "100%", maxWidth: 440,
           borderRadius: 24,
-          border: "1px solid #e2e8f0",
-          boxShadow: "0 20px 45px -10px rgba(15, 23, 42, 0.08), 0 8px 24px -4px rgba(99, 102, 241, 0.05)",
+          border: "1px solid #1E293B",
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 35px rgba(99, 102, 241, 0.25)",
           padding: "3.2rem 2.5rem 2.5rem",
           overflow: "hidden",
-          backgroundColor: "#ffffff",
-          backdropFilter: "blur(12px)",
+          backgroundColor: "rgba(15, 23, 42, 0.88)",
+          backdropFilter: "blur(20px)",
         }}
       >
-        {/* Top glowing multi-brand line */}
+        {/* Animated Scan Beam Line on Card Top Edge */}
         <div style={{
-          position: "absolute", top: 0, left: 0, right: 0, height: 5,
-          background: "linear-gradient(90deg, #4f46e5 0%, #e11d48 50%, #3b82f6 100%)",
+          position: "absolute", top: 0, left: 0, right: 0, height: 4,
+          backgroundImage: "linear-gradient(90deg, #6366f1 0%, #ec4899 50%, #3b82f6 100%)",
           backgroundSize: "200% 100%",
           animation: "mesh-gradient-move 4s linear infinite",
           borderTopLeftRadius: 24,
           borderTopRightRadius: 24,
-          boxShadow: "0 2px 8px rgba(79, 70, 229, 0.2)",
+          boxShadow: "0 2px 10px rgba(99, 102, 241, 0.4)",
         }} />
 
         {/* Brand heading + Logo */}
-        <div className="no-card logo-header-clean" style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "1.6rem", background: "transparent" }}>
+        <div className="no-card logo-header-clean" style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "1.6rem", backgroundColor: "transparent" }}>
           <img 
             src="/logo.png" 
             alt="Contact Point 360 Logo" 
+            className="glitter-glow-logo"
             style={{
               height: "65px",
               width: "auto",
               objectFit: "contain",
               marginBottom: "1rem",
-              filter: "drop-shadow(0 2px 6px rgba(15, 23, 42, 0.06))",
+              filter: "drop-shadow(0 0 14px rgba(99, 102, 241, 0.5))",
             }} 
           />
           <h1 style={{
-            fontSize: "1.4rem", fontWeight: 800,
-            color: "#0f172a", letterSpacing: "-0.02em",
-            margin: 0, marginBottom: "0.3rem",
+            fontSize: "1.55rem", fontWeight: 800,
+            color: "#FFFFFF", letterSpacing: "-0.01em",
+            margin: 0, marginBottom: "0.35rem",
+            textShadow: "0 2px 10px rgba(0, 0, 0, 0.4)",
           }}>
             CP360 Asset Inventory
           </h1>
-          <p style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: 500, margin: 0 }}>
+          <p style={{ fontSize: "0.88rem", color: "#CBD5E1", fontWeight: 500, margin: 0 }}>
             Sign in to your workspace
           </p>
         </div>
@@ -175,13 +176,13 @@ export default function LoginPage() {
         {/* Error banner */}
         {error && (
           <div role="alert" style={{
-            background: "#fef2f2",
-            border: "1px solid #fecaca",
+            backgroundColor: "rgba(239, 68, 68, 0.2)",
+            border: "1px solid rgba(239, 68, 68, 0.4)",
             borderRadius: 8,
             padding: "0.65rem 1rem",
             marginBottom: "1.25rem",
             display: "flex", alignItems: "center", gap: "0.5rem",
-            color: "#991b1b", fontSize: "0.82rem", fontWeight: 600,
+            color: "#FCA5A5", fontSize: "0.84rem", fontWeight: 600,
           }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -196,13 +197,13 @@ export default function LoginPage() {
         {/* Success banner */}
         {isSuccess && (
           <div role="status" style={{
-            background: "#f0fdf4",
-            border: "1px solid #bbf7d0",
+            backgroundColor: "rgba(16, 185, 129, 0.2)",
+            border: "1px solid rgba(16, 185, 129, 0.4)",
             borderRadius: 8,
             padding: "0.65rem 1rem",
             marginBottom: "1.25rem",
             display: "flex", alignItems: "center", gap: "0.5rem",
-            color: "#166534", fontSize: "0.82rem", fontWeight: 600,
+            color: "#6EE7B7", fontSize: "0.84rem", fontWeight: 600,
           }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -216,18 +217,18 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} noValidate>
 
           {/* Email */}
-          <div style={{ marginBottom: "1rem" }}>
+          <div style={{ marginBottom: "1.2rem" }}>
             <label htmlFor="login-email" style={{
-              display: "block", fontSize: "0.75rem", fontWeight: 700,
-              color: "#475569", marginBottom: "0.45rem",
-              letterSpacing: "0.05em", textTransform: "uppercase",
+              display: "block", fontSize: "0.78rem", fontWeight: 700,
+              color: "#A5B4FC", marginBottom: "0.45rem",
+              letterSpacing: "0.08em", textTransform: "uppercase",
             }}>
               Email Address
             </label>
             <div className="input-container" style={{ position: "relative" }}>
               <span aria-hidden style={{
                 position: "absolute", left: 13, top: "50%",
-                transform: "translateY(-50%)", color: "#64748b", pointerEvents: "none",
+                transform: "translateY(-50%)", color: "#A5B4FC", pointerEvents: "none",
               }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -241,45 +242,46 @@ export default function LoginPage() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
+                placeholder="superadmin@contactpoint360.com"
                 required
                 style={{
                   width: "100%", boxSizing: "border-box",
                   padding: "0.75rem 1rem 0.75rem 2.6rem",
                   borderRadius: 10,
-                  border: "1px solid #cbd5e1",
-                  background: "#ffffff",
-                  color: "#0f172a",
-                  fontSize: "0.92rem",
+                  border: "1px solid #334155",
+                  backgroundColor: "#0F172A",
+                  color: "#FFFFFF",
+                  fontSize: "0.95rem",
+                  fontWeight: 500,
                   outline: "none",
-                  boxShadow: "inset 0 1px 2px rgba(0,0,0,0.02)",
+                  boxShadow: "inset 0 1px 3px rgba(0,0,0,0.4)",
                   transition: "all 0.2s ease",
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.borderColor = "#6366f1";
-                  e.currentTarget.style.boxShadow = "0 0 0 3px rgba(99, 102, 241, 0.15)";
+                  e.currentTarget.style.borderColor = "#6366F1";
+                  e.currentTarget.style.boxShadow = "0 0 0 3px rgba(99, 102, 241, 0.3), 0 0 15px rgba(99, 102, 241, 0.25)";
                 }}
                 onBlur={(e) => {
-                  e.currentTarget.style.borderColor = "#cbd5e1";
-                  e.currentTarget.style.boxShadow = "inset 0 1px 2px rgba(0,0,0,0.02)";
+                  e.currentTarget.style.borderColor = "#334155";
+                  e.currentTarget.style.boxShadow = "inset 0 1px 3px rgba(0,0,0,0.4)";
                 }}
               />
             </div>
           </div>
 
           {/* Password */}
-          <div style={{ marginBottom: "1.5rem" }}>
+          <div style={{ marginBottom: "1.6rem" }}>
             <label htmlFor="login-password" style={{
-              display: "block", fontSize: "0.75rem", fontWeight: 700,
-              color: "#475569", marginBottom: "0.45rem",
-              letterSpacing: "0.05em", textTransform: "uppercase",
+              display: "block", fontSize: "0.78rem", fontWeight: 700,
+              color: "#A5B4FC", marginBottom: "0.45rem",
+              letterSpacing: "0.08em", textTransform: "uppercase",
             }}>
               Password
             </label>
             <div className="input-container" style={{ position: "relative" }}>
               <span aria-hidden style={{
                 position: "absolute", left: 13, top: "50%",
-                transform: "translateY(-50%)", color: "#64748b", pointerEvents: "none",
+                transform: "translateY(-50%)", color: "#A5B4FC", pointerEvents: "none",
               }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -293,27 +295,28 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="••••••••••••"
                 required
                 style={{
                   width: "100%", boxSizing: "border-box",
                   padding: "0.75rem 2.6rem 0.75rem 2.6rem",
                   borderRadius: 10,
-                  border: "1px solid #cbd5e1",
-                  background: "#ffffff",
-                  color: "#0f172a",
-                  fontSize: "0.92rem",
+                  border: "1px solid #334155",
+                  backgroundColor: "#0F172A",
+                  color: "#FFFFFF",
+                  fontSize: "0.95rem",
+                  fontWeight: 500,
                   outline: "none",
-                  boxShadow: "inset 0 1px 2px rgba(0,0,0,0.02)",
+                  boxShadow: "inset 0 1px 3px rgba(0,0,0,0.4)",
                   transition: "all 0.2s ease",
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.borderColor = "#6366f1";
-                  e.currentTarget.style.boxShadow = "0 0 0 3px rgba(99, 102, 241, 0.15)";
+                  e.currentTarget.style.borderColor = "#6366F1";
+                  e.currentTarget.style.boxShadow = "0 0 0 3px rgba(99, 102, 241, 0.3), 0 0 15px rgba(99, 102, 241, 0.25)";
                 }}
                 onBlur={(e) => {
-                  e.currentTarget.style.borderColor = "#cbd5e1";
-                  e.currentTarget.style.boxShadow = "inset 0 1px 2px rgba(0,0,0,0.02)";
+                  e.currentTarget.style.borderColor = "#334155";
+                  e.currentTarget.style.boxShadow = "inset 0 1px 3px rgba(0,0,0,0.4)";
                 }}
               />
               <button
@@ -324,12 +327,12 @@ export default function LoginPage() {
                 style={{
                   position: "absolute", right: 12, top: "50%",
                   transform: "translateY(-50%)",
-                  background: "none", border: "none", cursor: "pointer",
-                  color: "#64748b", padding: 4, display: "flex", alignItems: "center",
+                  backgroundColor: "transparent", border: "none", cursor: "pointer",
+                  color: "#A5B4FC", padding: 4, display: "flex", alignItems: "center",
                   transition: "color 0.2s",
                 }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#4f46e5")}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#64748b")}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#C7D2FE")}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "#A5B4FC")}
               >
                 {showPassword ? (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -360,26 +363,26 @@ export default function LoginPage() {
               padding: "0.85rem 1rem",
               borderRadius: 10,
               border: "none",
-              background: "linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)",
-              color: "#ffffff",
-              fontSize: "0.95rem",
-              fontWeight: 700,
+              backgroundImage: "linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)",
+              color: "#FFFFFF",
+              fontSize: "0.98rem",
+              fontWeight: 800,
               cursor: isLoading ? "not-allowed" : "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
-              boxShadow: "0 4px 14px rgba(79, 70, 229, 0.35)",
+              boxShadow: "0 4px 20px rgba(99, 102, 241, 0.5)",
               letterSpacing: "0.01em",
               transition: "all 0.2s ease",
             }}
             onMouseEnter={(e) => {
               if (!isLoading) {
-                e.currentTarget.style.background = "linear-gradient(135deg, #4338ca 0%, #2563eb 100%)";
-                e.currentTarget.style.boxShadow = "0 6px 20px rgba(79, 70, 229, 0.45)";
+                e.currentTarget.style.backgroundImage = "linear-gradient(135deg, #4F46E5 0%, #4338CA 100%)";
+                e.currentTarget.style.boxShadow = "0 6px 24px rgba(99, 102, 241, 0.65)";
               }
             }}
             onMouseLeave={(e) => {
               if (!isLoading) {
-                e.currentTarget.style.background = "linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)";
-                e.currentTarget.style.boxShadow = "0 4px 14px rgba(79, 70, 229, 0.35)";
+                e.currentTarget.style.backgroundImage = "linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)";
+                e.currentTarget.style.boxShadow = "0 4px 20px rgba(99, 102, 241, 0.5)";
               }
             }}
           >
@@ -410,11 +413,11 @@ export default function LoginPage() {
           display: "flex", alignItems: "center", gap: "0.75rem",
           marginTop: "1.75rem",
         }}>
-          <hr style={{ flex: 1, border: "none", borderTop: "1px solid #e4e4e7" }} />
-          <span style={{ fontSize: "0.72rem", color: "#a1a1aa", whiteSpace: "nowrap", fontWeight: 500 }}>
+          <hr style={{ flex: 1, border: "none", borderTop: "1px solid #334155" }} />
+          <span style={{ fontSize: "0.76rem", color: "#94A3B8", whiteSpace: "nowrap", fontWeight: 600 }}>
             Powered by Contact Point 360
           </span>
-          <hr style={{ flex: 1, border: "none", borderTop: "1px solid #e4e4e7" }} />
+          <hr style={{ flex: 1, border: "none", borderTop: "1px solid #334155" }} />
         </div>
       </div>
 
@@ -440,12 +443,37 @@ export default function LoginPage() {
           animation: gradient-shift 15s ease infinite;
         }
         .input-container:focus-within svg {
-          color: #4f46e5 !important;
+          color: #C7D2FE !important;
         }
         .input-container svg {
           transition: color 0.25s ease;
+        }
+        .login-card h1 {
+          color: #FFFFFF !important;
+        }
+        .login-card p {
+          color: #CBD5E1 !important;
+        }
+        .login-card label {
+          color: #A5B4FC !important;
+        }
+        .login-card input {
+          color: #FFFFFF !important;
+          background-color: #0F172A !important;
+        }
+        .login-card input::placeholder {
+          color: #64748B !important;
+          opacity: 1;
+        }
+        .login-card input:-webkit-autofill,
+        .login-card input:-webkit-autofill:hover, 
+        .login-card input:-webkit-autofill:focus {
+          -webkit-text-fill-color: #FFFFFF !important;
+          -webkit-box-shadow: 0 0 0px 1000px #0F172A inset !important;
+          transition: background-color 5000s ease-in-out 0s !important;
         }
       `}</style>
     </main>
   );
 }
+
