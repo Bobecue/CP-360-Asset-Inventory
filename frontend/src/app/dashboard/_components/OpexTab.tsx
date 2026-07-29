@@ -546,8 +546,9 @@ export default function OpexTab({ currentUser }: { currentUser: any }) {
           zIndex: 1000,
         }}>
           <div style={{
-            width: "100%",
+            width: "92%",
             maxWidth: "600px",
+            maxHeight: "90vh",
             backgroundColor: "#ffffff",
             borderRadius: "16px",
             boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
@@ -563,6 +564,7 @@ export default function OpexTab({ currentUser }: { currentUser: any }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
+              flexShrink: 0,
             }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
                 <h3 style={{ fontSize: "0.98rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
@@ -585,7 +587,7 @@ export default function OpexTab({ currentUser }: { currentUser: any }) {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleCreateEntry} style={{ display: "flex", flexDirection: "column", gap: "1rem", padding: "1.5rem" }}>
+            <form onSubmit={handleCreateEntry} style={{ display: "flex", flexDirection: "column", gap: "1rem", padding: "1.5rem", overflowY: "auto" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
                 
                 {/* Item Description */}
@@ -839,8 +841,9 @@ export default function OpexTab({ currentUser }: { currentUser: any }) {
           zIndex: 1000,
         }}>
           <div style={{
-            width: "100%",
+            width: "92%",
             maxWidth: "500px",
+            maxHeight: "90vh",
             backgroundColor: "#ffffff",
             borderRadius: "16px",
             boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
@@ -856,6 +859,7 @@ export default function OpexTab({ currentUser }: { currentUser: any }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
+              flexShrink: 0,
             }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
                 <h3 style={{ fontSize: "0.98rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
