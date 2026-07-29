@@ -424,7 +424,7 @@ export function MyRequestsPanel({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textAlign: 'left' }}>
           <svg style={{ color: '#94a3b8' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
           <div>
-            <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: 600, color: '#0f172a' }}>My Requests</p>
+            <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: 600, color: '#0f172a' }}>Recent Transfers</p>
             <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>Your submitted requests and their current status</p>
           </div>
         </div>
@@ -547,7 +547,7 @@ export function MyRequestsPanel({
                     }}
                     style={{ cursor: 'pointer', accentColor: '#3b82f6', width: '15px', height: '15px' }}
                   />
-                  Select All Orders ({allSelectableRequestsInView.length})
+                  Select All Transfers ({allSelectableRequestsInView.length})
                 </label>
                 {selectedReqIds.length > 0 && (
                   <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>
@@ -576,8 +576,9 @@ export function MyRequestsPanel({
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, backgroundColor: '#2563eb', color: '#ffffff', padding: '0.25rem 0.55rem', borderRadius: '6px' }}>
-                  ⚡ {selectedReqIds.length} Request{selectedReqIds.length > 1 ? 's' : ''} Selected
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, backgroundColor: '#2563eb', color: '#ffffff', padding: '0.25rem 0.55rem', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  {selectedReqIds.length} Request{selectedReqIds.length > 1 ? 's' : ''} Selected
                 </span>
               </div>
 
@@ -602,7 +603,8 @@ export function MyRequestsPanel({
                       transition: 'all 0.2s ease'
                     }}
                   >
-                    {isSubmittingBulk ? 'Processing...' : `🚫 Cancel Orders`}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                    {isSubmittingBulk ? 'Processing...' : 'Cancel Transfers'}
                   </button>
                 )}
 
@@ -626,7 +628,8 @@ export function MyRequestsPanel({
                       transition: 'all 0.2s ease'
                     }}
                   >
-                    {isSubmittingBulk ? 'Processing...' : `✅ Confirm Receipt`}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    {isSubmittingBulk ? 'Processing...' : 'Confirm Receipt'}
                   </button>
                 )}
 
@@ -784,7 +787,7 @@ export function MyRequestsPanel({
 
                     {req.reviewComment && (
                       <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '0.5rem', fontSize: '0.78rem', color: '#64748b', fontStyle: 'italic' }}>
-                        <strong>Review comment:</strong> "{cleanReviewComment(req.reviewComment)}"
+                        <strong>Request comment:</strong> "{cleanReviewComment(req.reviewComment)}"
                       </div>
                     )}
 
@@ -843,9 +846,9 @@ export function MyRequestsPanel({
       <InteractiveModal
         isOpen={isBulkCancelConfirmOpen}
         type="confirm"
-        title="Cancel Selected Orders"
-        message={`Are you sure you want to cancel these ${selectedReqIds.length} selected request orders? This action cannot be undone.`}
-        confirmText={`Cancel ${selectedReqIds.length} Order(s)`}
+        title="Cancel Selected Asset Transfers"
+        message={`Are you sure you want to cancel these ${selectedReqIds.length} selected asset transfers? This action cannot be undone.`}
+        confirmText={`Cancel ${selectedReqIds.length} Transfer(s)`}
         theme="danger"
         onConfirm={handleConfirmBulkCancel}
         onCancel={() => setIsBulkCancelConfirmOpen(false)}

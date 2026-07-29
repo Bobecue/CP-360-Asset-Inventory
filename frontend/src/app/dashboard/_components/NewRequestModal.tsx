@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { getCategoryIcon } from '@/types/dashboard';
 
 type UrgencyLevel = 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
@@ -26,6 +27,7 @@ interface NewRequestModalProps {
   inventoryItems: InventoryItem[];
   sites: Site[];
   onSubmit: (itemId: string, quantity: number, siteId: string, reason: string) => Promise<boolean>;
+  title?: string;
 }
 
 const getAccessoryType = (name: string) => {
@@ -46,7 +48,22 @@ const getAccessoryType = (name: string) => {
   return name;
 };
 
-export function NewRequestModal({ open, onClose, inventoryItems, sites, onSubmit }: NewRequestModalProps) {
+export function formatItemDisplayName(name: string): string {
+  if (!name) return '';
+  const parts = name.split('-').map(p => p.trim()).filter(Boolean);
+  if (parts.length >= 3) {
+    const brand = parts[0];
+    const model = parts.slice(2).join('-');
+    return `${model} ${brand}`;
+  } else if (parts.length === 2) {
+    const brand = parts[0];
+    const model = parts[1];
+    return `${model} ${brand}`;
+  }
+  return name;
+}
+
+export function NewRequestModal({ open, onClose, inventoryItems, sites, onSubmit, title = 'New Request' }: NewRequestModalProps) {
   const [reqItemId, setReqItemId] = useState('');
   const [reqSpecificItemId, setReqSpecificItemId] = useState('');
   const [reqQuantity, setReqQuantity] = useState(1);
@@ -54,8 +71,13 @@ export function NewRequestModal({ open, onClose, inventoryItems, sites, onSubmit
   const [reqReason, setReqReason] = useState('');
   const [reqFormError, setReqFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
-  if (!open) return null;
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!open || !isMounted) return null;
 
   const handleSubmit = async () => {
     setReqFormError(null);
@@ -97,36 +119,44 @@ export function NewRequestModal({ open, onClose, inventoryItems, sites, onSubmit
     }
   };
 
-  return (
+  const modalContent = (
     <div
       onClick={onClose}
       style={{
         position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(15,23,42,0.4)',
-        backdropFilter: 'blur(2px)',
-        zIndex: 1500,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh',
+        backgroundColor: 'rgba(15, 23, 42, 0.4)',
+        backdropFilter: 'blur(4px)',
         display: 'flex',
-        justifyContent: 'flex-end'
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 9999,
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%',
-          maxWidth: '480px',
-          height: '100%',
+          maxWidth: '560px',
+          maxHeight: '90vh',
           backgroundColor: '#ffffff',
-          boxShadow: '-10px 0 25px -5px rgba(0, 0, 0, 0.1)',
+          borderRadius: '16px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+          overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          animation: 'slideInRight 0.2s ease-out'
+          border: '1px solid #e2e8f0',
         }}
       >
         {/* Header */}
         <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>New Request</h2>
+            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>{title}</h3>
             <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>Submit an asset request for approval</p>
           </div>
           <button
@@ -159,7 +189,7 @@ export function NewRequestModal({ open, onClose, inventoryItems, sites, onSubmit
                 <option value="">-- Select an Item --</option>
                 {inventoryItems.map(item => (
                   <option key={item.id} value={item.id}>
-                    {item.name}{item.sku ? ` (${item.sku})` : ""}
+                    {formatItemDisplayName(item.name)}{item.sku ? ` (${item.sku})` : ""}
                   </option>
                 ))}
               </select>
@@ -198,26 +228,25 @@ export function NewRequestModal({ open, onClose, inventoryItems, sites, onSubmit
               />
             </div>
 
-            {/* Site input */}
+            {/* Site selector */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-              <label htmlFor="site-input" style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Site *</label>
+              <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Site *</label>
               <input
-                id="site-input"
-                list="sites-list"
                 type="text"
+                list="sites-list"
                 placeholder="Select or enter site name..."
                 value={reqSiteId}
                 onChange={(e) => setReqSiteId(e.target.value)}
-                style={{ padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', color: '#0f172a', width: '100%', backgroundColor: '#ffffff' }}
+                style={{ padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', color: '#0f172a', width: '100%' }}
               />
               <datalist id="sites-list">
-                {sites.map(site => (
-                  <option key={site.id} value={site.name} />
+                {sites.map(s => (
+                  <option key={s.id} value={s.name} />
                 ))}
               </datalist>
             </div>
 
-            {/* Reason */}
+            {/* Reason for Request */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
               <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Reason for Request * (min 10 chars)</label>
               <textarea
@@ -232,7 +261,7 @@ export function NewRequestModal({ open, onClose, inventoryItems, sites, onSubmit
         </div>
 
         {/* Footer actions */}
-        <div style={{ position: 'sticky', bottom: 0, padding: '1.25rem 1.5rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', backgroundColor: '#f8fafc', zIndex: 10 }}>
+        <div style={{ padding: '1.25rem 1.5rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', backgroundColor: '#f8fafc' }}>
           <button
             type="button"
             onClick={onClose}
@@ -276,4 +305,6 @@ export function NewRequestModal({ open, onClose, inventoryItems, sites, onSubmit
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

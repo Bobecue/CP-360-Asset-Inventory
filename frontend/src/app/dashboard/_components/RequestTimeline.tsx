@@ -473,6 +473,10 @@ export function RequestTimeline({
         });
       }
       if (s === 'RELEASED') {
+        const effectiveSourceSite = (assetSiteName && assetSiteName !== receiverSiteName)
+          ? assetSiteName
+          : (senderSiteName && senderSiteName !== receiverSiteName ? senderSiteName : 'Skyrise 4B');
+
         nodes.push({
           type: 'released',
           title: 'RELEASED',
@@ -496,7 +500,7 @@ export function RequestTimeline({
                 }}>
                   {itemName && <div><strong style={{ color: '#1e40af' }}>Brand/Item:</strong> <span style={{ color: '#1e3a8a' }}>{itemName}</span></div>}
                   {assetTag && <div><strong style={{ color: '#1e40af' }}>{itemCategory === 'Consumables' ? 'Batch Number' : 'Asset Tag'}:</strong> <span style={{ fontFamily: 'monospace', color: '#1e3a8a' }}>{assetTag}</span></div>}
-                  {assetSiteName && <div><strong style={{ color: '#1e40af' }}>Source Site:</strong> <span style={{ color: '#1e3a8a' }}>{assetSiteName}</span></div>}
+                  {effectiveSourceSite && <div><strong style={{ color: '#1e40af' }}>Source Site:</strong> <span style={{ color: '#1e3a8a' }}>{effectiveSourceSite}</span></div>}
                 </div>
               )}
             </div>
@@ -589,80 +593,24 @@ export function RequestTimeline({
   const isFinalComplete = status === 'ITEM_RECEIVED' || history.some(h => mapStatus(h.status) === 'ITEM_RECEIVED');
   const itemReceivedEvent = history.find(h => mapStatus(h.status) === 'ITEM_RECEIVED');
   const dateReceivedStr = itemReceivedEvent ? formatTimestamp(itemReceivedEvent.timestamp) : (receivedAt ? formatTimestamp(receivedAt) : '');
-  const receivedByNameStr = itemReceivedEvent?.byName || receiverName || requestedByName;
+  const receivedByNameStr = requestedByName || itemReceivedEvent?.byName || receiverName;
+
+  const invStaffApprover = staffApprovedByName
+    || history.find(h => mapStatus(h.status) === 'PENDING_OPS_APPROVAL' || h.status === 'PENDING_OPS_APPROVAL')?.byName
+    || history.find(h => h.comment && (h.comment.toLowerCase().includes('inventory staff') || h.comment.toLowerCase().includes('initial approval')))?.byName
+    || 'Inventory Staff';
+
+  const opsAdminApprover = opsApprovedByName
+    || history.find(h => mapStatus(h.status) === 'APPROVED' || h.status === 'APPROVED')?.byName
+    || history.find(h => h.comment && (h.comment.toLowerCase().includes('ops manager') || h.comment.toLowerCase().includes('ops admin')))?.byName
+    || 'Ops Admin';
+
+  const authorizedByStr = invStaffApprover === opsAdminApprover
+    ? `${invStaffApprover} (Inventory Staff & Ops Admin)`
+    : `${invStaffApprover} (Inventory Staff) & ${opsAdminApprover} (Ops Admin)`;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', fontFamily: 'inherit' }}>
-
-      {assetTag && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            {itemCategory === 'Consumables' ? 'Assigned Batch Number' : (assetTag.includes(',') ? 'Assigned Asset Tags' : 'Assigned Asset Tag')}
-          </label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-            {assetTag.split(/,\s*/).map((tag, idx) => (
-              <div key={idx} style={{
-                backgroundColor: '#f8fafc',
-                border: '1px solid #cbd5e1',
-                borderRadius: '6px',
-                padding: '0.4rem 0.8rem',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                fontFamily: 'monospace',
-                color: '#1e293b',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-              }}>
-                🏷️ {tag}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div style={{
-        backgroundColor: '#ffffff',
-        border: '1px solid #e2e8f0',
-        borderRadius: '16px',
-        padding: '1.25rem',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)'
-      }}>
-        <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '1rem' }}>
-          Asset Movement Details
-        </label>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-          <div>
-            <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', display: 'block' }}>Sender</span>
-            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', display: 'block', marginTop: '0.2rem' }}>{senderName}</span>
-            <span style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginTop: '0.1rem' }}>{senderSiteName}</span>
-            {senderSiteAddress && (
-              <span style={{ fontSize: '0.76rem', color: '#64748b', fontStyle: 'italic', display: 'block' }}>
-                {cleanAddress(senderSiteAddress)}
-              </span>
-            )}
-            {assetSiteName && (
-              <div style={{ marginTop: '0.5rem', padding: '0.35rem 0.5rem', backgroundColor: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 6, fontSize: '0.72rem' }}>
-                <span style={{ fontWeight: 600, color: '#0369a1', display: 'block', textTransform: 'uppercase', fontSize: '0.6rem', letterSpacing: '0.3px' }}>Asset Origin Site</span>
-                <div style={{ color: '#0c4a6e', fontWeight: 700, marginTop: '0.1rem' }}>{assetSiteName}</div>
-                {assetSiteAddress && assetSiteAddress !== senderSiteAddress && (
-                  <div style={{ color: '#0284c7', fontStyle: 'italic', fontSize: '0.68rem', marginTop: '0.05rem' }}>{cleanAddress(assetSiteAddress)}</div>
-                )}
-              </div>
-            )}
-          </div>
-          <div>
-            <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', display: 'block' }}>Receiver</span>
-            <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', display: 'block', marginTop: '0.2rem' }}>{receiverName || requestedByName}</span>
-            <span style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginTop: '0.1rem' }}>{receiverSiteName}</span>
-            {receiverSiteAddress && (
-              <span style={{ fontSize: '0.76rem', color: '#64748b', fontStyle: 'italic', display: 'block' }}>
-                {cleanAddress(receiverSiteAddress)}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '0' }} />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -699,6 +647,7 @@ export function RequestTimeline({
               {receiverSiteName && (
                 <span><strong style={{ color: '#14532d' }}>SITE:</strong> {receiverSiteName}</span>
               )}
+              <span><strong style={{ color: '#14532d' }}>AUTHORIZED BY:</strong> {authorizedByStr}</span>
             </div>
           </div>
         )}

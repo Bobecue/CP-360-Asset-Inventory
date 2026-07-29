@@ -274,30 +274,35 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
         position: 'fixed',
         inset: 0,
         backgroundColor: 'rgba(15,23,42,0.4)',
-        backdropFilter: 'blur(2px)',
+        backdropFilter: 'blur(4px)',
         zIndex: 1500,
         display: 'flex',
-        justifyContent: 'flex-end'
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '1.5rem'
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%',
-          maxWidth: '520px',
-          height: '100%',
+          maxWidth: '560px',
+          maxHeight: '90vh',
           backgroundColor: '#ffffff',
-          boxShadow: '-10px 0 25px -5px rgba(0, 0, 0, 0.1)',
+          borderRadius: '16px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
           display: 'flex',
           flexDirection: 'column',
-          animation: 'slideInRight 0.2s ease-out'
+          overflow: 'hidden',
+          border: '1px solid #e2e8f0',
+          animation: 'fadeIn 0.2s ease-out'
         }}
       >
         {/* Header */}
         <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{isDeployMode ? "Asset Deployment" : "Asset Request"}</h2>
+              <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{isDeployMode ? "Asset Deployment" : "Asset Transfer"}</h2>
               <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
                 {isDeployMode ? `Deploy ${selectedItems.length} selected asset${selectedItems.length === 1 ? '' : 's'} to employee` : `Submit request for ${selectedItems.length} selected item${selectedItems.length === 1 ? '' : 's'}`}
               </p>
@@ -321,8 +326,30 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
               border: '1px solid #e2e8f0'
             }}>
               {[
-                { id: 'deploy' as const, label: '🚀 Asset Deployment' },
-                { id: 'request' as const, label: '📋 Asset Request' }
+                {
+                  id: 'deploy' as const,
+                  label: 'Asset Deployment',
+                  icon: (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                      <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.71 1.1-1.68 1.1-2.7a3.4 3.4 0 0 0-1.4-2.9l-2.7 2.6z"/>
+                      <path d="M12 15l-3-3 7.5-7.5a2.12 2.12 0 0 1 3 3L12 15z"/>
+                      <path d="M9 18l3 3"/>
+                      <path d="M14 9l3 3"/>
+                    </svg>
+                  )
+                },
+                {
+                  id: 'request' as const,
+                  label: 'Asset Transfer',
+                  icon: (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                      <path d="M8 3L4 7l4 4"/>
+                      <path d="M4 7h16"/>
+                      <path d="M16 21l4-4-4-4"/>
+                      <path d="M20 17H4"/>
+                    </svg>
+                  )
+                }
               ].map((tab) => {
                 const isActive = mode === tab.id;
                 return (
@@ -340,10 +367,15 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
                       backgroundColor: isActive ? (tab.id === 'deploy' ? '#210cae' : '#7c3aed') : 'transparent',
                       color: isActive ? '#ffffff' : '#64748b',
                       boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
-                      transition: 'all 0.2s ease'
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.4rem'
                     }}
                   >
-                    {tab.label}
+                    {tab.icon}
+                    <span>{tab.label}</span>
                   </button>
                 );
               })}

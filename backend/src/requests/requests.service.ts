@@ -1492,6 +1492,19 @@ export class RequestsService implements OnModuleInit {
         }
       }
 
+      let parsedPurpose: any = {};
+      try {
+        if (req.purpose && req.purpose.startsWith('{')) {
+          parsedPurpose = JSON.parse(req.purpose);
+        } else {
+          parsedPurpose = { reason: req.purpose || '' };
+        }
+      } catch {}
+      if (releaseSiteId) {
+        parsedPurpose.sourceSiteId = releaseSiteId;
+      }
+      const updatedPurposeStr = JSON.stringify(parsedPurpose);
+
       const updatedReq = await tx.request.update({
         where: { id },
         data: {
@@ -1499,6 +1512,7 @@ export class RequestsService implements OnModuleInit {
           releasedById: u ? u.id : undefined,
           releasedAt: new Date(),
           assetId: asset.id,
+          purpose: updatedPurposeStr,
           events: {
             create: [
               {
@@ -1621,13 +1635,32 @@ export class RequestsService implements OnModuleInit {
     const commentLower = (returnComment || '').toLowerCase();
     const isDamaged = commentLower.includes('bad') || commentLower.includes('damaged') || commentLower.includes('missing');
 
+    // Automatically update in the asset catalog (SiteStock level)
+    let destinationSiteId = parsedPurpose.siteId || r.requester?.siteId;
+    let sourceSiteId = parsedPurpose.sourceSiteId;
+
+    // Fall back for source site if not explicitly saved in purpose
+    if (!sourceSiteId) {
+      if (r.asset?.siteId && r.asset.siteId !== destinationSiteId) {
+        sourceSiteId = r.asset.siteId;
+      } else if (r.requester?.siteId) {
+        sourceSiteId = r.requester.siteId;
+      } else {
+        sourceSiteId = destinationSiteId;
+      }
+    }
+
+    let quantity = parsedPurpose.quantity || 1;
+
+    // 1. Bring back the physical asset's site location to where it came from (sourceSiteId)
     if (r.assetId) {
       await this.prisma.asset.update({
         where: { id: r.assetId },
         data: {
           status: isDamaged ? 'UNDER_MAINTENANCE' : 'AVAILABLE',
           condition: isDamaged ? 'DAMAGED' : 'GOOD',
-          assignedToId: null
+          assignedToId: null,
+          siteId: sourceSiteId,
         }
       });
     } else if (r.itemId) {
@@ -1645,48 +1678,52 @@ export class RequestsService implements OnModuleInit {
           data: {
             status: isDamaged ? 'UNDER_MAINTENANCE' : 'AVAILABLE',
             condition: isDamaged ? 'DAMAGED' : 'GOOD',
-            assignedToId: null
+            assignedToId: null,
+            siteId: sourceSiteId,
           }
         });
       }
     }
 
-    // Automatically update in the asset catalog (SiteStock level)
-    let siteId = r.asset?.siteId || r.requester?.siteId;
-    if (!siteId && r.purpose) {
-      try {
-        const parsed = JSON.parse(r.purpose);
-        siteId = parsed.siteId;
-      } catch {}
-    }
-    if (siteId) {
-      let quantity = 1;
-      try {
-        if (r.purpose && r.purpose.startsWith('{')) {
-          const parsed = JSON.parse(r.purpose);
-          quantity = parsed.quantity || 1;
-        }
-      } catch {}
-
-      const stock = await this.prisma.siteStock.findFirst({
+    // 2. Bring back the stock to where it came from (Source Site)
+    if (sourceSiteId) {
+      const sourceStock = await this.prisma.siteStock.findFirst({
         where: {
-          siteId: siteId,
+          siteId: sourceSiteId,
           itemId: r.itemId
         }
       });
 
-      if (stock) {
+      if (sourceStock) {
         await this.prisma.siteStock.update({
-          where: { id: stock.id },
+          where: { id: sourceStock.id },
           data: { quantity: { increment: quantity } }
         });
       } else {
         await this.prisma.siteStock.create({
           data: {
-            siteId: siteId,
+            siteId: sourceSiteId,
             itemId: r.itemId,
             quantity: quantity
           }
+        });
+      }
+    }
+
+    // 3. Deduct stock where it was released / received (Destination Site) if different from Source Site
+    if (destinationSiteId && destinationSiteId !== sourceSiteId && r.status === 'ITEM_RECEIVED') {
+      const destStock = await this.prisma.siteStock.findFirst({
+        where: {
+          siteId: destinationSiteId,
+          itemId: r.itemId
+        }
+      });
+
+      if (destStock) {
+        const newQty = Math.max(0, destStock.quantity - quantity);
+        await this.prisma.siteStock.update({
+          where: { id: destStock.id },
+          data: { quantity: newQty }
         });
       }
     }
@@ -1733,6 +1770,19 @@ export class RequestsService implements OnModuleInit {
     return results;
   }
 
+  async bulkReturn(ids: string[], returnerEmail: string, comment?: string) {
+    const results: any[] = [];
+    for (const id of ids) {
+      try {
+        const item = await this.return(id, comment, returnerEmail);
+        results.push(item);
+      } catch (err) {
+        console.error(`Error in bulkReturn for request ${id}:`, err);
+      }
+    }
+    return results;
+  }
+
   async confirmReceipt(id: string, userEmail: string) {
     let user = await this.prisma.user.findFirst({
       where: {
@@ -1765,21 +1815,76 @@ export class RequestsService implements OnModuleInit {
 
     const userIdToRecord = user ? user.id : req.requesterId;
 
-    const updated = await this.prisma.request.update({
-      where: { id },
-      data: {
-        status: 'ITEM_RECEIVED',
-        receivedById: userIdToRecord,
-        receivedAt: new Date(),
-        events: {
-          create: {
-            status: 'ITEM_RECEIVED',
-            userId: userIdToRecord,
-            comment: 'Receipt confirmed by requester'
+    // Extract target site ID from request purpose/requester site
+    let targetSiteId: string | undefined;
+    if (req.purpose) {
+      try {
+        const parsed = JSON.parse(req.purpose);
+        targetSiteId = parsed.siteId;
+      } catch {}
+    }
+    if (!targetSiteId && req.requester?.siteId) {
+      targetSiteId = req.requester.siteId;
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // 1. Update request status to ITEM_RECEIVED
+      const reqUpdated = await tx.request.update({
+        where: { id },
+        data: {
+          status: 'ITEM_RECEIVED',
+          receivedById: userIdToRecord,
+          receivedAt: new Date(),
+          events: {
+            create: {
+              status: 'ITEM_RECEIVED',
+              userId: userIdToRecord,
+              comment: 'Receipt confirmed by requester'
+            }
           }
+        },
+        include: this.requestInclude,
+      });
+
+      // 2. If an asset is attached, update asset site to the destination site
+      if (req.assetId && targetSiteId) {
+        await tx.asset.update({
+          where: { id: req.assetId },
+          data: { siteId: targetSiteId }
+        });
+      }
+
+      // 3. Update/Increment destination site stock level for the item
+      if (req.itemId && targetSiteId) {
+        let recQty = 1;
+        try {
+          if (req.purpose && req.purpose.startsWith('{')) {
+            const parsed = JSON.parse(req.purpose);
+            recQty = parsed.quantity || 1;
+          }
+        } catch {}
+
+        const existingStock = await tx.siteStock.findFirst({
+          where: { siteId: targetSiteId, itemId: req.itemId }
+        });
+
+        if (existingStock) {
+          await tx.siteStock.update({
+            where: { id: existingStock.id },
+            data: { quantity: { increment: recQty } }
+          });
+        } else {
+          await tx.siteStock.create({
+            data: {
+              siteId: targetSiteId,
+              itemId: req.itemId,
+              quantity: recQty,
+            }
+          });
         }
-      },
-      include: this.requestInclude,
+      }
+
+      return reqUpdated;
     });
 
     const receiverName = req.requester?.name || user?.name || 'The requester';

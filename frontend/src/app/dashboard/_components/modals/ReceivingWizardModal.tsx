@@ -256,6 +256,7 @@ export const ReceivingWizardModal = ({
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
+    const svgHtml = document.getElementById(`barcode-rr-svg-${asset.id}`)?.querySelector("svg")?.outerHTML || "";
     printWindow.document.write(`
       <html>
         <head>
@@ -271,7 +272,7 @@ export const ReceivingWizardModal = ({
             .header { font-size: 8px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             .item-name { font-size: 7px; color: #64748b; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
             .barcode-container { width: 100%; height: 35px; display: flex; justify-content: center; align-items: center; }
-            .barcode-container svg { width: 100%; height: 35px; }
+            .barcode-container svg { width: 100%; height: 35px; display: block; }
             .tag-code { font-size: 8px; font-weight: 700; font-family: monospace; letter-spacing: 0.05em; margin-top: 1px; }
           </style>
         </head>
@@ -279,7 +280,7 @@ export const ReceivingWizardModal = ({
           <div class="header">ContactPoint 360</div>
           <div class="item-name">${itemName}</div>
           <div class="barcode-container">
-            ${document.getElementById(`barcode-rr-svg-${asset.id}`)?.outerHTML || ""}
+            ${svgHtml}
           </div>
           <div class="tag-code">${asset.tagCode}</div>
           <script>
@@ -299,12 +300,13 @@ export const ReceivingWizardModal = ({
     const labelPages = createdReport.assetsIntroduced.map((asset: any) => {
       const poItem = purchaseOrder.items.find((pi: any) => pi.itemId === asset.itemId);
       const itemName = poItem?.item?.name || "Asset Catalog Item";
+      const svgHtml = document.getElementById(`barcode-rr-svg-${asset.id}`)?.querySelector("svg")?.outerHTML || "";
       return `
         <div class="label-page">
           <div class="header">ContactPoint 360</div>
           <div class="item-name">${itemName}</div>
           <div class="barcode-container">
-            ${document.getElementById(`barcode-rr-svg-${asset.id}`)?.outerHTML || ""}
+            ${svgHtml}
           </div>
           <div class="tag-code">${asset.tagCode}</div>
         </div>

@@ -27,10 +27,13 @@ export const ViewTagsModal = ({
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
+    const svgHtml = document.getElementById(`barcode-svg-${asset.id}`)?.querySelector("svg")?.outerHTML || "";
+    const tagCode = asset.tagCode || asset.assetTag || "TAG-CODE";
+
     printWindow.document.write(`
       <html>
         <head>
-          <title>Print Label - ${asset.tagCode}</title>
+          <title>Print Label - ${tagCode}</title>
           <style>
             @page {
               size: 2in 1in;
@@ -80,6 +83,7 @@ export const ViewTagsModal = ({
             .barcode-container svg {
               width: 100%;
               height: 35px;
+              display: block;
             }
             .tag-code {
               font-size: 8px;
@@ -94,9 +98,9 @@ export const ViewTagsModal = ({
           <div class="header">ContactPoint 360</div>
           <div class="item-name">${itemName}</div>
           <div class="barcode-container">
-            ${document.getElementById(`barcode-svg-${asset.id}`)?.outerHTML || ""}
+            ${svgHtml}
           </div>
-          <div class="tag-code">${asset.tagCode}</div>
+          <div class="tag-code">${tagCode}</div>
           <script>
             window.onload = function() {
               window.print();
@@ -113,16 +117,20 @@ export const ViewTagsModal = ({
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
-    const labelPages = filteredAssets.map(asset => `
-      <div class="label-page">
-        <div class="header">ContactPoint 360</div>
-        <div class="item-name">${viewTagsItem.name}</div>
-        <div class="barcode-container">
-          ${document.getElementById(`barcode-svg-${asset.id}`)?.outerHTML || ""}
+    const labelPages = filteredAssets.map(asset => {
+      const svgHtml = document.getElementById(`barcode-svg-${asset.id}`)?.querySelector("svg")?.outerHTML || "";
+      const tagCode = asset.tagCode || asset.assetTag || "TAG-CODE";
+      return `
+        <div class="label-page">
+          <div class="header">ContactPoint 360</div>
+          <div class="item-name">${viewTagsItem.name}</div>
+          <div class="barcode-container">
+            ${svgHtml}
+          </div>
+          <div class="tag-code">${tagCode}</div>
         </div>
-        <div class="tag-code">${asset.tagCode}</div>
-      </div>
-    `).join("");
+      `;
+    }).join("");
 
     printWindow.document.write(`
       <html>
@@ -181,6 +189,7 @@ export const ViewTagsModal = ({
             .barcode-container svg {
               width: 100%;
               height: 35px;
+              display: block;
             }
             .tag-code {
               font-size: 8px;
@@ -206,10 +215,10 @@ export const ViewTagsModal = ({
   };
 
   const filteredAssets = viewTagsAssets.filter(asset => {
-    const matchesSearch = asset.tagCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (asset.serialNumber && asset.serialNumber.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesSite = !selectedSiteId || asset.siteId === selectedSiteId;
-    return matchesSearch && matchesSite;
+    const tag = (asset.tagCode || asset.assetTag || asset.barcode || asset.id || "").toLowerCase();
+    const sn = (asset.serialNumber || "").toLowerCase();
+    const q = searchQuery.toLowerCase();
+    return tag.includes(q) || sn.includes(q);
   });
 
   return (
@@ -400,7 +409,9 @@ export const ViewTagsModal = ({
               padding: "0.5rem",
               margin: "0 -0.5rem"
             }}>
-              {filteredAssets.map(asset => (
+              {filteredAssets.map(asset => {
+                const tagCode = asset.tagCode || asset.assetTag || asset.barcode || asset.id || "N/A";
+                return (
                 <div key={asset.id} style={{
                   border: "1px solid #e2e8f0",
                   borderRadius: "12px",
@@ -460,13 +471,13 @@ export const ViewTagsModal = ({
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
                     <span style={{ fontSize: "0.6rem", color: "#94a3b8", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase" }}>TAG CODE</span>
                     <div>
-                      <AssetTagBadge tag={asset.tagCode} size="md" />
+                      <AssetTagBadge tag={tagCode} size="md" />
                     </div>
                   </div>
 
                   {/* Hidden / SVG container for printing */}
                   <div id={`barcode-svg-${asset.id}`} style={{ display: "none" }}>
-                    <Barcode text={asset.tagCode} height={35} showText={false} />
+                    <Barcode text={tagCode} height={35} showText={false} />
                   </div>
 
                   {/* Barcode Preview Graphic */}
@@ -481,7 +492,7 @@ export const ViewTagsModal = ({
                     alignItems: "center",
                     boxShadow: "inset 0 1px 2px rgba(0,0,0,0.02)"
                   }}>
-                    <Barcode text={asset.tagCode} height={25} showText={false} />
+                    <Barcode text={tagCode} height={25} showText={false} />
                   </div>
 
                   {/* Serial Number Display */}
@@ -500,7 +511,8 @@ export const ViewTagsModal = ({
                     </span>
                   </div>
                 </div>
-              ))}
+              );
+            })}
             </div>
           )}
         </div>

@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, NotFoundException } from "@nestjs/common";
+import { Injectable, ConflictException, NotFoundException, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { AuditLogsService } from "../audit-logs/audit-logs.service";
@@ -156,9 +156,25 @@ export class ItemsService {
     meta?: { userId?: string; ipAddress?: string },
   ) {
     // Check if category exists
-    const category = await this.prisma.assetCategory.findUnique({
+    if (!data.categoryId) {
+      throw new BadRequestException("Category is required.");
+    }
+    let category = await this.prisma.assetCategory.findUnique({
       where: { id: data.categoryId },
     });
+    if (!category) {
+      category = await this.prisma.assetCategory.findFirst({
+        where: {
+          OR: [
+            { name: { equals: data.categoryId, mode: "insensitive" } },
+            { prefix: { equals: data.categoryId, mode: "insensitive" } },
+          ],
+        },
+      });
+      if (category) {
+        data.categoryId = category.id;
+      }
+    }
     if (!category) {
       throw new NotFoundException("Category not found.");
     }
@@ -339,9 +355,22 @@ export class ItemsService {
     }
 
     if (data.categoryId) {
-      const category = await this.prisma.assetCategory.findUnique({
+      let category = await this.prisma.assetCategory.findUnique({
         where: { id: data.categoryId },
       });
+      if (!category) {
+        category = await this.prisma.assetCategory.findFirst({
+          where: {
+            OR: [
+              { name: { equals: data.categoryId, mode: "insensitive" } },
+              { prefix: { equals: data.categoryId, mode: "insensitive" } },
+            ],
+          },
+        });
+        if (category) {
+          data.categoryId = category.id;
+        }
+      }
       if (!category) {
         throw new NotFoundException("Category not found.");
       }
@@ -406,47 +435,7 @@ export class ItemsService {
       throw new NotFoundException("Catalog item not found.");
     }
 
-    if (siteId && siteId !== "ALL") {
-      const site = await this.prisma.site.findUnique({ where: { id: siteId } });
-      return this.prisma.$transaction(async (tx) => {
-        // 1. Delete site stock for this specific site
-        await tx.siteStock.deleteMany({
-          where: { itemId: id, siteId: siteId }
-        });
-
-        // 2. Delete physical assets at this specific site
-        const siteAssets = await tx.asset.findMany({
-          where: { itemId: id, siteId: siteId },
-          select: { id: true }
-        });
-        const siteAssetIds = siteAssets.map(a => a.id);
-        if (siteAssetIds.length > 0) {
-          await tx.assetEvent.deleteMany({
-            where: { assetId: { in: siteAssetIds } }
-          });
-          await tx.asset.deleteMany({
-            where: { id: { in: siteAssetIds } }
-          });
-        }
-
-        // 3. Log audit action
-        await tx.auditLog.create({
-          data: {
-            action: "SITE_ITEM_REMOVED",
-            details: `Item "${item.name}" stock and assets were removed from site "${site?.name || siteId}".`,
-            userId: meta?.userId || null,
-            itemId: item.id,
-            itemName: item.name,
-            itemSku: item.sku,
-            ipAddress: meta?.ipAddress || null,
-          },
-        });
-
-        return { message: `Item removed from site ${site?.name || siteId}` };
-      });
-    }
-
-    // Global deletion across all sites if no siteId or siteId is ALL
+    // Always perform total deletion across all sites
     return this.prisma.$transaction(async (tx) => {
       // 1. Find and delete all request orders & events for this item
       const itemRequests = await tx.request.findMany({

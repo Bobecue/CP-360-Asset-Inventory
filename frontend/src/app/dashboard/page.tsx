@@ -162,7 +162,7 @@ export default function DashboardPage() {
   const [mockAuditLogs, setMockAuditLogs] = useState<any[]>([]);
   const [isLoadingItems, setIsLoadingItems] = useState(true);
   const [itemsError, setItemsError] = useState<string | null>(null);
-  const [selectedSiteId, setSelectedSiteId] = useState("ALL");
+  const [selectedSiteId, setSelectedSiteId] = useState("");
 
   // Filters for catalog
   const [catalogSearch, setCatalogSearch] = useState("");
@@ -217,10 +217,11 @@ export default function DashboardPage() {
   const [userRoleFilter, setUserRoleFilter] = useState("ALL");
 
   const filteredUsers = users.filter((u) => {
+    const searchLower = (userSearch || "").toLowerCase();
     const matchesSearch =
-      u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
-      u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
-      (u.employeeId && u.employeeId.toLowerCase().includes(userSearch.toLowerCase()));
+      (u.name?.toLowerCase() || "").includes(searchLower) ||
+      (u.email?.toLowerCase() || "").includes(searchLower) ||
+      (u.employeeId?.toLowerCase() || "").includes(searchLower);
     
     const matchesRole = userRoleFilter === "ALL" || u.role === userRoleFilter;
     
@@ -228,10 +229,11 @@ export default function DashboardPage() {
   });
 
   const filteredItems = catalogItems.filter((it) => {
+    const searchLower = (catalogSearch || "").toLowerCase();
     const matchesSearch =
-      it.name.toLowerCase().includes(catalogSearch.toLowerCase()) ||
-      it.sku.toLowerCase().includes(catalogSearch.toLowerCase()) ||
-      (it.description && it.description.toLowerCase().includes(catalogSearch.toLowerCase()));
+      (it.name?.toLowerCase() || "").includes(searchLower) ||
+      (it.sku?.toLowerCase() || "").includes(searchLower) ||
+      (it.description?.toLowerCase() || "").includes(searchLower);
 
     const itemCatType = it.category?.type || (it.category?.name?.toLowerCase().includes("consumable") ? "CONSUMABLE" : "NON_CONSUMABLE");
     let matchesCategory = true;
@@ -258,16 +260,7 @@ export default function DashboardPage() {
       matchesStock = quantity === 0;
     }
 
-    let matchesSite = true;
-    if (selectedSiteId && selectedSiteId !== "ALL") {
-      if (catalogStockFilter === "OUT_OF_STOCK") {
-        matchesSite = quantity === 0;
-      } else {
-        matchesSite = quantity > 0;
-      }
-    }
-
-    return matchesSearch && matchesCategory && matchesStock && matchesSite;
+    return matchesSearch && matchesCategory && matchesStock;
   }).sort((a, b) => {
     const aStock = (selectedSiteId && selectedSiteId !== "ALL") ? a.stockLevels?.find((sl) => sl.siteId === selectedSiteId) : null;
     const bStock = (selectedSiteId && selectedSiteId !== "ALL") ? b.stockLevels?.find((sl) => sl.siteId === selectedSiteId) : null;
@@ -279,9 +272,9 @@ export default function DashboardPage() {
       : (b.stockLevels && b.stockLevels.length > 0 ? b.stockLevels.reduce((acc, sl) => acc + (sl.quantity || 0), 0) : (b.quantity || 0));
 
     if (catalogSortKey === "name_asc") {
-      return a.name.localeCompare(b.name);
+      return (a.name || "").localeCompare(b.name || "");
     } else if (catalogSortKey === "name_desc") {
-      return b.name.localeCompare(a.name);
+      return (b.name || "").localeCompare(a.name || "");
     } else if (catalogSortKey === "price_asc") {
       return Number(a.unitPrice) - Number(b.unitPrice);
     } else if (catalogSortKey === "price_desc") {
@@ -339,7 +332,7 @@ export default function DashboardPage() {
         const data = await res.json();
         setSites(data);
         if (data.length > 0 && !selectedSiteId) {
-          setSelectedSiteId("ALL");
+          setSelectedSiteId(data[0].id);
         }
       } else {
         setIsBackendOffline(true);
@@ -1211,11 +1204,10 @@ export default function DashboardPage() {
           let successCount = 0;
           let failCount = 0;
 
-          const siteQuery = (selectedSiteId && selectedSiteId !== "ALL") ? `?siteId=${selectedSiteId}` : "";
           await Promise.all(
             selectedItemIds.map(async (id) => {
               try {
-                const res = await fetch(`http://localhost:3001/items/${id}${siteQuery}`, {
+                const res = await fetch(`http://localhost:3001/items/${id}`, {
                   method: "DELETE",
                   headers: { "x-user-id": currentUser?.id || "" }
                 });
@@ -1269,27 +1261,14 @@ export default function DashboardPage() {
           };
           setMockAuditLogs(prev => [newLog, ...prev]);
         }
-        if (selectedSiteId && selectedSiteId !== "ALL") {
-          setCatalogItems((prev) => prev.map((it) => {
-            if (it.id === deleteTarget.id) {
-              return {
-                ...it,
-                stockLevels: (it.stockLevels || []).filter(sl => sl.siteId !== selectedSiteId)
-              };
-            }
-            return it;
-          }));
-        } else {
-          setCatalogItems((prev) => prev.filter((it) => it.id !== deleteTarget.id));
-        }
+        setCatalogItems((prev) => prev.filter((it) => it.id !== deleteTarget.id));
       }
       setDeleteConfirmOpen(false);
       setDeleteTarget(null);
     } else {
       try {
         const endpoint = deleteTarget.type === "site" ? "sites" : deleteTarget.type === "department" ? "departments" : deleteTarget.type === "category" ? "categories" : "items";
-        const siteQuery = (deleteTarget.type === "item" && selectedSiteId && selectedSiteId !== "ALL") ? `?siteId=${selectedSiteId}` : "";
-        const res = await fetch(`http://localhost:3001/${endpoint}/${deleteTarget.id}${siteQuery}`, {
+        const res = await fetch(`http://localhost:3001/${endpoint}/${deleteTarget.id}`, {
           method: "DELETE",
           headers: { "x-user-id": currentUser?.id || "" }
         });
@@ -1313,6 +1292,17 @@ export default function DashboardPage() {
   const handleCreateItemSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setItemError(null);
+
+    if (!(itemName || "").trim()) {
+      setItemError("Asset name is required.");
+      return;
+    }
+
+    if (!itemCategoryId || !itemCategoryId.trim()) {
+      setItemError("Please select a category.");
+      return;
+    }
+
     const priceNum = parseFloat(itemUnitPrice);
     if (isNaN(priceNum) || priceNum < 0) {
       setItemError("Price must be a positive number.");
@@ -1356,7 +1346,7 @@ export default function DashboardPage() {
       }
     }
 
-    const effectiveSiteId = itemSiteId || "ALL";
+    const effectiveSiteId = (itemSiteId && itemSiteId !== "ALL") ? itemSiteId : (sites[0]?.id || "ALL");
 
     const payload: any = {
       name: (itemName || "").trim(),
@@ -1458,6 +1448,8 @@ export default function DashboardPage() {
               serialNumber: `SN-${tagCode}`,
               status: "AVAILABLE",
               condition: "GOOD",
+              siteId: itemSiteId || sites[0]?.id || "site-1",
+              itemId: newItemId,
             });
           }
         }
@@ -1926,6 +1918,7 @@ export default function DashboardPage() {
             activeSubTab={activeTab === "deployments" ? "deployments" : "inventory"}
             catalogItems={catalogItems}
             setCatalogItems={setCatalogItems}
+            onUpdateCatalog={fetchItems}
             sites={sites}
             categories={categories}
             selectedSiteId={selectedSiteId}
@@ -1954,8 +1947,8 @@ export default function DashboardPage() {
               setItemDescription("");
               setItemUnitPrice("");
               setItemLeadTimeDays("7");
-              setItemCategoryId("");
-              setItemSiteId(selectedSiteId);
+              setItemCategoryId(categories.length > 0 ? categories[0].id : "");
+              setItemSiteId((selectedSiteId && selectedSiteId !== "ALL") ? selectedSiteId : (sites[0]?.id || ""));
               setItemQuantity("");
               setItemSupplierId("");
               setItemError(null);
@@ -1972,7 +1965,11 @@ export default function DashboardPage() {
               setItemDescription(it.description || "");
               setItemUnitPrice(String(it.unitPrice));
               setItemLeadTimeDays(String(it.leadTimeDays));
-              setItemCategoryId(it.categoryId);
+              const existingCatId = it.categoryId || it.category?.id || "";
+              const validCatId = categories.some(c => c.id === existingCatId)
+                ? existingCatId
+                : (categories.find(c => c.name === it.category?.name)?.id || existingCatId || (categories[0]?.id || ""));
+              setItemCategoryId(validCatId);
               setItemSiteId(selectedSiteId);
               setItemQuantity(String(qty));
               setItemSupplierId(it.supplierId || "");

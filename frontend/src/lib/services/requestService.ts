@@ -103,3 +103,29 @@ export async function preparePickup(id: string, userEmail: string, comment?: str
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
+
+export async function bulkConfirmReceiptApi(ids: string[], userEmail: string) {
+  const res = await fetch(`${BASE}/requests/bulk-confirm-receipt`, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'x-user': userEmail
+    },
+    body: JSON.stringify({ ids, userEmail })
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function bulkReturnApi(ids: string[], userEmail: string, comment?: string) {
+  const res = await fetch(`${BASE}/requests/bulk-return`, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'x-user': userEmail
+    },
+    body: JSON.stringify({ ids, returnerEmail: userEmail, comment })
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}

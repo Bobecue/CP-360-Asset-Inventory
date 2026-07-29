@@ -19,7 +19,7 @@ const getPageTitle = (activeTab: string) => {
     case "dashboard": return "Dashboard Overview";
     case "users": return "User Management";
     case "catalog": return "Asset Catalog";
-    case "requests": return "Request Orders";
+    case "requests": return "Asset Transfer";
     case "alerts": return "Low-Stock Alerts";
     case "suppliers": return "Supplier Module";
     case "reports": return "Reports & Logs";

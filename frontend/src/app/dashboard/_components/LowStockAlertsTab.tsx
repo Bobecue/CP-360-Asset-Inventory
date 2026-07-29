@@ -287,7 +287,7 @@ export const LowStockAlertsTab = ({
 
     setIsSubmittingRequest(false);
     setRequestModalItem(null);
-    setRequestSuccessNotice(`Reorder request order created successfully for ${requestModalItem.name}!`);
+    setRequestSuccessNotice(`Reorder asset transfer created successfully for ${requestModalItem.name}!`);
     setTimeout(() => setRequestSuccessNotice(null), 4000);
     fetchLowStockAlerts();
   };

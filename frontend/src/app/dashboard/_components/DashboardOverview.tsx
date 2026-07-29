@@ -303,8 +303,8 @@ export const DashboardOverview = ({
     const s = (statusStr || "").toUpperCase();
 
     const conf: Record<string, { bg: string; color: string; border: string; label: string }> = {
-      PENDING:              { bg: "linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)", color: "#c2410c", border: "rgba(234,88,12,0.40)", label: "Pending" },
-      PENDING_OPS_APPROVAL: { bg: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", color: "#6b21a8", border: "rgba(147,51,234,0.35)", label: "Pending Ops" },
+      PENDING:              { bg: "linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)", color: "#c2410c", border: "rgba(234,88,12,0.40)", label: "Pending Staff Approval" },
+      PENDING_OPS_APPROVAL: { bg: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", color: "#6b21a8", border: "rgba(147,51,234,0.35)", label: "Pending Ops Approval" },
       APPROVED:             { bg: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", color: "#1d4ed8", border: "rgba(59,130,246,0.35)", label: "Approved" },
       READY_FOR_PICKUP:     { bg: "linear-gradient(135deg, #ecfeff 0%, #cffafe 100%)", color: "#0e7490", border: "rgba(6,182,212,0.35)", label: "Ready for Pickup" },
       PROCESSING:           { bg: "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)", color: "#0369a1", border: "rgba(14,165,233,0.35)", label: "Processing" },
@@ -516,7 +516,7 @@ export const DashboardOverview = ({
                   <line x1="16" y1="17" x2="8" y2="17"/>
                 </svg>
               </div>
-              <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0F172A", margin: 0 }}>Recent Request Transactions</h3>
+              <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0F172A", margin: 0 }}>Recent Asset Transfers</h3>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
               <button
@@ -556,7 +556,7 @@ export const DashboardOverview = ({
                   gap: "0.3rem"
                 }}
               >
-                View All Orders →
+                View All Asset Transfers →
               </button>
             </div>
           </div>
@@ -564,7 +564,7 @@ export const DashboardOverview = ({
           <div style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem", flexWrap: "wrap" }}>
             <input
               type="text"
-              placeholder="Search order ID or requester..."
+              placeholder="Search transfer ID or requester..."
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               style={{
@@ -630,7 +630,7 @@ export const DashboardOverview = ({
             </select>
           </div>
 
-          {/* Table matching Request Orders structure */}
+          {/* Table matching Asset Transfer structure */}
           <div className="table-scrollable-container" style={{ maxHeight: "380px", overflowY: "auto", overflowX: "auto", scrollbarWidth: "thin", scrollbarColor: "#2563eb #f1f5f9" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.82rem" }}>
               <thead style={{ position: "sticky", top: 0, backgroundColor: "#f8fafc", zIndex: 5, boxShadow: "0 1px 0 #e2e8f0" }}>
@@ -648,7 +648,7 @@ export const DashboardOverview = ({
                 {filteredRequests.length === 0 ? (
                   <tr>
                     <td colSpan={7} style={{ padding: "2.5rem 1rem", textAlign: "center", color: "#94a3b8" }}>
-                      No recent request transactions recorded.
+                      No recent asset transfer transactions recorded.
                     </td>
                   </tr>
                 ) : (

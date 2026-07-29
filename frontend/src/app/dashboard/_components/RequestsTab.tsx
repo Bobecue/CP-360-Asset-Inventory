@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { User, CatalogItem } from '@/types/dashboard';
+import { User, CatalogItem, getCategoryIcon } from '@/types/dashboard';
 import { RequestsTable } from './RequestsTable';
 import { NewRequestModal } from './NewRequestModal';
 import { MyRequestsPanel } from './MyRequestsPanel';
@@ -111,6 +112,11 @@ export function RequestsTab({
   onRefreshNotifications,
   onRefreshCatalog
 }: RequestsTabProps) {
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   if (!currentUser) {
     return <div style={{ padding: '2rem', color: '#64748b' }}>Loading session data...</div>;
   }
@@ -126,6 +132,7 @@ export function RequestsTab({
   // Detail Drawer states
   const [selectedRequest, setSelectedRequest] = useState<RequestEntry | null>(null);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
+  const [isTimelineExpanded, setIsTimelineExpanded] = useState(false);
   const [showDrawerReturnForm, setShowDrawerReturnForm] = useState(false);
   const [returnAssetTag, setReturnAssetTag] = useState('');
   const [returnComment, setReturnComment] = useState('');
@@ -883,23 +890,181 @@ export function RequestsTab({
       const fmtDate = (d: string) => new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
       const fmtDateShort = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-      const statusLabel: Record<string, string> = {
-        PENDING: 'Pending', PENDING_OPS_APPROVAL: 'Pending Ops Approval', APPROVED: 'Approved',
-        PROCESSING: 'Processing', READY_FOR_PICKUP: 'Ready for Pickup', RELEASED: 'Released',
-        AWAITING_CONFIRMATION: 'Awaiting Confirmation', ITEM_RECEIVED: 'Item Received',
-        COMPLETED: 'Completed', CANCELLED: 'Cancelled', RETURNED: 'Returned',
+      const getTimelineStatusTitle = (statusStr: string) => {
+        const s = (statusStr || '').toUpperCase();
+        if (s === 'PENDING' || s === 'PENDING_APPROVAL' || s === 'REQUESTED') return 'Pending Staff Approval';
+        if (s === 'PENDING_OPS_APPROVAL') return 'Approved By Staff';
+        if (s === 'APPROVED') return 'Approved by Ops';
+        if (s === 'READY_FOR_PICKUP') return 'Ready for Pickup';
+        if (s === 'RELEASED') return 'Released';
+        if (s === 'AWAITING_CONFIRMATION') return 'Awaiting Confirmation';
+        if (s === 'ITEM_RECEIVED' || s === 'COMPLETED') return 'Item Received';
+        if (s === 'RETURNED') return 'Item Returned';
+        if (s === 'REJECTED') return 'Request Rejected';
+        if (s === 'CANCELLED') return 'Request Cancelled';
+        return s.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
       };
 
-      const sortedHistory = [...(request.history || [])].sort(
+      const getHeaderStatusLabel = (statusStr: string) => {
+        const s = (statusStr || '').toUpperCase();
+        if (s === 'PENDING' || s === 'PENDING_APPROVAL' || s === 'REQUESTED') return 'Pending Staff Approval';
+        if (s === 'PENDING_OPS_APPROVAL') return 'Pending Ops Approval';
+        if (s === 'APPROVED') return 'Approved by Ops';
+        if (s === 'READY_FOR_PICKUP') return 'Ready for Pickup';
+        if (s === 'RELEASED') return 'Released';
+        if (s === 'AWAITING_CONFIRMATION') return 'Awaiting Confirmation';
+        if (s === 'ITEM_RECEIVED' || s === 'COMPLETED') return 'Item Received';
+        if (s === 'RETURNED') return 'Item Returned';
+        if (s === 'REJECTED') return 'Request Rejected';
+        if (s === 'CANCELLED') return 'Request Cancelled';
+        return s.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
+      };
+
+      const getRemark = (entry: any) => {
+        if (entry.comment && entry.comment !== 'No comment' && entry.comment.trim() !== '') {
+          return entry.comment;
+        }
+        const s = (entry.status || '').toUpperCase();
+        if (s === 'PENDING' || s === 'PENDING_APPROVAL' || s === 'REQUESTED') return '&mdash;';
+        if (s === 'PENDING_OPS_APPROVAL') return 'Initial approval granted';
+        if (s === 'APPROVED') return 'Request approved by Ops Manager';
+        if (s === 'READY_FOR_PICKUP') return 'Item staged and ready for pickup';
+        if (s === 'RELEASED') return 'Item released to user';
+        if (s === 'AWAITING_CONFIRMATION') return 'Awaiting confirmation of receipt by requester';
+        if (s === 'ITEM_RECEIVED' || s === 'COMPLETED') return 'Receipt confirmed by requester';
+        if (s === 'RETURNED') return 'Item returned to inventory';
+        return '&mdash;';
+      };
+
+      const getActionedBy = (entry: any, req: RequestEntry) => {
+        if (entry.byName && entry.byName.trim() !== '') {
+          return entry.byName;
+        }
+        const s = (entry.status || '').toUpperCase();
+        if (s === 'PENDING' || s === 'PENDING_APPROVAL' || s === 'REQUESTED') return req.requestedByName || 'Requester';
+        if (s === 'PENDING_OPS_APPROVAL') return req.staffApprovedByName || 'Inventory Staff';
+        if (s === 'APPROVED') return req.opsApprovedByName || 'Ops Manager';
+        if (s === 'READY_FOR_PICKUP') return 'Inventory Staff';
+        if (s === 'RELEASED') return req.senderName || 'Logistics Staff';
+        if (s === 'AWAITING_CONFIRMATION') return 'System';
+        if (s === 'ITEM_RECEIVED' || s === 'COMPLETED') return req.requestedByName || 'Requester';
+        return 'System';
+      };
+
+      const ascHistory = [...(request.history || [])].sort(
         (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
       );
 
-      const timelineTableRows = sortedHistory.map((entry, i) => `
+      const hasInitialPending = ascHistory.some(evt => (evt.status || '').toUpperCase() === 'PENDING_APPROVAL' || (evt.status || '').toUpperCase() === 'PENDING');
+      if (!hasInitialPending) {
+        const firstTimestamp = ascHistory.length > 0 ? ascHistory[0].timestamp : (request.createdAt || new Date().toISOString());
+        ascHistory.unshift({
+          status: 'PENDING_APPROVAL',
+          timestamp: firstTimestamp,
+          byName: request.requestedByName
+        });
+      }
+
+      interface PdfTimelineEntry {
+        timestamp: string;
+        title: string;
+        remark: string;
+        byName: string;
+      }
+
+      const timelineEntries: PdfTimelineEntry[] = [];
+
+      for (let i = 0; i < ascHistory.length; i++) {
+        const evt = ascHistory[i];
+        const s = (evt.status || '').toUpperCase();
+
+        if (s === 'PENDING' || s === 'PENDING_APPROVAL' || s === 'REQUESTED') {
+          timelineEntries.push({
+            timestamp: evt.timestamp,
+            title: 'Pending Staff Approval',
+            remark: (evt.comment && evt.comment !== 'No comment' && evt.comment.trim() !== '') ? evt.comment : '&mdash;',
+            byName: evt.byName || request.requestedByName || 'Requester'
+          });
+        } else if (s === 'PENDING_OPS_APPROVAL') {
+          timelineEntries.push({
+            timestamp: evt.timestamp,
+            title: 'Approved By Staff',
+            remark: (evt.comment && evt.comment !== 'No comment' && evt.comment.trim() !== '') ? evt.comment : 'Initial approval granted',
+            byName: request.staffApprovedByName || evt.byName || 'Inventory Staff'
+          });
+          timelineEntries.push({
+            timestamp: evt.timestamp,
+            title: 'Pending Ops Approval',
+            remark: 'Forwarded for Ops Manager review',
+            byName: 'Ops Manager'
+          });
+        } else if (s === 'APPROVED') {
+          timelineEntries.push({
+            timestamp: evt.timestamp,
+            title: 'Approved by Ops',
+            remark: (evt.comment && evt.comment !== 'No comment' && evt.comment.trim() !== '') ? evt.comment : 'Request approved by Ops Manager',
+            byName: request.opsApprovedByName || evt.byName || 'Ops Manager'
+          });
+        } else if (s === 'READY_FOR_PICKUP') {
+          timelineEntries.push({
+            timestamp: evt.timestamp,
+            title: 'Ready for Pickup',
+            remark: (evt.comment && evt.comment !== 'No comment' && evt.comment.trim() !== '') ? evt.comment : 'Item staged and ready for pickup',
+            byName: evt.byName || 'Inventory Staff'
+          });
+        } else if (s === 'RELEASED') {
+          timelineEntries.push({
+            timestamp: evt.timestamp,
+            title: 'Released',
+            remark: (evt.comment && evt.comment !== 'No comment' && evt.comment.trim() !== '') ? evt.comment : 'Item released to user',
+            byName: evt.byName || request.senderName || 'Logistics Staff'
+          });
+        } else if (s === 'AWAITING_CONFIRMATION') {
+          timelineEntries.push({
+            timestamp: evt.timestamp,
+            title: 'Awaiting Confirmation',
+            remark: (evt.comment && evt.comment !== 'No comment' && evt.comment.trim() !== '') ? evt.comment : 'Awaiting confirmation of receipt by requester',
+            byName: 'System'
+          });
+        } else if (s === 'ITEM_RECEIVED' || s === 'COMPLETED') {
+          timelineEntries.push({
+            timestamp: evt.timestamp,
+            title: 'Item Received',
+            remark: (evt.comment && evt.comment !== 'No comment' && evt.comment.trim() !== '') ? evt.comment : 'Receipt confirmed by requester',
+            byName: request.requestedByName || evt.byName || 'Requester'
+          });
+        } else if (s === 'RETURNED') {
+          timelineEntries.push({
+            timestamp: evt.timestamp,
+            title: 'Item Returned',
+            remark: (evt.comment && evt.comment !== 'No comment' && evt.comment.trim() !== '') ? evt.comment : 'Item returned to inventory',
+            byName: evt.byName || 'Inventory Staff'
+          });
+        } else if (s === 'REJECTED' || s === 'CANCELLED') {
+          timelineEntries.push({
+            timestamp: evt.timestamp,
+            title: s === 'REJECTED' ? 'Request Rejected' : 'Request Cancelled',
+            remark: (evt.comment && evt.comment !== 'No comment' && evt.comment.trim() !== '') ? evt.comment : `Request ${s.toLowerCase()}`,
+            byName: evt.byName || 'System'
+          });
+        } else {
+          timelineEntries.push({
+            timestamp: evt.timestamp,
+            title: s.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' '),
+            remark: evt.comment || '&mdash;',
+            byName: evt.byName || 'System'
+          });
+        }
+      }
+
+      const sortedHistory = timelineEntries;
+
+      const timelineTableRows = timelineEntries.map((entry, i) => `
         <tr class="${i % 2 === 0 ? 'row-even' : 'row-odd'}">
           <td class="tbl-cell">${fmtDate(entry.timestamp)}</td>
-          <td class="tbl-cell">${entry.status.replace(/_/g, ' ')}</td>
-          <td class="tbl-cell">${entry.comment && entry.comment !== 'No comment' ? entry.comment : '&mdash;'}</td>
-          <td class="tbl-cell">${entry.byName || 'System'}</td>
+          <td class="tbl-cell" style="font-weight:700">${entry.title}</td>
+          <td class="tbl-cell">${entry.remark}</td>
+          <td class="tbl-cell">${entry.byName}</td>
         </tr>
       `).join('');
 
@@ -1107,7 +1272,7 @@ export function RequestsTab({
   <div class="status-strip">
     <div class="strip-item">
       <span class="strip-key">Status</span>
-      <span class="strip-val">${statusLabel[request.status] || fmt(request.status).replace(/_/g, ' ')}</span>
+      <span class="strip-val">${getHeaderStatusLabel(request.status)}</span>
     </div>
     <div class="strip-div"></div>
     <div class="strip-item">
@@ -1270,9 +1435,9 @@ export function RequestsTab({
       {/* Page Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#0f172a', margin: 0 }}>Request Orders</h1>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#0f172a', margin: 0 }}>Asset Transfer</h1>
           <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.25rem 0 0 0' }}>
-            Manage asset requests and approval queues
+            Manage asset transfer requests and approval queues
           </p>
         </div>
         <button
@@ -1307,7 +1472,7 @@ export function RequestsTab({
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
-          New Request
+          {isStaff ? 'Transfer Asset' : 'Request Transfer'}
         </button>
       </div>
 
@@ -1323,8 +1488,8 @@ export function RequestsTab({
           border: '1px solid #e2e8f0'
         }}>
           {([
-            { id: 'queue', label: 'Request Orders Queue' },
-            { id: 'my-requests', label: 'My Requests' }
+            { id: 'queue', label: 'Asset Transfer Queue' },
+            { id: 'my-requests', label: 'Recent Transfers' }
           ] as const).map((tab) => {
             const isActive = ordersSubTab === tab.id;
             return (
@@ -1408,40 +1573,55 @@ export function RequestsTab({
           inventoryItems={mappedInventoryItems}
           sites={sites}
           onSubmit={handleSubmitRequestDirect}
+          title={isStaff ? 'Transfer Asset' : 'Request Transfer'}
         />
       )}
 
-      {/* Detail Drawer Slide-over */}
-      {isDetailDrawerOpen && selectedRequest && (
+      {/* Detail Drawer Modal */}
+      {isMounted && isDetailDrawerOpen && selectedRequest && createPortal(
         <div
           onClick={() => setIsDetailDrawerOpen(false)}
           style={{
             position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(15,23,42,0.4)',
-            backdropFilter: 'blur(2px)',
-            zIndex: 1500,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(15, 23, 42, 0.5)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 99999,
             display: 'flex',
-            justifyContent: 'flex-end'
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '1.25rem',
+            boxSizing: 'border-box'
           }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
               width: '100%',
-              maxWidth: '480px',
-              height: '100%',
+              maxWidth: '640px',
+              maxHeight: '88vh',
               backgroundColor: '#ffffff',
-              boxShadow: '-10px 0 25px -5px rgba(0, 0, 0, 0.1)',
+              borderRadius: '16px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              overflow: 'hidden',
               display: 'flex',
-              flexDirection: 'column'
+              flexDirection: 'column',
+              border: '1px solid #e2e8f0',
+              boxSizing: 'border-box'
             }}
           >
             {/* Header */}
             <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '0.72rem', color: '#64748b', fontFamily: 'monospace' }}>{selectedRequest.id}</span>
-                <h3 style={{ margin: '0.15rem 0 0 0', fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>
+                <span style={{ fontSize: '0.72rem', color: '#3730a3', fontFamily: 'monospace', fontWeight: 700, backgroundColor: '#eef2ff', padding: '0.15rem 0.45rem', borderRadius: '4px', border: '1px solid #c7d2fe', width: 'fit-content' }}>
+                  {(selectedRequest as any).groupRequestId || selectedRequest.id}
+                </span>
+                <h3 style={{ margin: '0.25rem 0 0 0', fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>
                   {selectedRequest.reason && selectedRequest.reason.includes('[ASSET DEPLOYMENT]') ? 'Deployment Details' : 'Request Details'}
                 </h3>
               </div>
@@ -1496,12 +1676,57 @@ export function RequestsTab({
 
               {/* Info Details */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                <div>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Item Name</label>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', marginTop: '0.15rem' }}>{getDisplayName(selectedRequest)}</div>
-                </div>
-
                 {(() => {
+                  const groupItems: RequestEntry[] = (selectedRequest as any).groupItems || [];
+                  if (groupItems.length > 1) {
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Asset Names & Quantities ({groupItems.length} Assets)
+                        </label>
+                        <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#ffffff' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
+                            <thead style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                              <tr>
+                                <th style={{ padding: '0.65rem 0.75rem', fontWeight: 700, color: '#475569' }}>Asset Name</th>
+                                <th style={{ padding: '0.65rem 0.75rem', fontWeight: 700, color: '#475569', textAlign: 'center' }}>Qty</th>
+                                <th style={{ padding: '0.65rem 0.75rem', fontWeight: 700, color: '#475569' }}>Asset Tag</th>
+                                <th style={{ padding: '0.65rem 0.75rem', fontWeight: 700, color: '#475569' }}>Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {groupItems.map((gItem: RequestEntry, idx: number) => (
+                                <tr key={gItem.id || idx} style={{ borderBottom: idx < groupItems.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                                  <td style={{ padding: '0.65rem 0.75rem', fontWeight: 700, color: '#0f172a' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                      <span style={{ color: '#64748b' }}>{getCategoryIcon(gItem.itemCategory, gItem.itemName)}</span>
+                                      <span>{getDisplayName(gItem)}</span>
+                                    </div>
+                                  </td>
+                                  <td style={{ padding: '0.65rem 0.75rem', textAlign: 'center', fontWeight: 700, color: '#0f172a' }}>
+                                    {gItem.quantity || 1}
+                                  </td>
+                                  <td style={{ padding: '0.65rem 0.75rem' }}>
+                                    {gItem.assetTag ? (
+                                      <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#4338ca', backgroundColor: '#eef2ff', padding: '0.15rem 0.45rem', borderRadius: '4px', border: '1px solid #c7d2fe' }}>
+                                        🏷️ {gItem.assetTag}
+                                      </span>
+                                    ) : (
+                                      <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '0.72rem' }}>N/A</span>
+                                    )}
+                                  </td>
+                                  <td style={{ padding: '0.65rem 0.75rem' }}>
+                                    {renderStatusBadge(gItem.status)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   const cat = (selectedRequest.itemCategory || '').toLowerCase();
                   const itemNameLower = (selectedRequest.itemName || '').toLowerCase();
                   const isConsumableReq =
@@ -1513,35 +1738,44 @@ export function RequestsTab({
                   const realTag = selectedRequest.assetTag?.trim() || null;
 
                   return (
-                    <div style={{ display: 'grid', gridTemplateColumns: isConsumableReq || !realTag ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+                    <>
                       <div>
-                        <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Quantity</label>
-                        <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#0f172a', marginTop: '0.15rem' }}>{selectedRequest.quantity} units</div>
+                        <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Item Name</label>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', marginTop: '0.15rem' }}>{getDisplayName(selectedRequest)}</div>
                       </div>
-                      {!isConsumableReq && realTag && (
+
+                      <div style={{ display: 'grid', gridTemplateColumns: isConsumableReq || !realTag ? '1fr' : '1fr 1fr', gap: '1rem' }}>
                         <div>
-                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Asset Tag</label>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.35rem' }}>
-                            {realTag.split(/,\s*/).map((tag, idx) => (
-                              <span key={idx} style={{
-                                fontSize: '0.72rem',
-                                fontWeight: 700,
-                                color: '#4338ca',
-                                backgroundColor: '#eef2ff',
-                                border: '1px solid #c7d2fe',
-                                borderRadius: '4px',
-                                padding: '0.15rem 0.45rem',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.25rem'
-                              }}>
-                                🏷️ {tag}
-                              </span>
-                            ))}
-                          </div>
+                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Quantity</label>
+                          <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#0f172a', marginTop: '0.15rem' }}>{selectedRequest.quantity} units</div>
                         </div>
-                      )}
-                    </div>
+                        {!isConsumableReq && realTag && (
+                          <div>
+                            <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Asset Tag</label>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.35rem', maxWidth: '100%' }}>
+                              {realTag.split(/,\s*/).map((tag, idx) => (
+                                <span key={idx} style={{
+                                  fontSize: '0.72rem',
+                                  fontWeight: 700,
+                                  color: '#4338ca',
+                                  backgroundColor: '#eef2ff',
+                                  border: '1px solid #c7d2fe',
+                                  borderRadius: '4px',
+                                  padding: '0.15rem 0.45rem',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.25rem',
+                                  wordBreak: 'break-all',
+                                  maxWidth: '100%'
+                                }}>
+                                  🏷️ {tag}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </>
                   );
                 })()}
 
@@ -1550,20 +1784,20 @@ export function RequestsTab({
                     <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>
                       {selectedRequest.reason && selectedRequest.reason.includes('[ASSET DEPLOYMENT]') ? 'Deployed By' : 'Requested By'}
                     </label>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginTop: '0.15rem', display: 'flex', alignItems: 'center' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginTop: '0.15rem', display: 'flex', alignItems: 'center', wordBreak: 'break-word' }}>
                       {sites.find(s => s.id === selectedRequest.requestedBySiteId)?.prefix && (
-                        <span style={{ fontSize: '0.6rem', padding: '0.15rem 0.35rem', backgroundColor: '#f5f3ff', color: '#3730a3', borderRadius: '4px', fontWeight: 700, letterSpacing: '0.02em', marginRight: '0.35rem' }}>
+                        <span style={{ fontSize: '0.6rem', padding: '0.15rem 0.35rem', backgroundColor: '#f5f3ff', color: '#3730a3', borderRadius: '4px', fontWeight: 700, letterSpacing: '0.02em', marginRight: '0.35rem', flexShrink: 0 }}>
                           {sites.find(s => s.id === selectedRequest.requestedBySiteId)?.prefix}
                         </span>
                       )}
-                      <span>{selectedRequest.requestedByName}</span>
+                      <span style={{ wordBreak: 'break-word' }}>{selectedRequest.requestedByName}</span>
                     </div>
                   </div>
                   <div>
                     <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>
                       {selectedRequest.reason && selectedRequest.reason.includes('[ASSET DEPLOYMENT]') ? 'Deployment Site' : 'Site'}
                     </label>
-                    <div style={{ fontSize: '0.85rem', color: '#334155', marginTop: '0.15rem' }}>{selectedRequest.siteName || 'No specific site'}</div>
+                    <div style={{ fontSize: '0.85rem', color: '#334155', marginTop: '0.15rem', wordBreak: 'break-word' }}>{selectedRequest.siteName || 'No specific site'}</div>
                   </div>
                 </div>
 
@@ -1571,7 +1805,7 @@ export function RequestsTab({
                   <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>
                     {selectedRequest.reason && selectedRequest.reason.includes('[ASSET DEPLOYMENT]') ? 'Deployment Notes' : 'Reason for Request'}
                   </label>
-                  <div style={{ fontSize: '0.82rem', color: '#475569', lineHeight: 1.5, marginTop: '0.25rem', padding: '0.75rem', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.82rem', color: '#475569', lineHeight: 1.5, marginTop: '0.25rem', padding: '0.75rem', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                     {cleanReason(selectedRequest.reason)}
                   </div>
                 </div>
@@ -1594,84 +1828,180 @@ export function RequestsTab({
 
                 {selectedRequest.reviewComment && (
                   <div>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Review Comment</label>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Fulfillment & Approval Remarks</label>
                     <div style={{ fontSize: '0.82rem', color: '#1e293b', lineHeight: 1.5, marginTop: '0.25rem', padding: '0.75rem', background: '#fffbeb', borderRadius: 6, border: '1px solid #fef3c7' }}>
                       "{cleanReviewComment(selectedRequest.reviewComment)}"
                     </div>
                   </div>
-                )}
-
-                {/* Timeline / History Log */}
-                <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: '0.85rem' }}>
-                    {selectedRequest.reason && selectedRequest.reason.includes('[ASSET DEPLOYMENT]') ? 'Deployment Timeline' : 'Request Timeline'}
+                )}                {/* Permanent Asset Movement Details Section */}
+                <div style={{
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  padding: '1rem 1.25rem',
+                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)'
+                }}>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '0.75rem' }}>
+                    Asset Movement Details
                   </label>
-                  <RequestTimeline
-                    requestId={selectedRequest.id}
-                    status={selectedRequest.status}
-                    requestedById={selectedRequest.requestedById}
-                    requestedByName={selectedRequest.requestedByName}
-                    currentUserEmail={currentUser.email}
-                    currentUserId={currentUser.id}
-                    currentUserRole={currentUser.role}
-                    staffApprovedById={selectedRequest.staffApprovedById}
-                    staffApprovedByName={selectedRequest.staffApprovedByName}
-                    staffApprovedAt={selectedRequest.staffApprovedAt}
-                    opsApprovedById={selectedRequest.opsApprovedById}
-                    opsApprovedByName={selectedRequest.opsApprovedByName}
-                    opsApprovedAt={selectedRequest.opsApprovedAt}
-                    history={selectedRequest.history}
-                    onConfirmSuccess={(updatedReq) => {
-                      setAllRequests(prev => prev.map(r => r.id === updatedReq.id ? { ...r, ...updatedReq } : r));
-                      setSelectedRequest(prev => prev?.id === updatedReq.id ? { ...prev, ...updatedReq } : prev);
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                    <div>
+                      <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', display: 'block' }}>Sender</span>
+                      <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', display: 'block', marginTop: '0.15rem' }}>
+                        {selectedRequest.reason && selectedRequest.reason.includes("[ASSET DEPLOYMENT]")
+                          ? (selectedRequest.requestedByName || "Inventory Staff")
+                          : (selectedRequest.senderName || "Inventory Staff")}
+                      </span>
+                      <span style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginTop: '0.1rem' }}>
+                        {selectedRequest.senderSiteName || sites.find(s => s.id === currentUser?.siteId || s.name === currentUser?.site?.name)?.name || "Skyrise 4B"}
+                      </span>
+                      {selectedRequest.assetSiteName && (
+                        <div style={{ marginTop: '0.4rem', padding: '0.3rem 0.45rem', backgroundColor: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 6, fontSize: '0.72rem' }}>
+                          <span style={{ fontWeight: 600, color: '#0369a1', display: 'block', textTransform: 'uppercase', fontSize: '0.6rem', letterSpacing: '0.3px' }}>Asset Origin Site</span>
+                          <div style={{ color: '#0c4a6e', fontWeight: 700, marginTop: '0.05rem' }}>{selectedRequest.assetSiteName}</div>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', display: 'block' }}>Receiver</span>
+                      <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', display: 'block', marginTop: '0.15rem' }}>
+                        {selectedRequest.reason && selectedRequest.reason.includes("[ASSET DEPLOYMENT]")
+                          ? (selectedRequest.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || selectedRequest.requestedByName)
+                          : (selectedRequest.receiverName || selectedRequest.requestedByName)}
+                      </span>
+                      <span style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginTop: '0.1rem' }}>
+                        {(() => {
+                          const sName = selectedRequest.siteName || selectedRequest.receiverSiteName;
+                          const targetSite = sites.find(s =>
+                            (selectedRequest.siteId && s.id === selectedRequest.siteId) ||
+                            (sName && (s.name.trim().toLowerCase() === sName.trim().toLowerCase() || (s.address && s.address.trim().toLowerCase() === sName.trim().toLowerCase())))
+                          );
+                          return targetSite?.name || sName || "Default Site";
+                        })()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Timeline / History Log Accordion */}
+                <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsTimelineExpanded(prev => !prev)}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 8,
+                      padding: '0.65rem 0.85rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
                     }}
-                    assetTag={selectedRequest.assetTag || selectedRequest.assetId}
-                    itemName={selectedRequest.itemName}
-                    itemCategory={selectedRequest.itemCategory}
-                    senderName={
-                      selectedRequest.reason && selectedRequest.reason.includes("[ASSET DEPLOYMENT]")
-                        ? (selectedRequest.requestedByName || "Inventory Staff")
-                        : (selectedRequest.senderName || undefined)
-                    }
-                    senderSiteName={
-                      selectedRequest.senderSiteName ||
-                      sites.find(s => s.id === currentUser?.siteId || s.name === currentUser?.site?.name)?.name ||
-                      "Skyrise 4B"
-                    }
-                    senderSiteAddress={
-                      selectedRequest.senderSiteAddress ||
-                      sites.find(s => s.id === currentUser?.siteId || s.name === currentUser?.site?.name)?.address ||
-                      undefined
-                    }
-                    assetSiteName={selectedRequest.assetSiteName || undefined}
-                    assetSiteAddress={selectedRequest.assetSiteAddress || undefined}
-                    receiverName={
-                      selectedRequest.reason && selectedRequest.reason.includes("[ASSET DEPLOYMENT]")
-                        ? (selectedRequest.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || selectedRequest.requestedByName)
-                        : (selectedRequest.receiverName || selectedRequest.requestedByName)
-                    }
-                    receiverSiteName={
-                      (() => {
-                        const sName = selectedRequest.siteName || selectedRequest.receiverSiteName;
-                        const targetSite = sites.find(s =>
-                          (selectedRequest.siteId && s.id === selectedRequest.siteId) ||
-                          (sName && (s.name.trim().toLowerCase() === sName.trim().toLowerCase() || (s.address && s.address.trim().toLowerCase() === sName.trim().toLowerCase())))
-                        );
-                        return targetSite?.name || sName || undefined;
-                      })()
-                    }
-                    receiverSiteAddress={
-                      (() => {
-                        const sName = selectedRequest.siteName || selectedRequest.receiverSiteName;
-                        const targetSite = sites.find(s =>
-                          (selectedRequest.siteId && s.id === selectedRequest.siteId) ||
-                          (sName && (s.name.trim().toLowerCase() === sName.trim().toLowerCase() || (s.address && s.address.trim().toLowerCase() === sName.trim().toLowerCase())))
-                        );
-                        return targetSite?.address || (targetSite?.name ? targetSite.name : undefined);
-                      })()
-                    }
-                    receivedAt={selectedRequest.returnedAt || selectedRequest.updatedAt}
-                  />
+                  >
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      {selectedRequest.reason && selectedRequest.reason.includes('[ASSET DEPLOYMENT]') ? 'Deployment Timeline' : 'Request Timeline'}
+                    </span>
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      style={{
+                        transform: isTimelineExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.2s ease',
+                        color: '#64748b'
+                      }}
+                    >
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </button>
+
+                  {isTimelineExpanded && (
+                    <div style={{ marginTop: '0.85rem' }}>
+                      <RequestTimeline
+                        requestId={selectedRequest.id}
+                        status={selectedRequest.status}
+                        requestedById={selectedRequest.requestedById}
+                        requestedByName={selectedRequest.requestedByName}
+                        currentUserEmail={currentUser.email}
+                        currentUserId={currentUser.id}
+                        currentUserRole={currentUser.role}
+                        staffApprovedById={selectedRequest.staffApprovedById}
+                        staffApprovedByName={selectedRequest.staffApprovedByName}
+                        staffApprovedAt={selectedRequest.staffApprovedAt}
+                        opsApprovedById={selectedRequest.opsApprovedById}
+                        opsApprovedByName={selectedRequest.opsApprovedByName}
+                        opsApprovedAt={selectedRequest.opsApprovedAt}
+                        history={selectedRequest.history}
+                        onConfirmSuccess={(updatedReq) => {
+                          setAllRequests(prev => prev.map(r => r.id === updatedReq.id ? { ...r, ...updatedReq } : r));
+                          setSelectedRequest(prev => prev?.id === updatedReq.id ? { ...prev, ...updatedReq } : prev);
+                        }}
+                        assetTag={selectedRequest.assetTag || selectedRequest.assetId}
+                        itemName={selectedRequest.itemName}
+                        itemCategory={selectedRequest.itemCategory}
+                        senderName={
+                          selectedRequest.reason && selectedRequest.reason.includes("[ASSET DEPLOYMENT]")
+                            ? (selectedRequest.requestedByName || "Inventory Staff")
+                            : (selectedRequest.senderName || undefined)
+                        }
+                        senderSiteName={
+                          selectedRequest.senderSiteName ||
+                          sites.find(s => s.id === currentUser?.siteId || s.name === currentUser?.site?.name)?.name ||
+                          "Skyrise 4B"
+                        }
+                        senderSiteAddress={
+                          selectedRequest.senderSiteAddress ||
+                          sites.find(s => s.id === currentUser?.siteId || s.name === currentUser?.site?.name)?.address ||
+                          undefined
+                        }
+                        assetSiteName={
+                          (() => {
+                            const targetName = selectedRequest.siteName || selectedRequest.receiverSiteName;
+                            if (selectedRequest.assetSiteName && selectedRequest.assetSiteName !== targetName) {
+                              return selectedRequest.assetSiteName;
+                            }
+                            if (selectedRequest.senderSiteName && selectedRequest.senderSiteName !== targetName) {
+                              return selectedRequest.senderSiteName;
+                            }
+                            return 'Skyrise 4B';
+                          })()
+                        }
+                        assetSiteAddress={selectedRequest.assetSiteAddress || undefined}
+                        receiverName={
+                          selectedRequest.reason && selectedRequest.reason.includes("[ASSET DEPLOYMENT]")
+                            ? (selectedRequest.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || selectedRequest.requestedByName)
+                            : (selectedRequest.receiverName || selectedRequest.requestedByName)
+                        }
+                        receiverSiteName={
+                          (() => {
+                            const sName = selectedRequest.siteName || selectedRequest.receiverSiteName;
+                            const targetSite = sites.find(s =>
+                              (selectedRequest.siteId && s.id === selectedRequest.siteId) ||
+                              (sName && (s.name.trim().toLowerCase() === sName.trim().toLowerCase() || (s.address && s.address.trim().toLowerCase() === sName.trim().toLowerCase())))
+                            );
+                            return targetSite?.name || sName || undefined;
+                          })()
+                        }
+                        receiverSiteAddress={
+                          (() => {
+                            const sName = selectedRequest.siteName || selectedRequest.receiverSiteName;
+                            const targetSite = sites.find(s =>
+                              (selectedRequest.siteId && s.id === selectedRequest.siteId) ||
+                              (sName && (s.name.trim().toLowerCase() === sName.trim().toLowerCase() || (s.address && s.address.trim().toLowerCase() === sName.trim().toLowerCase())))
+                            );
+                            return targetSite?.address || (targetSite?.name ? targetSite.name : undefined);
+                          })()
+                        }
+                        receivedAt={selectedRequest.returnedAt || selectedRequest.updatedAt}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1899,7 +2229,8 @@ export function RequestsTab({
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Global Interactive Modal */}

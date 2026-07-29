@@ -81,6 +81,12 @@ export const ItemModal = ({
     }
   }, [editingItem, itemModalOpen]);
 
+  useEffect(() => {
+    if (itemModalOpen && !itemCategoryId && categories && categories.length > 0) {
+      setItemCategoryId(categories[0].id);
+    }
+  }, [itemModalOpen, itemCategoryId, categories, setItemCategoryId]);
+
   if (!itemModalOpen) return null;
 
   return (
@@ -185,7 +191,7 @@ export const ItemModal = ({
                 <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Location</label>
                 <select
                   disabled={!!editingItem}
-                  value={itemSiteId || "ALL"}
+                  value={itemSiteId}
                   onChange={(e) => setItemSiteId(e.target.value)}
                   style={{
                     width: "100%",
@@ -198,7 +204,7 @@ export const ItemModal = ({
                     outline: "none",
                   }}
                 >
-                  <option value="ALL">All Sites (Global Allocation)</option>
+                  <option value="" disabled>Select Location Site</option>
                   {sites.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name} ({s.prefix})
@@ -208,16 +214,16 @@ export const ItemModal = ({
               </div>
             </div>
 
-            {/* ASSET NAME & BRAND NAME, MODEL/SPECIFICATION */}
+            {/* BRAND NAME & MODEL/SPECIFICATION */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                 <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>
-                  Asset Name *
+                  Brand Name *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g., PC-WORKSTATION-01"
+                  placeholder="e.g., Dell, HP, Lenovo"
                   value={itemName ?? ""}
                   onChange={(e) => setItemName(e.target.value)}
                   style={{
@@ -233,11 +239,11 @@ export const ItemModal = ({
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                 <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#2563eb" }}>
-                  Brand Name, Model/Specification
+                  Model/Specification
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g., Dell OptiPlex 7090 / i7 / 16GB"
+                  placeholder="e.g., OptiPlex 7090 / i7 / 16GB"
                   value={itemModel ?? ""}
                   onChange={(e) => {
                     const val = e.target.value;

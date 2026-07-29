@@ -89,6 +89,13 @@ export class RequestsController {
     return { data, message: `Successfully confirmed receipt of ${data.length} request(s)`, statusCode: 200 };
   }
 
+  @Post("bulk-return")
+  async bulkReturn(@Body() body: { ids: string[]; returnerEmail?: string; comment?: string }, @ReqCtx() req: any) {
+    const returnerEmail = body.returnerEmail || req.headers["x-user"] || "superadmin@contactpoint360.com";
+    const data = await this.svc.bulkReturn(body.ids || [], returnerEmail, body.comment);
+    return { data, message: `Successfully returned ${data.length} request(s)`, statusCode: 200 };
+  }
+
   @Post([":id/approve", ":id/approved", ":id/ready_for_pickup"])
   async approve(@Param("id") id: string, @Body() body: any) {
     const data = await this.svc.approve(id, body.comment, body.approverEmail);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { CatalogItem, getCategoryIcon, RoleBadge, SiteBadge, EidBadge, AssetTagBadge, AssetTypeBadge } from "@/types/dashboard";
 import jsPDF from "jspdf";
 import { RequestTimeline } from "./RequestTimeline";
@@ -73,6 +73,7 @@ interface CatalogTabProps {
   onOpenBulkRequestModal: (mode: 'deploy' | 'request') => void;
   setCatalogItems?: React.Dispatch<React.SetStateAction<CatalogItem[]>>;
   activeSubTab?: "inventory" | "deployments";
+  onUpdateCatalog?: () => void;
 }
 
 export const CatalogTab = ({
@@ -110,6 +111,7 @@ export const CatalogTab = ({
   currentUser,
   onOpenBulkRequestModal,
   activeSubTab = "inventory",
+  onUpdateCatalog,
 }: CatalogTabProps) => {
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
 
@@ -128,6 +130,7 @@ export const CatalogTab = ({
   const [deploymentSiteFilter, setDeploymentSiteFilter] = useState("ALL");
   const [deploymentStatusFilter, setDeploymentStatusFilter] = useState("ALL");
   const [deploymentCategoryTypeFilter, setDeploymentCategoryTypeFilter] = useState("ALL");
+  const [expandedGroupKeys, setExpandedGroupKeys] = useState<Record<string, boolean>>({});
 
   const filteredIds = filteredItems.map((it) => it.id);
   const allSelected = filteredIds.length > 0 && filteredIds.every((id) => selectedItemIds.includes(id));
@@ -148,6 +151,13 @@ export const CatalogTab = ({
   const [returnNotes, setReturnNotes] = useState<string>("");
   const [isSubmittingReturn, setIsSubmittingReturn] = useState<boolean>(false);
 
+  // Bulk deployed asset return state
+  const [selectedDeploymentIds, setSelectedDeploymentIds] = useState<string[]>([]);
+  const [isBulkDeploymentReturnModalOpen, setIsBulkDeploymentReturnModalOpen] = useState(false);
+  const [bulkReturnCondition, setBulkReturnCondition] = useState<"GOOD" | "DAMAGED" | "MISSING">("GOOD");
+  const [bulkReturnNotes, setBulkReturnNotes] = useState("");
+  const [isSubmittingBulkReturn, setIsSubmittingBulkReturn] = useState(false);
+
   // Show selection circles ONLY when explicit multi-select mode is active
   const showCircles = isMultiSelectMode;
 
@@ -160,94 +170,84 @@ export const CatalogTab = ({
       assetTag: "TAG-MON-8801",
       siteId: "site-1",
       siteName: "Cebu IT Park",
-      reason: "Deploy to: Juan Dela Cruz | Account: Operations | EID: EID-99021 | Site: Cebu IT Park",
-      employeeName: "Juan Dela Cruz",
-      employeeAccount: "Operations",
-      employeeEid: "EID-99021",
+      reason: "[ASSET DEPLOYMENT] Deploy to: Alex Mercer | Account: Support | EID: EID-9901 | Notes: Standard setup",
+      employeeName: "Alex Mercer",
+      employeeAccount: "Support",
+      employeeEid: "EID-9901",
+      status: "ACTIVE",
+      returnCondition: "GOOD",
+      missingCount: 0,
     },
     {
-      id: "REQ-2026-005",
-      createdAt: new Date(Date.now() - 3600000 * 28).toISOString(),
+      id: "REQ-2026-009",
+      createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
       requestedByName: "Ops Manager",
-      itemName: "Apple MacBook Pro 16\"",
-      assetTag: "TAG-LAP-4092",
-      siteId: "site-2",
-      siteName: "Toronto HQ",
-      reason: "Deploy to: Sarah Jenkins | Account: IT Support | EID: EID-44012 | Site: Toronto HQ",
-      employeeName: "Sarah Jenkins",
-      employeeAccount: "IT Support",
-      employeeEid: "EID-44012",
-    },
-    {
-      id: "REQ-2026-002",
-      createdAt: new Date(Date.now() - 3600000 * 50).toISOString(),
-      requestedByName: "Inventory Staff",
       itemName: "Logitech MX Master 3S",
-      assetTag: "TAG-ACC-1102",
-      siteId: "site-1",
-      siteName: "Cebu IT Park",
-      reason: "Deploy to: Mark Anthony | Account: Training | EID: EID-78103 | Site: Cebu IT Park",
-      employeeName: "Mark Anthony",
-      employeeAccount: "Training",
+      assetTag: "TAG-ACC-4412",
+      siteId: "site-2",
+      siteName: "Davao HQ",
+      reason: "[ASSET DEPLOYMENT] Deploy to: Sarah Jenkins | Account: Executive | EID: EID-78103",
+      employeeName: "Sarah Jenkins",
+      employeeAccount: "Executive",
       employeeEid: "EID-78103",
     }
   ];
 
-  useEffect(() => {
-    const fetchDeployments = async () => {
-      let savedReturns: Record<string, any> = {};
-      try {
-        savedReturns = JSON.parse(localStorage.getItem("cp_returned_deployments") || "{}");
-      } catch (e) {
-        console.error("Error reading saved returns from localStorage:", e);
-      }
+  const fetchDeployments = async () => {
+    let savedReturns: Record<string, any> = {};
+    try {
+      savedReturns = JSON.parse(localStorage.getItem("cp_returned_deployments") || "{}");
+    } catch (e) {
+      console.error("Error reading saved returns from localStorage:", e);
+    }
 
-      try {
-        const res = await fetch("http://localhost:3001/requests");
-        if (res.ok) {
-          const envelope = await res.json();
-          const raw = envelope.data || envelope;
-          if (Array.isArray(raw)) {
-            const filtered = raw.filter((req: any) =>
-              req.reason && req.reason.includes("[ASSET DEPLOYMENT]")
-            ).map((req: any) => {
-              const saved = savedReturns[req.id];
-              return {
-                id: req.id,
-                createdAt: req.createdAt || new Date().toISOString(),
-                requestedByName: req.requestedByName || "Inventory Staff",
-                itemName: req.itemName || "Assigned Asset",
-                assetTag: req.assetTag || req.asset?.tagCode || req.asset?.assetTag || (req.reason ? req.reason.match(/Asset Tag:\s*([^|]+)/)?.[1]?.trim() : undefined) || undefined,
-                siteId: req.siteId || req.requestedBySiteId || "site-1",
-                siteName: req.siteName || "Cebu IT Park",
-                reason: req.reason || `Deployed ${req.quantity || 1} x ${req.itemName || 'Asset'} to employee`,
-                employeeName: req.reason ? (req.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
-                employeeAccount: req.reason ? (req.reason.match(/Account:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
-                employeeEid: req.reason ? (req.reason.match(/EID:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
-                status: saved?.status || req.status || "ACTIVE",
-                returnCondition: saved?.returnCondition || req.condition || "GOOD",
-                missingCount: saved?.missingCount || req.missingCount || 0,
-                returnNotes: saved?.returnNotes || req.comment,
-                returnedAt: saved?.returnedAt || req.returnedAt,
-                rawRequest: req
-              };
-            });
-            setDeploymentsList(filtered);
-            return;
-          }
+    try {
+      const res = await fetch("http://localhost:3001/requests");
+      if (res.ok) {
+        const envelope = await res.json();
+        const raw = envelope.data || envelope;
+        if (Array.isArray(raw)) {
+          const filtered = raw.filter((req: any) =>
+            req.reason && req.reason.includes("[ASSET DEPLOYMENT]")
+          ).map((req: any) => {
+            const saved = savedReturns[req.id];
+            return {
+              id: req.id,
+              createdAt: req.createdAt || new Date().toISOString(),
+              requestedByName: req.requestedByName || "Inventory Staff",
+              itemName: req.itemName || "Assigned Asset",
+              assetTag: req.assetTag || req.asset?.tagCode || req.asset?.assetTag || (req.reason ? req.reason.match(/Asset Tag:\s*([^|]+)/)?.[1]?.trim() : undefined) || undefined,
+              siteId: req.siteId || req.requestedBySiteId || "site-1",
+              siteName: req.siteName || "Cebu IT Park",
+              reason: req.reason || `Deployed ${req.quantity || 1} x ${req.itemName || 'Asset'} to employee`,
+              employeeName: req.reason ? (req.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
+              employeeAccount: req.reason ? (req.reason.match(/Account:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
+              employeeEid: req.reason ? (req.reason.match(/EID:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
+              status: req.status || saved?.status || "ACTIVE",
+              returnCondition: req.condition || saved?.returnCondition || "GOOD",
+              missingCount: saved?.missingCount || req.missingCount || 0,
+              returnNotes: req.returnComment || saved?.returnNotes || req.comment,
+              returnedAt: req.returnedAt || saved?.returnedAt,
+              rawRequest: req
+            };
+          });
+          setDeploymentsList(filtered);
+          return;
         }
-      } catch (err) {
-        console.error("Error fetching deployments for CatalogTab:", err);
       }
+    } catch (err) {
+      console.error("Error fetching deployments for CatalogTab:", err);
+    }
 
-      // Fallback merge for mockDeployments (offline mode only)
-      const mergedMocks = mockDeployments.map(dep => {
-        const saved = savedReturns[dep.id];
-        return saved ? { ...dep, ...saved } : dep;
-      });
-      setDeploymentsList(mergedMocks);
-    };
+    // Fallback merge for mockDeployments (offline mode only)
+    const mergedMocks = mockDeployments.map(dep => {
+      const saved = savedReturns[dep.id];
+      return saved ? { ...dep, ...saved } : dep;
+    });
+    setDeploymentsList(mergedMocks);
+  };
 
+  useEffect(() => {
     fetchDeployments();
   }, []);
 
@@ -275,6 +275,240 @@ export const CatalogTab = ({
       (dep.id || "").toLowerCase().includes(q);
     return matchesSite && matchesStatus && matchesCategoryType && matchesSearch;
   });
+
+  const toggleGroupExpand = (groupKey: string) => {
+    setExpandedGroupKeys(prev => ({
+      ...prev,
+      [groupKey]: !prev[groupKey]
+    }));
+  };
+
+  const groupedDeployments = useMemo(() => {
+    const map = new Map<string, {
+      key: string;
+      employeeName: string;
+      employeeAccount: string;
+      employeeEid: string;
+      siteName: string;
+      requestedByName: string;
+      requestedByRole: string;
+      latestCreatedAt: string;
+      items: any[];
+      activeCount: number;
+      returnedCount: number;
+    }>();
+
+    filteredDeployments.forEach((dep: any) => {
+      const eidKey = (dep.employeeEid || "N/A").trim().toUpperCase();
+      const nameKey = (dep.employeeName || "N/A").trim().toLowerCase();
+      const acctKey = (dep.employeeAccount || "N/A").trim().toLowerCase();
+      const key = `${eidKey}___${nameKey}___${acctKey}`;
+
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          employeeName: dep.employeeName || "N/A",
+          employeeAccount: dep.employeeAccount || "N/A",
+          employeeEid: dep.employeeEid || "N/A",
+          siteName: dep.siteName || "Cebu IT Park",
+          requestedByName: dep.requestedByName || "Inventory Staff",
+          requestedByRole: dep.requestedByRole || "INVENTORY_STAFF",
+          latestCreatedAt: dep.createdAt,
+          items: [],
+          activeCount: 0,
+          returnedCount: 0,
+        });
+      }
+
+      const group = map.get(key)!;
+      group.items.push(dep);
+      if (dep.status === "RETURNED") {
+        group.returnedCount++;
+      } else {
+        group.activeCount++;
+      }
+      if (new Date(dep.createdAt) > new Date(group.latestCreatedAt)) {
+        group.latestCreatedAt = dep.createdAt;
+        group.requestedByName = dep.requestedByName;
+        group.requestedByRole = dep.requestedByRole;
+        group.siteName = dep.siteName;
+      }
+    });
+
+    return Array.from(map.values());
+  }, [filteredDeployments]);
+
+  const handleToggleExpandAll = () => {
+    const hasUnexpanded = groupedDeployments.some(g => g.items.length > 1 && !expandedGroupKeys[g.key]);
+    const newMap: Record<string, boolean> = {};
+    groupedDeployments.forEach(g => {
+      if (g.items.length > 1) {
+        newMap[g.key] = hasUnexpanded;
+      }
+    });
+    setExpandedGroupKeys(newMap);
+  };
+
+  const handleDownloadGroupReceipt = async (group: any) => {
+    const items = group.items || [];
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    // Header Banner
+    doc.setFillColor(33, 12, 174);
+    doc.rect(0, 0, 210, 24, 'F');
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(255, 255, 255);
+    doc.text("GROUP HARDWARE ASSET DEPLOYMENT RECEIPT", 14, 15);
+
+    // Logo
+    try {
+      const loadLogo = (): Promise<HTMLImageElement | null> => {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.crossOrigin = "Anonymous";
+          img.src = "/logo.png";
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
+        });
+      };
+
+      const logoImg = await loadLogo();
+      if (logoImg && logoImg.width > 0 && logoImg.height > 0) {
+        const canvas = document.createElement("canvas");
+        canvas.width = logoImg.width;
+        canvas.height = logoImg.height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(logoImg, 0, 0);
+          const logoDataUrl = canvas.toDataURL("image/png");
+
+          const badgeX = 155;
+          const badgeY = 3;
+          const badgeW = 44;
+          const badgeH = 18;
+          doc.setFillColor(255, 255, 255);
+          doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 3, 3, 'F');
+
+          const maxW = 38;
+          const maxH = 14;
+          const aspect = logoImg.width / logoImg.height;
+          let renderW = maxW;
+          let renderH = maxW / aspect;
+
+          if (renderH > maxH) {
+            renderH = maxH;
+            renderW = maxH * aspect;
+          }
+
+          const renderX = badgeX + (badgeW - renderW) / 2;
+          const renderY = badgeY + (badgeH - renderH) / 2;
+
+          doc.addImage(logoDataUrl, "PNG", renderX, renderY, renderW, renderH);
+        }
+      }
+    } catch (e) {
+      console.error("Error drawing logo in group receipt PDF:", e);
+    }
+
+    doc.setFontSize(9.5);
+    doc.setTextColor(50, 50, 50);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Receipt Ref: GRP-${group.employeeEid || '0000'}-${Date.now().toString().slice(-6)}`, 14, 33);
+    doc.text(`Issuance Date: ${new Date(group.latestCreatedAt).toLocaleDateString()}`, 14, 39);
+    doc.text(`Total Assigned Assets: ${items.length}`, 110, 39);
+
+    // Employee Custodian Information
+    doc.setFillColor(245, 247, 250);
+    doc.rect(14, 45, 182, 36, 'F');
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("EMPLOYEE CUSTODIAN INFORMATION", 18, 53);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.5);
+    doc.text(`Employee Name: ${group.employeeName}`, 18, 60);
+    doc.text(`Employee ID (EID): ${group.employeeEid}`, 18, 66);
+    doc.text(`Department / Account: ${group.employeeAccount}`, 18, 72);
+    doc.text(`Site Location: ${group.siteName || 'Cebu IT Park'}`, 110, 60);
+    doc.text(`Issuing Staff: ${group.requestedByName || 'Inventory Staff'}`, 110, 66);
+
+    // Table of Deployed Assets
+    const tableY = 88;
+    doc.setFillColor(33, 12, 174);
+    doc.rect(14, tableY, 182, 8, 'F');
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    doc.text("#", 18, tableY + 5.5);
+    doc.text("Item Name / Specification", 28, tableY + 5.5);
+    doc.text("Asset Tag Code", 118, tableY + 5.5);
+    doc.text("Status", 168, tableY + 5.5);
+
+    let curY = tableY + 8;
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(30, 30, 30);
+    doc.setFontSize(8.5);
+
+    items.forEach((dep: any, index: number) => {
+      const itemObj = catalogItems.find(it => it.id === dep.rawRequest?.itemId || it.name === dep.itemName);
+      const catType = itemObj?.category?.type || dep.rawRequest?.item?.category?.type || (dep.itemName?.toLowerCase().includes("battery") || dep.itemName?.toLowerCase().includes("cable") || dep.itemName?.toLowerCase().includes("pen") ? "CONSUMABLE" : "NON_CONSUMABLE");
+      const isConsumable = catType === "CONSUMABLE";
+      const fallbackId = (dep.id || "").substring((dep.id || "").length - 4).toUpperCase() || "0000";
+      const tag = isConsumable ? "N/A (Bulk Consumable)" : (dep.assetTag || dep.rawRequest?.assetTag || dep.rawRequest?.asset?.tagCode || `AST-${fallbackId}`);
+
+      if (index % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(14, curY, 182, 7.5, 'F');
+      }
+
+      doc.text(`${index + 1}`, 18, curY + 5);
+      doc.text(`${dep.itemName || 'Hardware Asset'}`, 28, curY + 5);
+      doc.text(`${tag}`, 118, curY + 5);
+      doc.text(`${dep.status || 'ACTIVE'}`, 168, curY + 5);
+
+      curY += 7.5;
+    });
+
+    // Outer table border
+    doc.setDrawColor(226, 232, 240);
+    doc.rect(14, tableY, 182, curY - tableY);
+
+    // Signatures
+    const sigY = Math.max(curY + 16, 180);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(50, 50, 50);
+    doc.text("ACKNOWLEDGEMENT & SIGNATURE", 14, sigY);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.text(
+      "I acknowledge receipt of all the hardware equipment listed above in good working condition for official company use.",
+      14,
+      sigY + 6
+    );
+
+    // Signatures lines
+    doc.setDrawColor(150, 150, 150);
+    doc.line(14, sigY + 28, 90, sigY + 28);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text(`${group.employeeName}`, 14, sigY + 33);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text(`Employee Custodian (${group.employeeEid})`, 14, sigY + 37);
+
+    doc.line(110, sigY + 28, 186, sigY + 28);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text(`${group.requestedByName || 'Inventory Staff'}`, 110, sigY + 33);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text("Authorized Inventory Issuer", 110, sigY + 37);
+
+    doc.save(`Group_Deployment_Receipt_${group.employeeEid || 'Record'}_${Date.now()}.pdf`);
+  };
 
   const handleDownloadDeploymentReceipt = async (dep: any) => {
     const isReturned = dep.status === "RETURNED";
@@ -579,6 +813,8 @@ export const CatalogTab = ({
 
     setIsSubmittingReturn(false);
     setReturnModalDeployment(null);
+    if (onUpdateCatalog) onUpdateCatalog();
+    fetchDeployments();
   };
 
   const toggleMultiSelectMode = () => {
@@ -594,6 +830,100 @@ export const CatalogTab = ({
       // Enter multi select mode
       setIsMultiSelectMode(true);
     }
+  };
+
+  const handleBulkDeploymentReturn = async () => {
+    if (selectedDeploymentIds.length === 0) return;
+    setIsSubmittingBulkReturn(true);
+    const returnedAtStr = new Date().toISOString();
+    const finalComment = bulkReturnCondition === "MISSING"
+      ? `[MISSING] ${bulkReturnNotes || 'Bulk return - items missing'}`
+      : bulkReturnCondition === "DAMAGED"
+        ? `[DAMAGED] ${bulkReturnNotes || 'Bulk return - damaged condition'}`
+        : `[GOOD] ${bulkReturnNotes || 'Bulk return - good condition'}`;
+
+    const deploymentsToReturn = deploymentsList.filter((d: any) => selectedDeploymentIds.includes(d.id));
+
+    for (const dep of deploymentsToReturn) {
+      try {
+        if (!isUsingMockData && dep.id) {
+          await fetch(getApiUrl(`/requests/${dep.id}/returned`), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ comment: finalComment, returnerEmail: currentUser?.email })
+          });
+        }
+      } catch (err) {
+        console.warn(`Bulk return backend error for ${dep.id}:`, err);
+      }
+
+      const updatedDep = {
+        ...dep,
+        status: "RETURNED",
+        returnCondition: bulkReturnCondition,
+        returnNotes: finalComment,
+        returnedAt: returnedAtStr
+      };
+
+      // Persist to localStorage
+      try {
+        const savedReturns = JSON.parse(localStorage.getItem("cp_returned_deployments") || "{}");
+        savedReturns[dep.id] = updatedDep;
+        localStorage.setItem("cp_returned_deployments", JSON.stringify(savedReturns));
+      } catch (e) {
+        console.error("Failed to save bulk return state:", e);
+      }
+
+      setDeploymentsList((prev: any[]) => prev.map((d: any) => d.id === dep.id ? updatedDep : d));
+
+      // Restore stock
+      const totalQtyDeployed = dep.rawRequest?.quantity || 1;
+      const qtyReturnedToStock = totalQtyDeployed;
+      if (qtyReturnedToStock > 0 && setCatalogItems) {
+        setCatalogItems((prevItems: CatalogItem[]) => {
+          const updatedItems = prevItems.map((item) => {
+            const isTargetItem =
+              item.id === dep.rawRequest?.itemId ||
+              (item.name || "").toLowerCase() === (dep.itemName || "").toLowerCase();
+            if (!isTargetItem) return item;
+
+            const newQty = (item.quantity ?? 0) + qtyReturnedToStock;
+            const targetSite = sites.find((s: any) => s.id === dep.siteId || s.name === dep.siteLocation);
+            const targetSiteId = targetSite ? targetSite.id : dep.siteId;
+            const updatedStockLevels = item.stockLevels?.map((sl) =>
+              sl.siteId === targetSiteId ? { ...sl, quantity: sl.quantity + qtyReturnedToStock } : sl
+            );
+
+            const catType = item.category?.type || "NON_CONSUMABLE";
+            let updatedAssets = item.assets || [];
+            if (catType === "NON_CONSUMABLE") {
+              const returnedTag = dep.assetTag || dep.rawRequest?.assetTag || dep.rawRequest?.asset?.tagCode;
+              if (returnedTag) {
+                const restoredStatus = bulkReturnCondition === "DAMAGED" ? "UNDER_MAINTENANCE" : "AVAILABLE";
+                const existingIdx = updatedAssets.findIndex((a: any) => a.tagCode === returnedTag || a.assetTag === returnedTag);
+                if (existingIdx >= 0) {
+                  updatedAssets = updatedAssets.map((a: any, idx: number) =>
+                    idx === existingIdx ? { ...a, status: restoredStatus } : a
+                  );
+                }
+              }
+            }
+
+            return { ...item, quantity: newQty, stockLevels: updatedStockLevels || item.stockLevels, assets: updatedAssets };
+          });
+          try { localStorage.setItem("cp_inventory_catalog", JSON.stringify(updatedItems)); } catch {}
+          return updatedItems;
+        });
+      }
+    }
+
+    setIsSubmittingBulkReturn(false);
+    setIsBulkDeploymentReturnModalOpen(false);
+    setSelectedDeploymentIds([]);
+    setBulkReturnNotes("");
+    setBulkReturnCondition("GOOD");
+    if (onUpdateCatalog) onUpdateCatalog();
+    fetchDeployments();
   };
 
   return (
@@ -855,7 +1185,7 @@ export const CatalogTab = ({
               <div style={{ display: "flex", flexDirection: "column", gap: "6px", minWidth: "160px" }}>
                 <label style={{ fontSize: "12px", fontWeight: 600, color: "#6B7280" }}>Viewing Site</label>
                 <select
-                  value={selectedSiteId || "ALL"}
+                  value={selectedSiteId}
                   onChange={(e) => setSelectedSiteId(e.target.value)}
                   style={{
                     height: "42px",
@@ -871,7 +1201,6 @@ export const CatalogTab = ({
                   onFocus={(e) => e.currentTarget.style.border = "2px solid #DC2626"}
                   onBlur={(e) => e.currentTarget.style.border = "1px solid #E5E7EB"}
                 >
-                  <option value="ALL">All Sites (Global)</option>
                   {sites.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name} ({s.prefix})
@@ -2006,9 +2335,12 @@ export const CatalogTab = ({
                               color: "#111827",
                               margin: 0,
                               lineHeight: 1.3,
-                              whiteSpace: "nowrap",
+                              display: "-webkit-box",
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical",
                               overflow: "hidden",
                               textOverflow: "ellipsis",
+                              minHeight: "46px",
                             }}>
                               {it.name}
                             </h4>
@@ -2019,27 +2351,29 @@ export const CatalogTab = ({
                         </div>
 
                         {/* Card Body */}
-                        <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "16px", flex: 1 }}
+                        <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "16px", flex: 1, justifyContent: "space-between" }}
                           onClick={(e) => e.stopPropagation()}
                         >
                           {/* SKU / Asset Tag */}
-                          {it.sku && (
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                              <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>SKU:</span>
-                              <code style={{
-                                fontSize: "12px",
-                                fontWeight: 600,
-                                color: "#374151",
-                                fontFamily: "'Inter', monospace",
-                                backgroundColor: "#F3F4F6",
-                                padding: "2px 8px",
-                                borderRadius: "6px",
-                                border: "1px solid #E5E7EB",
-                              }}>
-                                {it.sku}
-                              </code>
-                            </div>
-                          )}
+                          <div style={{ minHeight: "26px", display: "flex", alignItems: "center" }}>
+                            {it.sku ? (
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>SKU:</span>
+                                <code style={{
+                                  fontSize: "12px",
+                                  fontWeight: 600,
+                                  color: "#374151",
+                                  fontFamily: "'Inter', monospace",
+                                  backgroundColor: "#F3F4F6",
+                                  padding: "2px 8px",
+                                  borderRadius: "6px",
+                                  border: "1px solid #E5E7EB",
+                                }}>
+                                  {it.sku}
+                                </code>
+                              </div>
+                            ) : null}
+                          </div>
 
                           {/* Dedicated Supplier Section */}
                           {it.supplier && (
@@ -2118,20 +2452,22 @@ export const CatalogTab = ({
                           )}
 
                           {/* Description */}
-                          {it.description && (
-                            <p style={{
-                              fontSize: "14px",
-                              color: "#6B7280",
-                              margin: 0,
-                              display: "-webkit-box",
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: "vertical",
-                              overflow: "hidden",
-                              lineHeight: 1.5,
-                            }}>
-                              {it.description}
-                            </p>
-                          )}
+                          <div style={{ minHeight: "42px", display: "flex", alignItems: "center" }}>
+                            {it.description ? (
+                              <p style={{
+                                fontSize: "14px",
+                                color: "#6B7280",
+                                margin: 0,
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
+                                overflow: "hidden",
+                                lineHeight: 1.5,
+                              }}>
+                                {it.description}
+                              </p>
+                            ) : null}
+                          </div>
 
                           {/* Price + Lead Time Grid */}
                           <div style={{
@@ -2525,217 +2861,357 @@ export const CatalogTab = ({
           }}>
             {filteredDeployments.length === 0 ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "4rem 1rem", textAlign: "center" }}>
-                <span style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>🚀</span>
+                <div style={{ padding: "1.25rem", backgroundColor: "#f1f5f9", borderRadius: "50%", marginBottom: "1rem" }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                </div>
                 <span style={{ fontSize: "0.9rem", color: "#0f172a", fontWeight: 700, marginBottom: "0.25rem" }}>No asset deployments found</span>
                 <span style={{ fontSize: "0.8rem", color: "#64748b", maxWidth: "320px" }}>
                   No hardware deployment records matched your site or search filter.
                 </span>
               </div>
             ) : (
-              <div style={{ overflowX: "auto", maxHeight: "550px", overflowY: "auto", borderRadius: "12px" }}>
+              <>
+              {/* Bulk action bar for deployed assets */}
+              {selectedDeploymentIds.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#eff6ff', color: '#1e293b', padding: '0.85rem 1.25rem', borderRadius: 12, border: '1px solid #bfdbfe', boxShadow: '0 4px 14px rgba(37,99,235,0.08)', animation: 'slideFadeIn 0.3s ease-out', marginBottom: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, backgroundColor: '#ea580c', color: '#ffffff', padding: '0.3rem 0.65rem', borderRadius: '6px' }}>
+                      🚀 {selectedDeploymentIds.length} Deployment{selectedDeploymentIds.length > 1 ? 's' : ''} Selected
+                    </span>
+                    <span style={{ fontSize: '0.82rem', color: '#475569', fontWeight: 500 }}>Ready to return to stock</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      onClick={() => setIsBulkDeploymentReturnModalOpen(true)}
+                      style={{ backgroundColor: '#ea580c', color: '#ffffff', border: 'none', borderRadius: 8, padding: '0.45rem 0.95rem', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', boxShadow: '0 2px 6px rgba(234,88,12,0.3)', transition: 'all 0.2s ease' }}
+                    >
+                      🔄 Bulk Return Assets
+                    </button>
+                    <button
+                      onClick={() => setSelectedDeploymentIds([])}
+                      style={{ backgroundColor: '#ffffff', color: '#475569', border: '1px solid #cbd5e1', borderRadius: 8, padding: '0.45rem 0.75rem', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s ease' }}
+                    >
+                      ✕ Deselect All
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ overflowX: "auto", borderRadius: "12px" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem", textAlign: "left" }}>
                   <thead style={{ position: "sticky", top: 0, backgroundColor: "#f8fafc", zIndex: 10, boxShadow: "0 1px 0 #e2e8f0" }}>
                     <tr>
-                      <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Timestamp</th>
-                      <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Employee Name</th>
-                      <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Account</th>
-                      <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>EID</th>
-                      <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Deployed Asset</th>
-                      <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Category</th>
-                      <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Asset Tag</th>
-                      <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Site Location</th>
-                      <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Issued By</th>
-                      <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569" }}>Status</th>
-                      <th style={{ padding: "0.85rem 1.25rem", fontWeight: 600, color: "#475569", textAlign: "right" }}>Actions</th>
+                      <th style={{ padding: "0.85rem 0.5rem", width: 40, textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          title="Select all active deployments"
+                          checked={selectedDeploymentIds.length > 0 && filteredDeployments.filter((d: any) => d.status !== 'RETURNED').every((d: any) => selectedDeploymentIds.includes(d.id))}
+                          onChange={(e) => {
+                            const activeIds = filteredDeployments.filter((d: any) => d.status !== 'RETURNED').map((d: any) => d.id);
+                            setSelectedDeploymentIds(e.target.checked ? activeIds : []);
+                          }}
+                          style={{ cursor: 'pointer', accentColor: '#3b82f6', width: '16px', height: '16px' }}
+                        />
+                      </th>
+                      <th style={{ padding: "0.85rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: "#64748b", whiteSpace: "nowrap" }}>Deploy ID</th>
+                      <th style={{ padding: "0.85rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: "#64748b", whiteSpace: "nowrap", width: 140 }}>Group</th>
+                      <th style={{ padding: "0.85rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: "#64748b", whiteSpace: "nowrap" }}>Employee</th>
+                      <th style={{ padding: "0.85rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: "#64748b", whiteSpace: "nowrap" }}>Account / Dept</th>
+                      <th style={{ padding: "0.85rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: "#64748b", whiteSpace: "nowrap" }}>EID</th>
+                      <th style={{ padding: "0.85rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: "#64748b", whiteSpace: "nowrap" }}>Asset / Tag</th>
+                      <th style={{ padding: "0.85rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: "#64748b", whiteSpace: "nowrap" }}>Status</th>
+                      <th style={{ padding: "0.85rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: "#64748b", whiteSpace: "nowrap" }}>Site</th>
+                      <th style={{ padding: "0.85rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: "#64748b", whiteSpace: "nowrap" }}>Deployed</th>
+                      <th style={{ padding: "0.85rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textAlign: "center", whiteSpace: "nowrap" }}>PDF</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredDeployments.map((dep: any, idx: number) => (
-                      <tr
-                        key={dep.id + "_" + idx}
-                        className="table-row-hover"
-                        onClick={() => {
-                          setSelectedDeployment(dep);
-                          setIsDeploymentDrawerOpen(true);
-                        }}
-                        style={{
-                          borderBottom: idx < filteredDeployments.length - 1 ? "1px solid #f1f5f9" : "none",
-                          backgroundColor: idx % 2 === 1 ? "#fcfdfe" : "#ffffff",
-                          cursor: "pointer",
-                          transition: "background-color 0.15s ease"
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f8fafc"}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = idx % 2 === 1 ? "#fcfdfe" : "#ffffff"}
-                      >
-                        <td style={{ padding: "0.9rem 1.25rem", color: "#64748b", fontSize: "0.78rem", whiteSpace: "nowrap" }}>
-                          {new Date(dep.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </td>
-                        <td style={{ padding: "0.9rem 1.25rem", color: "#0f172a", fontWeight: 700 }}>
-                          {dep.employeeName}
-                        </td>
-                        <td style={{ padding: "0.9rem 1.25rem", color: "#475569" }}>
-                          {dep.employeeAccount}
-                        </td>
-                        <td style={{ padding: "0.9rem 1.25rem" }}>
-                          <EidBadge employeeId={dep.employeeEid} size="sm" />
-                        </td>
-                        <td style={{ padding: "0.9rem 1.25rem", color: "#0f172a", fontWeight: 600 }}>
-                          {dep.itemName}
-                        </td>
-                        <td style={{ padding: "0.9rem 1.25rem" }}>
-                          {(() => {
-                            const itemObj = catalogItems.find(it => it.id === dep.rawRequest?.itemId || it.name === dep.itemName);
-                            const catType = itemObj?.category?.type || dep.rawRequest?.item?.category?.type || (dep.itemName?.toLowerCase().includes("battery") || dep.itemName?.toLowerCase().includes("cable") || dep.itemName?.toLowerCase().includes("pen") ? "CONSUMABLE" : "NON_CONSUMABLE");
-                            const catName = itemObj?.category?.name || dep.rawRequest?.item?.category?.name || (catType === "CONSUMABLE" ? "Consumables" : "Equipment");
-                            const isConsumable = catType === "CONSUMABLE";
-                            return (
+                    {groupedDeployments.map((group: any, gIdx: number) => {
+                      const isGroup = group.items.length > 1;
+                      const dep = group.items[0];
+                      const groupDeployId = (dep.id || "").toUpperCase().slice(-8);
+                      const allGroupIds = group.items.filter((d: any) => d.status !== 'RETURNED').map((d: any) => d.id);
+                      const isAllGroupSelected = allGroupIds.length > 0 && allGroupIds.every((id: string) => selectedDeploymentIds.includes(id));
+
+                      const itemObj = catalogItems.find((it: any) => it.id === dep.rawRequest?.itemId || it.name === dep.itemName);
+                      const catType = itemObj?.category?.type || dep.rawRequest?.item?.category?.type || "NON_CONSUMABLE";
+                      const fallbackId = (dep.id || "").substring((dep.id || "").length - 4).toUpperCase() || "0000";
+                      const displayTag = dep.assetTag || dep.rawRequest?.assetTag || dep.rawRequest?.asset?.tagCode || `AST-${fallbackId}`;
+                      const isConsumable = catType === "CONSUMABLE";
+
+                      const formatRelDep = (d: string) => {
+                        const diff = Date.now() - new Date(d).getTime();
+                        const hrs = Math.floor(diff / 3600000);
+                        const days = Math.floor(diff / 86400000);
+                        if (hrs < 24) return `${hrs}h ago`;
+                        if (days < 30) return `${days}d ago`;
+                        return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                      };
+
+                      const depStatus = isGroup
+                        ? (group.items.every((d: any) => d.status === "RETURNED") ? "ALL_RETURNED" : group.items.some((d: any) => d.status === "RETURNED") ? "PARTIAL_RETURNED" : "ACTIVE")
+                        : dep.status;
+
+                      const openDrawer = () => {
+                        setSelectedDeployment(isGroup
+                          ? { ...dep, groupItems: group.items, isGroupDep: true, groupEmployeeName: group.employeeName, groupDeployId }
+                          : dep
+                        );
+                        setIsDeploymentDrawerOpen(true);
+                      };
+
+                      return (
+                        <tr
+                          key={group.key}
+                          className="animated-row"
+                          onClick={openDrawer}
+                          style={{
+                            borderBottom: "1px solid #e2e8f0",
+                            backgroundColor: selectedDeploymentIds.some(id => group.items.map((d: any) => d.id).includes(id))
+                              ? "#f0f9ff" : (gIdx % 2 === 1 ? "#fcfdfe" : "#ffffff"),
+                            cursor: "pointer",
+                            transition: "all 0.2s ease",
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f1f5f9"}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = selectedDeploymentIds.some(id => group.items.map((d: any) => d.id).includes(id)) ? "#f0f9ff" : (gIdx % 2 === 1 ? "#fcfdfe" : "#ffffff")}
+                        >
+                          {/* Checkbox */}
+                          <td onClick={(e) => e.stopPropagation()} style={{ padding: "0.85rem 0.5rem", textAlign: "center", width: 40 }}>
+                            {allGroupIds.length > 0 && (
+                              <input
+                                type="checkbox"
+                                checked={isGroup ? isAllGroupSelected : selectedDeploymentIds.includes(dep.id)}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  if (isGroup) {
+                                    if (e.target.checked) {
+                                      setSelectedDeploymentIds(prev => Array.from(new Set([...prev, ...allGroupIds])));
+                                    } else {
+                                      setSelectedDeploymentIds(prev => prev.filter(id => !allGroupIds.includes(id)));
+                                    }
+                                  } else {
+                                    if (e.target.checked) {
+                                      setSelectedDeploymentIds(prev => [...prev, dep.id]);
+                                    } else {
+                                      setSelectedDeploymentIds(prev => prev.filter(id => id !== dep.id));
+                                    }
+                                  }
+                                }}
+                                style={{ cursor: "pointer", accentColor: "#3b82f6", width: "16px", height: "16px" }}
+                              />
+                            )}
+                          </td>
+
+                          {/* Deploy ID */}
+                          <td style={{ padding: "0.85rem 1rem", whiteSpace: "nowrap" }}>
+                            <span style={{
+                              fontFamily: "monospace", fontSize: "0.75rem", fontWeight: isGroup ? 700 : 600,
+                              color: isGroup ? "#3730a3" : "#334155",
+                              backgroundColor: isGroup ? "#eef2ff" : "#f1f5f9",
+                              padding: "0.25rem 0.5rem", borderRadius: "6px",
+                              border: `1px solid ${isGroup ? "#c7d2fe" : "#e2e8f0"}`,
+                              letterSpacing: "0.5px", whiteSpace: "nowrap"
+                            }}>
+                              {groupDeployId}
+                            </span>
+                          </td>
+
+                          {/* Group Badge */}
+                          <td style={{ padding: "0.85rem 1rem", whiteSpace: "nowrap" }}>
+                            <span style={{
+                              fontSize: "0.68rem", fontWeight: isGroup ? 800 : 600,
+                              color: isGroup ? "#3730a3" : "#64748b",
+                              backgroundColor: isGroup ? "#eef2ff" : "#f8fafc",
+                              padding: "0.15rem 0.55rem", borderRadius: "9999px",
+                              border: `1px solid ${isGroup ? "#c7d2fe" : "#e2e8f0"}`,
+                              whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: "4px"
+                            }}>
+                              {isGroup ? `📦 Grouped (${group.items.length} Assets)` : "Single Asset"}
+                            </span>
+                          </td>
+
+                          {/* Employee Name */}
+                          <td style={{ padding: "0.85rem 1rem", whiteSpace: "nowrap" }}>
+                            <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.85rem" }}>{dep.employeeName}</div>
+                          </td>
+
+                          {/* Account */}
+                          <td style={{ padding: "0.85rem 1rem", fontSize: "0.8rem", color: "#475569", whiteSpace: "nowrap" }}>
+                            {dep.employeeAccount}
+                          </td>
+
+                          {/* EID */}
+                          <td style={{ padding: "0.85rem 1rem" }}>
+                            <EidBadge employeeId={dep.employeeEid} size="sm" />
+                          </td>
+
+                          {/* Asset / Tag */}
+                          <td style={{ padding: "0.85rem 1rem" }}>
+                            {isGroup ? (
                               <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
-                                <span className="glitter-category-badge" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0f172a", width: "fit-content", padding: "0.1rem 0.4rem", borderRadius: "4px" }}>
-                                  {catName}
+                                <span style={{ color: "#0f172a", fontWeight: 700, fontSize: "0.82rem" }}>
+                                  {group.items.slice(0, 2).map((i: any) => i.itemName).join(", ")}
+                                  {group.items.length > 2 ? ` +${group.items.length - 2} more` : ""}
                                 </span>
-                                <span className="glitter-category-badge" style={{
-                                  fontSize: "0.65rem",
-                                  fontWeight: 800,
-                                  padding: "0.15rem 0.5rem",
-                                  borderRadius: "6px",
-                                  display: "inline-block",
-                                  width: "fit-content",
-                                  background: isConsumable 
-                                    ? "linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)" 
-                                    : "linear-gradient(135deg, #ffffff 0%, #f1f5f9 60%, rgba(148, 163, 184, 0.15) 100%)",
-                                  color: isConsumable ? "#B45309" : "#334155",
-                                  border: isConsumable ? "1px solid #FCD34D" : "1px solid rgba(148, 163, 184, 0.45)",
-                                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
-                                }}>
-                                  {isConsumable ? "CONSUMABLE" : "NON-CONSUMABLE"}
+                                <span style={{ fontSize: "0.72rem", color: "#64748b" }}>
+                                  Combined Deployment ({group.items.length} Assets)
                                 </span>
                               </div>
-                            );
-                          })()}
-                        </td>
-                        <td style={{ padding: "0.9rem 1.25rem" }}>
-                          {(() => {
-                            const itemObj = catalogItems.find(it => it.id === dep.rawRequest?.itemId || it.name === dep.itemName);
-                            const catType = itemObj?.category?.type || dep.rawRequest?.item?.category?.type || (dep.itemName?.toLowerCase().includes("battery") || dep.itemName?.toLowerCase().includes("cable") || dep.itemName?.toLowerCase().includes("pen") ? "CONSUMABLE" : "NON_CONSUMABLE");
-                            const isConsumable = catType === "CONSUMABLE";
-                            
-                            // Retrieve real asset tag for non-consumable items
-                            const fallbackId = (dep.id || "").substring((dep.id || "").length - 4).toUpperCase() || "0000";
-                            const displayTag = dep.assetTag || dep.rawRequest?.assetTag || dep.rawRequest?.asset?.tagCode || dep.rawRequest?.asset?.assetTag || (itemObj?.assets && itemObj.assets[0]?.tagCode) || (itemObj?.assets && itemObj.assets[0]?.assetTag) || `AST-${fallbackId}`;
+                            ) : (
+                              <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+                                <div>
+                                  <div style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.82rem" }}>{dep.itemName}</div>
+                                  {!isConsumable && (
+                                    <div style={{ marginTop: "0.2rem" }}>
+                                      <AssetTagBadge tag={displayTag} size="sm" />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </td>
 
-                            if (isConsumable) {
-                              return (
-                                <span style={{ fontSize: "0.72rem", color: "#94a3b8", fontStyle: "italic" }}>
-                                  N/A (Bulk Consumable)
-                                </span>
-                              );
-                            }
+                          {/* Status */}
+                          <td style={{ padding: "0.85rem 1rem", whiteSpace: "nowrap" }}>
+                            {isGroup ? (
+                              <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>
+                                {group.items.filter((d: any) => d.status !== "RETURNED").length > 0 && (
+                                  <span style={{ fontSize: "0.7rem", fontWeight: 800, padding: "0.15rem 0.45rem", borderRadius: "9999px", backgroundColor: "#eff6ff", color: "#1e40af", border: "1px solid #bfdbfe" }}>
+                                    {group.items.filter((d: any) => d.status !== "RETURNED").length} ACTIVE
+                                  </span>
+                                )}
+                                {group.items.filter((d: any) => d.status === "RETURNED").length > 0 && (
+                                  <span style={{ fontSize: "0.7rem", fontWeight: 800, padding: "0.15rem 0.45rem", borderRadius: "9999px", backgroundColor: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0" }}>
+                                    {group.items.filter((d: any) => d.status === "RETURNED").length} RETURNED
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="glitter-status-badge" style={{
+                                padding: "0.2rem 0.6rem", borderRadius: "9999px", fontSize: "0.72rem", fontWeight: 800,
+                                background: dep.status === "RETURNED"
+                                  ? (dep.returnCondition === "DAMAGED" ? "linear-gradient(135deg,#fff1f2,#ffe4e6)" : dep.returnCondition === "MISSING" ? "linear-gradient(135deg,#fffbeb,#fef3c7)" : "linear-gradient(135deg,#ecfdf5,#d1fae5)")
+                                  : "linear-gradient(135deg,#eff6ff,#dbeafe)",
+                                color: dep.status === "RETURNED"
+                                  ? (dep.returnCondition === "DAMAGED" ? "#991b1b" : dep.returnCondition === "MISSING" ? "#92400e" : "#065f46")
+                                  : "#1e40af",
+                                border: dep.status === "RETURNED"
+                                  ? (dep.returnCondition === "DAMAGED" ? "1px solid #fca5a5" : dep.returnCondition === "MISSING" ? "1px solid #fcd34d" : "1px solid #6ee7b7")
+                                  : "1px solid #93c5fd",
+                              }}>
+                                {dep.status === "RETURNED"
+                                  ? (dep.returnCondition === "DAMAGED" ? "⚠ DAMAGED" : dep.returnCondition === "MISSING" ? `✕ MISSING` : "RETURNED")
+                                  : "ACTIVE"}
+                              </span>
+                            )}
+                          </td>
 
-                            return <AssetTagBadge tag={displayTag} size="sm" />;
-                          })()}
-                        </td>
-                        <td style={{ padding: "0.9rem 1.25rem" }}>
-                          <SiteBadge siteName={dep.siteName} size="sm" />
-                        </td>
-                        <td style={{ padding: "0.9rem 1.25rem" }}>
-                          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-                            <span style={{ color: "#0f172a", fontWeight: 600, fontSize: "0.82rem" }}>
-                              {dep.requestedByName || "Inventory Staff"}
-                            </span>
-                            <div>
-                              <RoleBadge
-                                role={dep.requestedByRole || dep.issuerRole || dep.rawRequest?.requestedByRole || (dep.requestedByName?.toLowerCase().includes("ops") || dep.requestedByName?.toLowerCase().includes("admin") ? "ADMIN" : "INVENTORY_STAFF")}
-                                size="sm"
-                              />
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{ padding: "0.9rem 1.25rem" }}>
-                          <span className="glitter-status-badge" style={{
-                            padding: "0.2rem 0.6rem",
-                            borderRadius: "9999px",
-                            fontSize: "0.72rem",
-                            fontWeight: 800,
-                            letterSpacing: "0.04em",
-                            background: dep.status === "RETURNED"
-                              ? (dep.returnCondition === "DAMAGED" ? "linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)" : dep.returnCondition === "MISSING" ? "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)" : "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)")
-                              : "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
-                            color: dep.status === "RETURNED"
-                              ? (dep.returnCondition === "DAMAGED" ? "#991b1b" : dep.returnCondition === "MISSING" ? "#92400e" : "#065f46")
-                              : "#1e40af",
-                            border: dep.status === "RETURNED"
-                              ? (dep.returnCondition === "DAMAGED" ? "1px solid #fca5a5" : dep.returnCondition === "MISSING" ? "1px solid #fcd34d" : "1px solid #6ee7b7")
-                              : "1px solid #93c5fd",
-                            boxShadow: dep.status === "RETURNED" ? "0 1px 3px rgba(16, 185, 129, 0.12)" : "0 1px 3px rgba(30, 64, 175, 0.10)",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "4px",
-                          }}>
-                            {dep.status === "RETURNED"
-                              ? (dep.returnCondition === "DAMAGED" ? "⚠ DAMAGED" : dep.returnCondition === "MISSING" ? `✕ MISSING (${dep.missingCount || 1})` : "RETURNED")
-                              : "ACTIVE"}
-                          </span>
-                        </td>
-                        <td style={{ padding: "0.9rem 1.25rem", textAlign: "right", whiteSpace: "nowrap" }}>
-                          <div style={{ display: "flex", gap: "0.4rem", justifyContent: "flex-end", alignItems: "center" }}>
-                            {dep.status !== "RETURNED" ? (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenReturnModal(dep);
-                                }}
-                                className="glitter-action-btn"
-                                title="Return Asset to Inventory"
-                                style={{
-                                  padding: "0.35rem 0.65rem",
-                                  borderRadius: "6px",
-                                  border: "1px solid rgba(225, 29, 72, 0.40)",
-                                  background: "linear-gradient(135deg, #ffffff 0%, #fff1f2 60%, rgba(225, 29, 72, 0.12) 100%)",
-                                  color: "#be123c",
-                                  fontSize: "0.75rem",
-                                  fontWeight: 700,
-                                  cursor: "pointer",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "0.25rem",
-                                  boxShadow: "0 1px 3px rgba(225, 29, 72, 0.12)"
-                                }}
-                              >
-                                Return Asset
-                              </button>
-                            ) : null}
+                          {/* Site */}
+                          <td style={{ padding: "0.85rem 1rem", whiteSpace: "nowrap" }}>
+                            <SiteBadge siteName={dep.siteName} size="sm" />
+                          </td>
+
+                          {/* Deployed Date */}
+                          <td style={{ padding: "0.85rem 1rem", fontSize: "0.78rem", color: "#64748b", whiteSpace: "nowrap" }} title={new Date(dep.createdAt).toLocaleString()}>
+                            {formatRelDep(dep.createdAt)}
+                          </td>
+
+                          {/* PDF */}
+                          <td style={{ padding: "0.85rem 1rem", textAlign: "center", whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
                             <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDownloadDeploymentReceipt(dep);
-                              }}
+                              onClick={(e) => { e.stopPropagation(); isGroup ? handleDownloadGroupReceipt(group) : handleDownloadDeploymentReceipt(dep); }}
                               title="Download PDF Receipt"
                               style={{
-                                padding: "0.35rem 0.65rem",
-                                borderRadius: "6px",
-                                border: "1px solid rgba(148, 163, 184, 0.45)",
-                                background: "linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)",
-                                color: "#334155",
-                                fontSize: "0.75rem",
-                                fontWeight: 700,
-                                cursor: "pointer",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "0.25rem",
-                                boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)"
+                                padding: "0.3rem 0.6rem", borderRadius: "6px",
+                                border: "1px solid rgba(148,163,184,0.45)",
+                                background: "linear-gradient(135deg,#ffffff,#f1f5f9)",
+                                color: "#334155", fontSize: "0.74rem", fontWeight: 700,
+                                cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.2rem",
+                                boxShadow: "0 1px 2px rgba(15,23,42,0.05)"
                               }}
                             >
                               📄 PDF
                             </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </div>
+
+          {/* Bulk Deployed Asset Return Modal */}
+          {isBulkDeploymentReturnModalOpen && (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(4px)' }}>
+              <div style={{ backgroundColor: '#ffffff', borderRadius: 18, padding: '2rem', minWidth: 460, maxWidth: 560, boxShadow: '0 20px 60px rgba(15,23,42,0.18)', animation: 'slideFadeIn 0.25s ease-out' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.25rem' }}>
+                  <div style={{ width: 44, height: 44, borderRadius: '50%', backgroundColor: '#ffedd5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>🔄</div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Bulk Return Deployed Assets</h3>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>{selectedDeploymentIds.length} asset{selectedDeploymentIds.length > 1 ? 's' : ''} will be returned to inventory stock</p>
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, padding: '0.85rem 1rem', marginBottom: '1.25rem', fontSize: '0.85rem', color: '#92400e', lineHeight: 1.5 }}>
+                  ⚠️ <strong>{selectedDeploymentIds.length} deployed asset{selectedDeploymentIds.length > 1 ? 's' : ''}</strong> will be marked as <strong>RETURNED</strong> and their stock counts will be restored. This action updates localStorage and syncs with the backend.
+                </div>
+
+                <div style={{ marginBottom: '1.1rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#374151', marginBottom: '0.5rem' }}>Return Condition</label>
+                  <div style={{ display: 'flex', gap: '0.6rem' }}>
+                    {(['GOOD', 'DAMAGED', 'MISSING'] as const).map((cond) => (
+                      <button
+                        key={cond}
+                        onClick={() => setBulkReturnCondition(cond)}
+                        style={{
+                          flex: 1, padding: '0.55rem 0.5rem', borderRadius: 8, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', border: '2px solid',
+                          backgroundColor: bulkReturnCondition === cond ? (cond === 'GOOD' ? '#d1fae5' : cond === 'DAMAGED' ? '#fee2e2' : '#fef3c7') : '#f8fafc',
+                          borderColor: bulkReturnCondition === cond ? (cond === 'GOOD' ? '#6ee7b7' : cond === 'DAMAGED' ? '#fca5a5' : '#fcd34d') : '#e2e8f0',
+                          color: bulkReturnCondition === cond ? (cond === 'GOOD' ? '#065f46' : cond === 'DAMAGED' ? '#991b1b' : '#92400e') : '#64748b',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        {cond === 'GOOD' ? '✅ Good' : cond === 'DAMAGED' ? '⚠️ Damaged' : '❌ Missing'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#374151', marginBottom: '0.4rem' }}>Return Notes (optional)</label>
+                  <textarea
+                    value={bulkReturnNotes}
+                    onChange={(e) => setBulkReturnNotes(e.target.value)}
+                    placeholder="e.g. Employee resigned, contract ended, batch equipment refresh..."
+                    rows={3}
+                    style={{ width: '100%', borderRadius: 8, border: '1px solid #d1d5db', padding: '0.65rem 0.85rem', fontSize: '0.85rem', color: '#1e293b', resize: 'vertical', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => { setIsBulkDeploymentReturnModalOpen(false); setBulkReturnNotes(''); setBulkReturnCondition('GOOD'); }}
+                    disabled={isSubmittingBulkReturn}
+                    style={{ backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', borderRadius: 8, padding: '0.55rem 1.1rem', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleBulkDeploymentReturn}
+                    disabled={isSubmittingBulkReturn}
+                    style={{ backgroundColor: '#ea580c', color: '#ffffff', border: 'none', borderRadius: 8, padding: '0.55rem 1.4rem', fontSize: '0.85rem', fontWeight: 700, cursor: isSubmittingBulkReturn ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', boxShadow: '0 2px 8px rgba(234,88,12,0.3)' }}
+                  >
+                    {isSubmittingBulkReturn ? (
+                      <><span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} /> Processing...</>
+                    ) : `🔄 Confirm Return (${selectedDeploymentIds.length} Asset${selectedDeploymentIds.length > 1 ? 's' : ''})`}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -2770,17 +3246,33 @@ export const CatalogTab = ({
             {/* Header */}
             <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '0.72rem', color: '#64748b', fontFamily: 'monospace' }}>{selectedDeployment.id}</span>
-                <h3 style={{ margin: '0.15rem 0 0 0', fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>
+                <span style={{ fontSize: '0.72rem', color: '#3730a3', fontFamily: 'monospace', fontWeight: 700, backgroundColor: '#eef2ff', padding: '0.15rem 0.45rem', borderRadius: '4px', border: '1px solid #c7d2fe', width: 'fit-content' }}>
+                  {selectedDeployment.groupDeployId || (selectedDeployment.id ? selectedDeployment.id.toUpperCase().slice(-8) : 'DEPLOYMENT')}
+                </span>
+                <h3 style={{ margin: '0.25rem 0 0 0', fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>
                   Deployment Details
                 </h3>
               </div>
-              <button
-                onClick={() => setIsDeploymentDrawerOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '1.5rem', padding: '4px' }}
-              >
-                ×
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  onClick={() => selectedDeployment.isGroupDep && selectedDeployment.groupItems ? handleDownloadGroupReceipt({ items: selectedDeployment.groupItems, employeeName: selectedDeployment.employeeName }) : handleDownloadDeploymentReceipt(selectedDeployment)}
+                  style={{
+                    background: '#ffffff', border: '1px solid #e2e8f0', padding: '6px 10px',
+                    borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', color: '#475569',
+                    fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px',
+                    boxShadow: '0 1px 2px 0 rgba(0,0,0,0.05)'
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  Export PDF
+                </button>
+                <button
+                  onClick={() => setIsDeploymentDrawerOpen(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '1.5rem', padding: '4px' }}
+                >
+                  ×
+                </button>
+              </div>
             </div>
 
             {/* Content Body */}
@@ -2795,18 +3287,18 @@ export const CatalogTab = ({
                     fontWeight: 700,
                     padding: '0.25rem 0.6rem',
                     borderRadius: '12px',
-                    backgroundColor: selectedDeployment.status === 'RETURNED'
-                      ? (selectedDeployment.returnCondition === 'DAMAGED' ? '#fffbeb' : selectedDeployment.returnCondition === 'MISSING' ? '#fef2f2' : '#d1fae5')
-                      : '#dbeafe',
-                    color: selectedDeployment.status === 'RETURNED'
-                      ? (selectedDeployment.returnCondition === 'DAMAGED' ? '#b45309' : selectedDeployment.returnCondition === 'MISSING' ? '#b91c1c' : '#065f46')
-                      : '#2563eb'
+                    backgroundColor: selectedDeployment.isGroupDep
+                      ? (selectedDeployment.groupItems?.every((d: any) => d.status === 'RETURNED') ? '#d1fae5' : '#dbeafe')
+                      : (selectedDeployment.status === 'RETURNED' ? (selectedDeployment.returnCondition === 'DAMAGED' ? '#fffbeb' : selectedDeployment.returnCondition === 'MISSING' ? '#fef2f2' : '#d1fae5') : '#dbeafe'),
+                    color: selectedDeployment.isGroupDep
+                      ? (selectedDeployment.groupItems?.every((d: any) => d.status === 'RETURNED') ? '#065f46' : '#2563eb')
+                      : (selectedDeployment.status === 'RETURNED' ? (selectedDeployment.returnCondition === 'DAMAGED' ? '#b45309' : selectedDeployment.returnCondition === 'MISSING' ? '#b91c1c' : '#065f46') : '#2563eb')
                   }}>
-                    {selectedDeployment.status === 'RETURNED'
-                      ? (selectedDeployment.returnCondition === 'DAMAGED' ? 'RETURNED (DAMAGED)' : selectedDeployment.returnCondition === 'MISSING' ? `RETURNED (${selectedDeployment.missingCount || 1} MISSING)` : 'RETURNED (GOOD)')
-                      : 'ACTIVE DEPLOYMENT'}
+                    {selectedDeployment.isGroupDep
+                      ? (selectedDeployment.groupItems?.every((d: any) => d.status === 'RETURNED') ? 'ALL RETURNED' : `${selectedDeployment.groupItems?.filter((d: any) => d.status !== 'RETURNED').length} ACTIVE ASSETS`)
+                      : (selectedDeployment.status === 'RETURNED' ? (selectedDeployment.returnCondition === 'DAMAGED' ? 'RETURNED (DAMAGED)' : selectedDeployment.returnCondition === 'MISSING' ? `RETURNED (${selectedDeployment.missingCount || 1} MISSING)` : 'RETURNED (GOOD)') : 'ACTIVE DEPLOYMENT')}
                   </span>
-                  {selectedDeployment.status !== 'RETURNED' && (
+                  {!selectedDeployment.isGroupDep && selectedDeployment.status !== 'RETURNED' && (
                     <button
                       onClick={() => handleOpenReturnModal(selectedDeployment)}
                       style={{
@@ -2829,7 +3321,7 @@ export const CatalogTab = ({
                 </div>
               </div>
 
-              {/* Employee Info */}
+              {/* Employee Recipient Info */}
               <div style={{ backgroundColor: '#f8fafc', borderRadius: 8, padding: '1rem', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                 <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Employee Recipient</span>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
@@ -2852,81 +3344,156 @@ export const CatalogTab = ({
                 </div>
               </div>
 
-              {/* Equipment Info */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                <div>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Assigned Hardware Item</label>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', marginTop: '0.15rem' }}>{selectedDeployment.itemName || 'Assigned Asset'}</div>
+              {/* Group or Single Asset Info */}
+              {selectedDeployment.isGroupDep && selectedDeployment.groupItems ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                    Deployed Assets ({selectedDeployment.groupItems.length} Items)
+                  </label>
+                  <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#ffffff' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
+                      <thead style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                        <tr>
+                          <th style={{ padding: '0.65rem 0.75rem', fontWeight: 700, color: '#475569' }}>Asset Name</th>
+                          <th style={{ padding: '0.65rem 0.75rem', fontWeight: 700, color: '#475569' }}>Tag</th>
+                          <th style={{ padding: '0.65rem 0.75rem', fontWeight: 700, color: '#475569' }}>Status</th>
+                          <th style={{ padding: '0.65rem 0.75rem', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedDeployment.groupItems.map((gItem: any, idx: number) => {
+                          const fallbackId = (gItem.id || "").substring((gItem.id || "").length - 4).toUpperCase() || "0000";
+                          const tag = gItem.assetTag || gItem.rawRequest?.assetTag || `AST-${fallbackId}`;
+                          return (
+                            <tr key={idx} style={{ borderBottom: idx < selectedDeployment.groupItems.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                              <td style={{ padding: '0.65rem 0.75rem', fontWeight: 600, color: '#0f172a' }}>{gItem.itemName}</td>
+                              <td style={{ padding: '0.65rem 0.75rem' }}><AssetTagBadge tag={tag} size="sm" /></td>
+                              <td style={{ padding: '0.65rem 0.75rem' }}>
+                                <span style={{
+                                  fontSize: '0.68rem', fontWeight: 700, padding: '0.15rem 0.45rem', borderRadius: '9999px',
+                                  backgroundColor: gItem.status === 'RETURNED' ? '#ecfdf5' : '#eff6ff',
+                                  color: gItem.status === 'RETURNED' ? '#065f46' : '#1d4ed8',
+                                  border: gItem.status === 'RETURNED' ? '1px solid #6ee7b7' : '1px solid #bfdbfe'
+                                }}>
+                                  {gItem.status === 'RETURNED' ? 'RETURNED' : 'ACTIVE'}
+                                </span>
+                              </td>
+                              <td style={{ padding: '0.65rem 0.75rem', textAlign: 'right' }}>
+                                {gItem.status !== 'RETURNED' && (
+                                  <button
+                                    onClick={() => handleOpenReturnModal(gItem)}
+                                    style={{
+                                      padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid #10b981',
+                                      backgroundColor: '#ecfdf5', color: '#047857', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer'
+                                    }}
+                                  >
+                                    Return
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                   <div>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Asset Tag Code</label>
-                    <div style={{ marginTop: '0.15rem' }}>
-                      <span style={{
-                        fontSize: '0.78rem',
-                        fontFamily: 'monospace',
-                        fontWeight: 700,
-                        color: '#210cae',
-                        backgroundColor: '#eef2ff',
-                        border: '1px solid #c7d2fe',
-                        borderRadius: '4px',
-                        padding: '0.15rem 0.45rem',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.25rem'
-                      }}>
-                        🏷️ {selectedDeployment.assetTag || 'AST-DEP'}
-                      </span>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Assigned Hardware Item</label>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', marginTop: '0.15rem' }}>{selectedDeployment.itemName || 'Assigned Asset'}</div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Asset Tag Code</label>
+                      <div style={{ marginTop: '0.15rem' }}>
+                        <span style={{
+                          fontSize: '0.78rem',
+                          fontFamily: 'monospace',
+                          fontWeight: 700,
+                          color: '#210cae',
+                          backgroundColor: '#eef2ff',
+                          border: '1px solid #c7d2fe',
+                          borderRadius: '4px',
+                          padding: '0.15rem 0.45rem',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem'
+                        }}>
+                          🏷️ {selectedDeployment.assetTag || 'AST-DEP'}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Issued By</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.15rem', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
+                          {selectedDeployment.requestedByName || 'Inventory Staff'}
+                        </span>
+                        <RoleBadge
+                          role={selectedDeployment.requestedByRole || selectedDeployment.issuerRole || selectedDeployment.rawRequest?.requestedByRole || (selectedDeployment.requestedByName?.toLowerCase().includes("ops") || selectedDeployment.requestedByName?.toLowerCase().includes("admin") ? "ADMIN" : "INVENTORY_STAFF")}
+                          size="sm"
+                        />
+                      </div>
                     </div>
                   </div>
+
                   <div>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Issued By</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.15rem', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
-                        {selectedDeployment.requestedByName || 'Inventory Staff'}
-                      </span>
-                      <RoleBadge
-                        role={selectedDeployment.requestedByRole || selectedDeployment.issuerRole || selectedDeployment.rawRequest?.requestedByRole || (selectedDeployment.requestedByName?.toLowerCase().includes("ops") || selectedDeployment.requestedByName?.toLowerCase().includes("admin") ? "ADMIN" : "INVENTORY_STAFF")}
-                        size="sm"
-                      />
+                    <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Deployment Reason & Notes</label>
+                    <div style={{ fontSize: '0.82rem', color: '#475569', lineHeight: 1.5, marginTop: '0.25rem', padding: '0.75rem', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+                      {selectedDeployment.reason || 'N/A'}
                     </div>
                   </div>
                 </div>
+              )}
 
-                <div>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Deployment Reason & Notes</label>
-                  <div style={{ fontSize: '0.82rem', color: '#475569', lineHeight: 1.5, marginTop: '0.25rem', padding: '0.75rem', background: '#f8fafc', borderRadius: 6, border: '1px solid #e2e8f0' }}>
-                    {selectedDeployment.reason || 'N/A'}
-                  </div>
+              {/* Timeline / History Log */}
+              {selectedDeployment.rawRequest?.id && (
+                <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: '0.85rem' }}>
+                    Deployment Timeline
+                  </label>
+                  <RequestTimeline
+                    requestId={selectedDeployment.rawRequest.id}
+                    status={selectedDeployment.rawRequest.status || 'RELEASED'}
+                    requestedById={selectedDeployment.rawRequest.requestedById || ''}
+                    requestedByName={selectedDeployment.employeeName}
+                    currentUserEmail={currentUser.email}
+                    currentUserId={currentUser.id}
+                    currentUserRole={currentUser.role}
+                    history={selectedDeployment.rawRequest.history}
+                    onConfirmSuccess={() => {}}
+                    assetTag={selectedDeployment.assetTag}
+                    itemName={selectedDeployment.itemName}
+                  />
                 </div>
+              )}
 
-                {/* PDF Receipt Action */}
-                <div style={{ paddingTop: '0.5rem' }}>
-                  <button
-                    onClick={() => handleDownloadDeploymentReceipt(selectedDeployment)}
-                    style={{
-                      width: '100%',
-                      padding: '0.65rem 1rem',
-                      borderRadius: 8,
-                      border: '1px solid #2563eb',
-                      backgroundColor: '#2563eb',
-                      color: '#ffffff',
-                      fontSize: '0.85rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem',
-                      boxShadow: '0 2px 6px rgba(37,99,235,0.2)'
-                    }}
-                  >
-                    {selectedDeployment.status === "RETURNED"
-                      ? "📄 Download Asset Return Receipt (PDF)"
-                      : "📄 Download Deployment Handover Receipt (PDF)"}
-                  </button>
-                </div>
+              {/* Download PDF Receipt Action */}
+              <div style={{ paddingTop: '0.5rem' }}>
+                <button
+                  onClick={() => selectedDeployment.isGroupDep && selectedDeployment.groupItems ? handleDownloadGroupReceipt({ items: selectedDeployment.groupItems, employeeName: selectedDeployment.employeeName }) : handleDownloadDeploymentReceipt(selectedDeployment)}
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem 1rem',
+                    borderRadius: 8,
+                    border: '1px solid #2563eb',
+                    backgroundColor: '#2563eb',
+                    color: '#ffffff',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    boxShadow: '0 2px 6px rgba(37,99,235,0.2)'
+                  }}
+                >
+                  📄 Download Deployment PDF Receipt
+                </button>
               </div>
 
             </div>

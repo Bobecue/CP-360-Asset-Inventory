@@ -56,14 +56,6 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
       title: "Inventory",
       visible: true,
       items: [
-        { id: "requests", label: "Request Orders", visible: true, icon: (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" />
-            <polyline points="14 2 14 8 20 8" />
-            <line x1="16" y1="13" x2="8" y2="13" />
-            <line x1="16" y1="17" x2="8" y2="17" />
-          </svg>
-        ) },
         { id: "procurement", label: "Procurement & POs", visible: isSuperAdmin || isOpsAdmin || isInventoryStaff, icon: (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M6 2L3 6V20C3 21.1 3.9 22 5 22H19C20.1 22 21 21.1 21 20V6L18 2H6Z" />
@@ -239,10 +231,11 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
               const isCatalogGroup = item.id === "catalog";
               const normalizedRole = (role || "").toUpperCase().replace(/[\s\-]/g, "_");
               const canAccessDeployments = ["SUPER_ADMIN", "ADMIN", "OPS_MANAGER", "OPERATIONS_MANAGER", "INVENTORY_STAFF"].includes(normalizedRole);
-              const isActive = activeTab === item.id || (isCatalogGroup && activeTab === "deployments");
+              const isCatalogActive = activeTab === "catalog" || activeTab === "deployments" || activeTab === "requests";
+              const isActive = activeTab === item.id || (isCatalogGroup && isCatalogActive);
 
               if (isCatalogGroup) {
-                const showSubMenu = isCatalogHovered || activeTab === "catalog" || activeTab === "deployments";
+                const showSubMenu = isCatalogHovered || isCatalogActive;
                 return (
                   <div
                     key={item.id}
@@ -256,40 +249,40 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
                       style={{
                         display: "flex", alignItems: "center", gap: "0.75rem",
                         padding: "0.65rem 0.85rem", borderRadius: 10, border: "none",
-                        backgroundColor: (activeTab === "catalog" || activeTab === "deployments")
+                        backgroundColor: isCatalogActive
                           ? "#1E293B"
                           : "transparent",
-                        color: (activeTab === "catalog" || activeTab === "deployments") ? "#818CF8" : "#94A3B8",
+                        color: isCatalogActive ? "#818CF8" : "#94A3B8",
                         cursor: "pointer", fontSize: "0.85rem",
-                        fontWeight: (activeTab === "catalog" || activeTab === "deployments") ? 600 : 500,
+                        fontWeight: isCatalogActive ? 600 : 500,
                         textAlign: "left",
                         transition: "all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)",
                         width: "100%",
                       }}
                       onMouseEnter={(e) => {
-                        if (activeTab !== "catalog" && activeTab !== "deployments") {
+                        if (!isCatalogActive) {
                           e.currentTarget.style.backgroundColor = "#1E293B";
                           e.currentTarget.style.color = "#F8FAFC";
                         }
                       }}
                       onMouseLeave={(e) => {
-                        if (activeTab !== "catalog" && activeTab !== "deployments") {
+                        if (!isCatalogActive) {
                           e.currentTarget.style.backgroundColor = "transparent";
                           e.currentTarget.style.color = "#94A3B8";
                         }
                       }}
                     >
-                      <span style={{ color: (activeTab === "catalog" || activeTab === "deployments") ? "#818CF8" : "inherit", display: "flex", alignItems: "center" }}>{item.icon}</span>
+                      <span style={{ color: isCatalogActive ? "#818CF8" : "inherit", display: "flex", alignItems: "center" }}>{item.icon}</span>
                       {isSidebarOpen && (
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
                           <span>{item.label}</span>
-                          <span style={{ fontSize: "0.65rem", color: (activeTab === "catalog" || activeTab === "deployments") ? "#818CF8" : "#64748B" }}>{showSubMenu ? "▾" : "▸"}</span>
+                          <span style={{ fontSize: "0.65rem", color: isCatalogActive ? "#818CF8" : "#64748B" }}>{showSubMenu ? "▾" : "▸"}</span>
                         </div>
                       )}
                     </button>
 
                     {/* Sub-menu nested directly below Asset Catalog */}
-                    {isSidebarOpen && canAccessDeployments && showSubMenu && (
+                    {isSidebarOpen && showSubMenu && (
                       <div style={{
                         display: "flex", flexDirection: "column", gap: "0.2rem",
                         paddingLeft: "1.5rem", marginTop: "0.2rem", marginBottom: "0.25rem",
@@ -312,21 +305,40 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
                           <span>Catalog Inventory</span>
                         </button>
 
+                        {canAccessDeployments && (
+                          <button
+                            onClick={() => onTabChange("deployments")}
+                            className="interactive-element"
+                            style={{
+                              display: "flex", alignItems: "center", gap: "0.5rem",
+                              padding: "0.45rem 0.65rem", borderRadius: 8, border: "none",
+                              backgroundColor: activeTab === "deployments" ? "#1E293B" : "transparent",
+                              color: activeTab === "deployments" ? "#818CF8" : "#94A3B8",
+                              cursor: "pointer", fontSize: "0.8rem", fontWeight: activeTab === "deployments" ? 700 : 500,
+                              textAlign: "left", transition: "all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)", width: "100%"
+                            }}
+                            onMouseEnter={(e) => { if (activeTab !== "deployments") { e.currentTarget.style.backgroundColor = "#1E293B"; e.currentTarget.style.color = "#F8FAFC"; } }}
+                            onMouseLeave={(e) => { if (activeTab !== "deployments") { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#94A3B8"; } }}
+                          >
+                            <span>Asset Deployments</span>
+                          </button>
+                        )}
+
                         <button
-                          onClick={() => onTabChange("deployments")}
+                          onClick={() => onTabChange("requests")}
                           className="interactive-element"
                           style={{
                             display: "flex", alignItems: "center", gap: "0.5rem",
                             padding: "0.45rem 0.65rem", borderRadius: 8, border: "none",
-                            backgroundColor: activeTab === "deployments" ? "#1E293B" : "transparent",
-                            color: activeTab === "deployments" ? "#818CF8" : "#94A3B8",
-                            cursor: "pointer", fontSize: "0.8rem", fontWeight: activeTab === "deployments" ? 700 : 500,
+                            backgroundColor: activeTab === "requests" ? "#1E293B" : "transparent",
+                            color: activeTab === "requests" ? "#818CF8" : "#94A3B8",
+                            cursor: "pointer", fontSize: "0.8rem", fontWeight: activeTab === "requests" ? 700 : 500,
                             textAlign: "left", transition: "all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)", width: "100%"
                           }}
-                          onMouseEnter={(e) => { if (activeTab !== "deployments") { e.currentTarget.style.backgroundColor = "#1E293B"; e.currentTarget.style.color = "#F8FAFC"; } }}
-                          onMouseLeave={(e) => { if (activeTab !== "deployments") { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#94A3B8"; } }}
+                          onMouseEnter={(e) => { if (activeTab !== "requests") { e.currentTarget.style.backgroundColor = "#1E293B"; e.currentTarget.style.color = "#F8FAFC"; } }}
+                          onMouseLeave={(e) => { if (activeTab !== "requests") { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#94A3B8"; } }}
                         >
-                          <span>Asset Deployments</span>
+                          <span>Asset Transfer</span>
                         </button>
                       </div>
                     )}
