@@ -537,20 +537,18 @@ export default function OpexTab({ currentUser }: { currentUser: any }) {
         <div style={{
           position: "fixed",
           top: 0, left: 0,
-          right: 0, bottom: 0,
-          width: "100vw", height: "100vh",
+          width: "100%", height: "100%",
           backgroundColor: "rgba(15, 23, 42, 0.4)",
           backdropFilter: "blur(4px)",
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          padding: "24px",
-          zIndex: 9999,
+          zIndex: 1000,
         }}>
           <div style={{
             width: "100%",
             maxWidth: "600px",
-            maxHeight: "85vh",
+            maxHeight: "90vh",
             backgroundColor: "#ffffff",
             borderRadius: "16px",
             boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
@@ -558,7 +556,6 @@ export default function OpexTab({ currentUser }: { currentUser: any }) {
             display: "flex",
             flexDirection: "column",
             border: "1px solid #e2e8f0",
-            margin: "auto",
           }}>
             {/* Header */}
             <div style={{
@@ -592,7 +589,7 @@ export default function OpexTab({ currentUser }: { currentUser: any }) {
             {/* Form */}
             <form onSubmit={handleCreateEntry} style={{ display: "flex", flexDirection: "column", gap: "1rem", padding: "1.5rem", overflowY: "auto" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-                
+
                 {/* Item Description */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                   <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Item Description *</label>
@@ -835,20 +832,18 @@ export default function OpexTab({ currentUser }: { currentUser: any }) {
         <div style={{
           position: "fixed",
           top: 0, left: 0,
-          right: 0, bottom: 0,
-          width: "100vw", height: "100vh",
+          width: "100%", height: "100%",
           backgroundColor: "rgba(15, 23, 42, 0.4)",
           backdropFilter: "blur(4px)",
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          padding: "24px",
-          zIndex: 9999,
+          zIndex: 1000,
         }}>
           <div style={{
-            width: "100%",
+            width: "92%",
             maxWidth: "500px",
-            maxHeight: "85vh",
+            maxHeight: "90vh",
             backgroundColor: "#ffffff",
             borderRadius: "16px",
             boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
@@ -856,7 +851,6 @@ export default function OpexTab({ currentUser }: { currentUser: any }) {
             display: "flex",
             flexDirection: "column",
             border: "1px solid #e2e8f0",
-            margin: "auto",
           }}>
             {/* Header */}
             <div style={{
