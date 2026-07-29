@@ -534,72 +534,291 @@ export default function OpexTab({ currentUser }: { currentUser: any }) {
 
       {/* Modal: New Entry */}
       {isNewEntryOpen && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ backgroundColor: "#FFF", borderRadius: "12px", padding: "24px", width: "500px", maxWidth: "90%" }}>
-            <h3 style={{ margin: "0 0 16px", fontSize: "18px", fontWeight: 700 }}>Log New Expense Entry</h3>
-            <form onSubmit={handleCreateEntry} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              <div>
-                <label style={{ fontSize: "12px", fontWeight: 600 }}>Item Description *</label>
-                <input type="text" required value={itemDescription} onChange={e => setItemDescription(e.target.value)} style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #CBD5E1" }} />
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0,
+          width: "100%", height: "100%",
+          backgroundColor: "rgba(15, 23, 42, 0.4)",
+          backdropFilter: "blur(4px)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 1000,
+        }}>
+          <div style={{
+            width: "100%",
+            maxWidth: "600px",
+            backgroundColor: "#ffffff",
+            borderRadius: "16px",
+            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            border: "1px solid #e2e8f0",
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: "1.25rem 1.5rem",
+              borderBottom: "1px solid #e2e8f0",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
+                <h3 style={{ fontSize: "0.98rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
+                  Log Expense Entry
+                </h3>
+                <p style={{ fontSize: "0.72rem", color: "#64748b", margin: 0 }}>
+                  Register a new operating or capital expenditure into the financial tracker.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsNewEntryOpen(false)}
+                style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  color: "#94a3b8", padding: 4, display: "flex", borderRadius: 4,
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleCreateEntry} style={{ display: "flex", flexDirection: "column", gap: "1rem", padding: "1.5rem" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+                
+                {/* Item Description */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                  <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Item Description *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g., Office Supplies, Medical Stock, Security Uniforms"
+                    value={itemDescription}
+                    onChange={e => setItemDescription(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "0.45rem 0.65rem",
+                      borderRadius: 6,
+                      border: "1px solid #e2e8f0",
+                      fontSize: "0.8rem",
+                      color: "#1e293b",
+                      outline: "none",
+                    }}
+                  />
+                </div>
+
+                {/* Unit Price & Qty */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                    <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Unit Price (₱) *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      placeholder="e.g. 450.00"
+                      value={unitPrice}
+                      onChange={e => setUnitPrice(e.target.value ? Number(e.target.value) : "")}
+                      style={{
+                        width: "100%",
+                        padding: "0.45rem 0.65rem",
+                        borderRadius: 6,
+                        border: "1px solid #e2e8f0",
+                        fontSize: "0.8rem",
+                        color: "#1e293b",
+                        outline: "none",
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                    <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Quantity *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      placeholder="e.g. 10"
+                      value={qty}
+                      onChange={e => setQty(e.target.value ? Number(e.target.value) : "")}
+                      style={{
+                        width: "100%",
+                        padding: "0.45rem 0.65rem",
+                        borderRadius: 6,
+                        border: "1px solid #e2e8f0",
+                        fontSize: "0.8rem",
+                        color: "#1e293b",
+                        outline: "none",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Unit & Category */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                    <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Unit</label>
+                    <select
+                      value={unit}
+                      onChange={e => setUnit(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "0.45rem 0.65rem",
+                        borderRadius: 6,
+                        border: "1px solid #e2e8f0",
+                        fontSize: "0.8rem",
+                        color: "#475569",
+                        outline: "none",
+                        backgroundColor: "#ffffff",
+                      }}
+                    >
+                      {["PC", "PACK", "BOX", "TAB", "SACH", "CAP", "NEB", "SET", "ROLL", "UNIT"].map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                    <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Category *</label>
+                    <select
+                      value={category}
+                      onChange={e => setCategory(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "0.45rem 0.65rem",
+                        borderRadius: 6,
+                        border: "1px solid #e2e8f0",
+                        fontSize: "0.8rem",
+                        color: "#475569",
+                        outline: "none",
+                        backgroundColor: "#ffffff",
+                      }}
+                    >
+                      <option value="MEDICAL_PHARMACY">Medical / Pharmacy</option>
+                      <option value="SECURITY_UNIFORM">Security / Uniform</option>
+                      <option value="OFFICE_SUPPLIES">Office Supplies</option>
+                      <option value="IT_PERIPHERALS">IT Peripherals</option>
+                      <option value="MAINTENANCE_REPAIRS">Maintenance & Repairs</option>
+                      <option value="UTILITIES">Utilities</option>
+                      <option value="FACILITIES">Facilities</option>
+                      <option value="MISCELLANEOUS">Miscellaneous</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Supplier & Destination */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                    <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Assigned Supplier (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Office Essentials Trading"
+                      value={supplierName}
+                      onChange={e => setSupplierName(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "0.45rem 0.65rem",
+                        borderRadius: 6,
+                        border: "1px solid #e2e8f0",
+                        fontSize: "0.8rem",
+                        color: "#1e293b",
+                        outline: "none",
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                    <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Destination / Department</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., IT Department, Skyrise 4B"
+                      value={destinationName}
+                      onChange={e => setDestinationName(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "0.45rem 0.65rem",
+                        borderRadius: 6,
+                        border: "1px solid #e2e8f0",
+                        fontSize: "0.8rem",
+                        color: "#1e293b",
+                        outline: "none",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Source Document */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                  <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Source Document URL / Receipt File</label>
+                  <input
+                    type="text"
+                    placeholder="https://storage.contactpoint360.com/..."
+                    value={sourceDocumentUrl}
+                    onChange={e => setSourceDocumentUrl(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "0.45rem 0.65rem",
+                      borderRadius: 6,
+                      border: "1px solid #e2e8f0",
+                      fontSize: "0.8rem",
+                      color: "#1e293b",
+                      outline: "none",
+                    }}
+                  />
+                </div>
+
+                {/* CAPEX Flag */}
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.25rem" }}>
+                  <input
+                    type="checkbox"
+                    id="capex"
+                    checked={isCapex}
+                    onChange={e => setIsCapex(e.target.checked)}
+                    style={{ width: 16, height: 16, cursor: "pointer" }}
+                  />
+                  <label htmlFor="capex" style={{ fontSize: "0.8rem", fontWeight: 600, color: "#334155", cursor: "pointer" }}>
+                    Flag as Capital Expenditure (CAPEX)
+                  </label>
+                </div>
               </div>
 
-              <div style={{ display: "flex", gap: "12px" }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: "12px", fontWeight: 600 }}>Unit Price (₱) *</label>
-                  <input type="number" step="0.01" required value={unitPrice} onChange={e => setUnitPrice(e.target.value ? Number(e.target.value) : "")} style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #CBD5E1" }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: "12px", fontWeight: 600 }}>Quantity *</label>
-                  <input type="number" step="0.01" required value={qty} onChange={e => setQty(e.target.value ? Number(e.target.value) : "")} style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #CBD5E1" }} />
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: "12px" }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: "12px", fontWeight: 600 }}>Unit</label>
-                  <select value={unit} onChange={e => setUnit(e.target.value)} style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #CBD5E1" }}>
-                    {["PC", "PACK", "BOX", "TAB", "SACH", "CAP", "NEB", "SET", "ROLL", "UNIT"].map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: "12px", fontWeight: 600 }}>Category</label>
-                  <select value={category} onChange={e => setCategory(e.target.value)} style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #CBD5E1" }}>
-                    <option value="MEDICAL_PHARMACY">Medical / Pharmacy</option>
-                    <option value="SECURITY_UNIFORM">Security / Uniform</option>
-                    <option value="OFFICE_SUPPLIES">Office Supplies</option>
-                    <option value="IT_PERIPHERALS">IT Peripherals</option>
-                    <option value="MAINTENANCE_REPAIRS">Maintenance & Repairs</option>
-                    <option value="UTILITIES">Utilities</option>
-                    <option value="FACILITIES">Facilities</option>
-                    <option value="MISCELLANEOUS">Miscellaneous</option>
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: "12px" }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: "12px", fontWeight: 600 }}>Supplier Name</label>
-                  <input type="text" value={supplierName} onChange={e => setSupplierName(e.target.value)} style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #CBD5E1" }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: "12px", fontWeight: 600 }}>Destination / Dept</label>
-                  <input type="text" value={destinationName} onChange={e => setDestinationName(e.target.value)} style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #CBD5E1" }} />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: "12px", fontWeight: 600 }}>Source Document URL / Receipt File</label>
-                <input type="text" placeholder="https://..." value={sourceDocumentUrl} onChange={e => setSourceDocumentUrl(e.target.value)} style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #CBD5E1" }} />
-              </div>
-
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <input type="checkbox" id="capex" checked={isCapex} onChange={e => setIsCapex(e.target.checked)} />
-                <label htmlFor="capex" style={{ fontSize: "14px", fontWeight: 600 }}>Flag as Capital Expenditure (CAPEX)</label>
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "16px" }}>
-                <button type="button" onClick={() => setIsNewEntryOpen(false)} style={{ padding: "8px 16px", borderRadius: "6px", border: "1px solid #CBD5E1" }}>Cancel</button>
-                <button type="submit" style={{ padding: "8px 16px", borderRadius: "6px", backgroundColor: "#2563EB", color: "#FFF", border: "none", fontWeight: 600 }}>Save Entry</button>
+              {/* Modal Actions */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                gap: "0.75rem",
+                paddingTop: "1rem",
+                marginTop: "0.5rem",
+                borderTop: "1px solid #e2e8f0",
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setIsNewEntryOpen(false)}
+                  style={{
+                    padding: "0.45rem 1rem",
+                    borderRadius: 6,
+                    border: "1px solid #cbd5e1",
+                    background: "transparent",
+                    color: "#475569",
+                    fontSize: "0.8rem",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    padding: "0.45rem 1.25rem",
+                    borderRadius: 6,
+                    border: "none",
+                    background: "linear-gradient(135deg, #210cae 0%, #4dc9e6 100%)",
+                    color: "#ffffff",
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    boxShadow: "0 2px 4px rgba(33,12,174,0.1)",
+                  }}
+                >
+                  Save Entry
+                </button>
               </div>
             </form>
           </div>
@@ -608,36 +827,163 @@ export default function OpexTab({ currentUser }: { currentUser: any }) {
 
       {/* Modal: Review & Sign-Off */}
       {isApproveModalOpen && selectedEntry && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ backgroundColor: "#FFF", borderRadius: "12px", padding: "24px", width: "450px", maxWidth: "90%" }}>
-            <h3 style={{ margin: "0 0 16px", fontSize: "18px", fontWeight: 700 }}>Review & Sign-Off Entry</h3>
-            <p style={{ fontSize: "14px", color: "#475569" }}>Item: <strong>{selectedEntry.itemDescription}</strong> ({formatMoney(selectedEntry.total)})</p>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "16px" }}>
-              <div>
-                <label style={{ fontSize: "12px", fontWeight: 600 }}>Decision Status</label>
-                <select value={approveStatus} onChange={e => setApproveStatus(e.target.value as any)} style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #CBD5E1" }}>
-                  <option value="OK">OK (Approved)</option>
-                  <option value="FOR_REVIEW">FOR REVIEW</option>
-                  <option value="REJECTED">REJECTED</option>
-                </select>
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0,
+          width: "100%", height: "100%",
+          backgroundColor: "rgba(15, 23, 42, 0.4)",
+          backdropFilter: "blur(4px)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 1000,
+        }}>
+          <div style={{
+            width: "100%",
+            maxWidth: "500px",
+            backgroundColor: "#ffffff",
+            borderRadius: "16px",
+            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            border: "1px solid #e2e8f0",
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: "1.25rem 1.5rem",
+              borderBottom: "1px solid #e2e8f0",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
+                <h3 style={{ fontSize: "0.98rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
+                  Review & Sign-Off Entry
+                </h3>
+                <p style={{ fontSize: "0.72rem", color: "#64748b", margin: 0 }}>
+                  Approve or flag expense item: <strong style={{ color: "#0f172a" }}>{selectedEntry.itemDescription}</strong> ({formatMoney(selectedEntry.total)})
+                </p>
               </div>
+              <button
+                type="button"
+                onClick={() => setIsApproveModalOpen(false)}
+                style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  color: "#94a3b8", padding: 4, display: "flex", borderRadius: 4,
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
+            </div>
 
-              <div>
-                <label style={{ fontSize: "12px", fontWeight: 600 }}>Source Document URL (Required for OK)</label>
-                <input type="text" value={approveDocUrl} onChange={e => setApproveDocUrl(e.target.value)} style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #CBD5E1" }} />
-              </div>
-
-              {approveStatus === "REJECTED" && (
-                <div>
-                  <label style={{ fontSize: "12px", fontWeight: 600 }}>Rejection Reason</label>
-                  <textarea value={rejectionReason} onChange={e => setRejectionReason(e.target.value)} style={{ width: "100%", padding: "8px", borderRadius: "6px", border: "1px solid #CBD5E1" }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem", padding: "1.5rem" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                  <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Decision Status</label>
+                  <select
+                    value={approveStatus}
+                    onChange={e => setApproveStatus(e.target.value as any)}
+                    style={{
+                      width: "100%",
+                      padding: "0.45rem 0.65rem",
+                      borderRadius: 6,
+                      border: "1px solid #e2e8f0",
+                      fontSize: "0.8rem",
+                      color: "#475569",
+                      outline: "none",
+                      backgroundColor: "#ffffff",
+                    }}
+                  >
+                    <option value="OK">OK (Approved)</option>
+                    <option value="FOR_REVIEW">FOR REVIEW</option>
+                    <option value="REJECTED">REJECTED</option>
+                  </select>
                 </div>
-              )}
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "16px" }}>
-                <button type="button" onClick={() => setIsApproveModalOpen(false)} style={{ padding: "8px 16px", borderRadius: "6px", border: "1px solid #CBD5E1" }}>Cancel</button>
-                <button type="button" onClick={handleApproveEntry} style={{ padding: "8px 16px", borderRadius: "6px", backgroundColor: "#059669", color: "#FFF", border: "none", fontWeight: 600 }}>Confirm Decision</button>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                  <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Source Document URL (Required for OK)</label>
+                  <input
+                    type="text"
+                    value={approveDocUrl}
+                    onChange={e => setApproveDocUrl(e.target.value)}
+                    placeholder="https://..."
+                    style={{
+                      width: "100%",
+                      padding: "0.45rem 0.65rem",
+                      borderRadius: 6,
+                      border: "1px solid #e2e8f0",
+                      fontSize: "0.8rem",
+                      color: "#1e293b",
+                      outline: "none",
+                    }}
+                  />
+                </div>
+
+                {approveStatus === "REJECTED" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                    <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Rejection Reason</label>
+                    <textarea
+                      value={rejectionReason}
+                      onChange={e => setRejectionReason(e.target.value)}
+                      placeholder="Specify reason for rejection..."
+                      style={{
+                        width: "100%",
+                        padding: "0.45rem 0.65rem",
+                        borderRadius: 6,
+                        border: "1px solid #e2e8f0",
+                        fontSize: "0.8rem",
+                        color: "#1e293b",
+                        outline: "none",
+                        minHeight: 80,
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                gap: "0.75rem",
+                paddingTop: "1rem",
+                borderTop: "1px solid #e2e8f0",
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setIsApproveModalOpen(false)}
+                  style={{
+                    padding: "0.45rem 1rem",
+                    borderRadius: 6,
+                    border: "1px solid #cbd5e1",
+                    background: "transparent",
+                    color: "#475569",
+                    fontSize: "0.8rem",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApproveEntry}
+                  style={{
+                    padding: "0.45rem 1.25rem",
+                    borderRadius: 6,
+                    border: "none",
+                    background: "linear-gradient(135deg, #210cae 0%, #4dc9e6 100%)",
+                    color: "#ffffff",
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    boxShadow: "0 2px 4px rgba(33,12,174,0.1)",
+                  }}
+                >
+                  Confirm Decision
+                </button>
               </div>
             </div>
           </div>
