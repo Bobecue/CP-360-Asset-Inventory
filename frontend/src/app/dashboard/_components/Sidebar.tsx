@@ -12,11 +12,13 @@ interface SidebarProps {
 
 export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, currentUser }: SidebarProps) => {
   const [isCatalogHovered, setIsCatalogHovered] = useState(false);
+  const [isOpexHovered, setIsOpexHovered] = useState(false);
   const role = currentUser?.role || 'EMPLOYEE';
   const normalizedRole = (role || "").toUpperCase().replace(/[\s\-]/g, "_");
   const isSuperAdmin = normalizedRole === "SUPER_ADMIN";
   const isOpsAdmin = normalizedRole === "ADMIN" || normalizedRole === "OPS_MANAGER" || normalizedRole === "OPERATIONS_MANAGER";
   const isInventoryStaff = normalizedRole === "INVENTORY_STAFF";
+  const isTeamLeader = normalizedRole === "TEAM_LEADER";
   const canAccessSuppliers = isSuperAdmin || isOpsAdmin || isInventoryStaff;
 
   const name = currentUser?.name || 'User';
@@ -77,7 +79,7 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
             <line x1="2" y1="12" x2="22" y2="12" />
           </svg>
         ) },
-        { id: "opex", label: "Expense Reporting", visible: isSuperAdmin || isOpsAdmin || isInventoryStaff, icon: (
+        { id: "opex", label: "Transaction Tracker", visible: isSuperAdmin || isOpsAdmin || isInventoryStaff || isTeamLeader, icon: (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="12" y1="1" x2="12" y2="23" />
             <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
@@ -109,6 +111,11 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
             <line x1="18" y1="20" x2="18" y2="10" />
             <line x1="12" y1="20" x2="12" y2="4" />
             <line x1="6" y1="20" x2="6" y2="14" />
+          </svg>
+        ) },
+        { id: "management-category", label: "Management Category", visible: isSuperAdmin, icon: (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
           </svg>
         ) },
         { id: "settings", label: "System Settings", visible: isSuperAdmin, icon: (
@@ -346,6 +353,103 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
                         >
                           <span>Asset Transfer</span>
                         </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              const isOpexGroup = item.id === "opex";
+              const isOpexActive = activeTab === "opex" || activeTab === "opex-reports";
+              const canAccessReports = isSuperAdmin || isOpsAdmin;
+
+              if (isOpexGroup) {
+                const showOpexSubMenu = isOpexHovered || isOpexActive;
+                return (
+                  <div
+                    key={item.id}
+                    onMouseEnter={() => setIsOpexHovered(true)}
+                    onMouseLeave={() => setIsOpexHovered(false)}
+                    style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}
+                  >
+                    <button
+                      onClick={() => onTabChange("opex")}
+                      className="interactive-element"
+                      style={{
+                        display: "flex", alignItems: "center", gap: "0.75rem",
+                        padding: "0.65rem 0.85rem", borderRadius: 10, border: "none",
+                        backgroundColor: isOpexActive ? "#1E293B" : "transparent",
+                        color: isOpexActive ? "#818CF8" : "#94A3B8",
+                        cursor: "pointer", fontSize: "0.85rem",
+                        fontWeight: isOpexActive ? 600 : 500,
+                        textAlign: "left",
+                        transition: "all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)",
+                        width: "100%",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isOpexActive) {
+                          e.currentTarget.style.backgroundColor = "#1E293B";
+                          e.currentTarget.style.color = "#F8FAFC";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isOpexActive) {
+                          e.currentTarget.style.backgroundColor = "transparent";
+                          e.currentTarget.style.color = "#94A3B8";
+                        }
+                      }}
+                    >
+                      <span style={{ color: isOpexActive ? "#818CF8" : "inherit", display: "flex", alignItems: "center" }}>{item.icon}</span>
+                      {isSidebarOpen && (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                          <span>{item.label}</span>
+                          <span style={{ fontSize: "0.65rem", color: isOpexActive ? "#818CF8" : "#64748B" }}>{showOpexSubMenu ? "▾" : "▸"}</span>
+                        </div>
+                      )}
+                    </button>
+
+                    {/* Sub-menu nested directly below Transaction Tracker */}
+                    {isSidebarOpen && showOpexSubMenu && (
+                      <div style={{
+                        display: "flex", flexDirection: "column", gap: "0.2rem",
+                        paddingLeft: "1.5rem", marginTop: "0.2rem", marginBottom: "0.25rem",
+                        borderLeft: "2px solid #1E293B", marginLeft: "1.25rem"
+                      }}>
+                        <button
+                          onClick={() => onTabChange("opex")}
+                          className="interactive-element"
+                          style={{
+                            display: "flex", alignItems: "center", gap: "0.5rem",
+                            padding: "0.45rem 0.65rem", borderRadius: 8, border: "none",
+                            backgroundColor: activeTab === "opex" ? "#1E293B" : "transparent",
+                            color: activeTab === "opex" ? "#818CF8" : "#94A3B8",
+                            cursor: "pointer", fontSize: "0.8rem", fontWeight: activeTab === "opex" ? 700 : 500,
+                            textAlign: "left", transition: "all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)", width: "100%"
+                          }}
+                          onMouseEnter={(e) => { if (activeTab !== "opex") { e.currentTarget.style.backgroundColor = "#1E293B"; e.currentTarget.style.color = "#F8FAFC"; } }}
+                          onMouseLeave={(e) => { if (activeTab !== "opex") { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#94A3B8"; } }}
+                        >
+                          <span>Transaction Tracker</span>
+                        </button>
+
+                        {canAccessReports && (
+                          <button
+                            onClick={() => onTabChange("opex-reports")}
+                            className="interactive-element"
+                            style={{
+                              display: "flex", alignItems: "center", gap: "0.5rem",
+                              padding: "0.45rem 0.65rem", borderRadius: 8, border: "none",
+                              backgroundColor: activeTab === "opex-reports" ? "#1E293B" : "transparent",
+                              color: activeTab === "opex-reports" ? "#818CF8" : "#94A3B8",
+                              cursor: "pointer", fontSize: "0.8rem", fontWeight: activeTab === "opex-reports" ? 700 : 500,
+                              textAlign: "left", transition: "all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)", width: "100%"
+                            }}
+                            onMouseEnter={(e) => { if (activeTab !== "opex-reports") { e.currentTarget.style.backgroundColor = "#1E293B"; e.currentTarget.style.color = "#F8FAFC"; } }}
+                            onMouseLeave={(e) => { if (activeTab !== "opex-reports") { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "#94A3B8"; } }}
+                          >
+                            <span>Executive Rollups & Archives</span>
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

@@ -58,13 +58,17 @@ export const ItemModal = ({
   suppliers = [],
   itemError,
   isSubmittingItem,
-  sites,
-  categories,
-  catalogItems,
+  sites = [],
+  categories = [],
+  catalogItems = [],
   onCancel,
   onSubmit,
 }: ItemModalProps) => {
-  const selectedCategory = categories.find((c) => c.id === itemCategoryId);
+  const safeCategories = Array.isArray(categories) ? categories : [];
+  const safeSites = Array.isArray(sites) ? sites : [];
+  const safeSuppliers = Array.isArray(suppliers) ? suppliers : [];
+  const safeCatalogItems = Array.isArray(catalogItems) ? catalogItems : [];
+  const selectedCategory = safeCategories.find((c) => c?.id === itemCategoryId);
 
   const [itemModel, setItemModel] = useState("");
 
@@ -82,10 +86,10 @@ export const ItemModal = ({
   }, [editingItem, itemModalOpen]);
 
   useEffect(() => {
-    if (itemModalOpen && !itemCategoryId && categories && categories.length > 0) {
-      setItemCategoryId(categories[0].id);
+    if (itemModalOpen && !itemCategoryId && safeCategories.length > 0) {
+      setItemCategoryId(safeCategories[0].id);
     }
-  }, [itemModalOpen, itemCategoryId, categories, setItemCategoryId]);
+  }, [itemModalOpen, itemCategoryId, safeCategories, setItemCategoryId]);
 
   if (!itemModalOpen) return null;
 
@@ -283,18 +287,18 @@ export const ItemModal = ({
                   }}
                 >
                   <option value="" disabled hidden>Select Category</option>
-                  {categories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !c.name.toLowerCase().includes("consumable"))).length > 0 && (
+                  {safeCategories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !(c.name || "").toLowerCase().includes("consumable"))).length > 0 && (
                     <optgroup label="Non-Consumable">
-                      {categories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !c.name.toLowerCase().includes("consumable"))).map((c) => (
+                      {safeCategories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !(c.name || "").toLowerCase().includes("consumable"))).map((c) => (
                         <option key={c.id} value={c.id} style={{ color: "#1e293b" }}>
                           {c.name}
                         </option>
                       ))}
                     </optgroup>
                   )}
-                  {categories.filter(c => c.type === "CONSUMABLE" || c.name.toLowerCase().includes("consumable")).length > 0 && (
+                  {safeCategories.filter(c => c.type === "CONSUMABLE" || (c.name || "").toLowerCase().includes("consumable")).length > 0 && (
                     <optgroup label="Consumable">
-                      {categories.filter(c => c.type === "CONSUMABLE" || c.name.toLowerCase().includes("consumable")).map((c) => (
+                      {safeCategories.filter(c => c.type === "CONSUMABLE" || (c.name || "").toLowerCase().includes("consumable")).map((c) => (
                         <option key={c.id} value={c.id} style={{ color: "#1e293b" }}>
                           {c.name}
                         </option>
@@ -375,7 +379,7 @@ export const ItemModal = ({
             {/* ASSET TAGS PREVIEW FOR BULK NON-CONSUMABLES */}
             {(() => {
               const qtyVal = parseInt(itemQuantity);
-              const selectedCategory = categories.find(c => c.id === itemCategoryId);
+              const selectedCategory = safeCategories.find(c => c?.id === itemCategoryId);
               const isNonConsumable = selectedCategory?.type === "NON_CONSUMABLE";
               if (!editingItem && isNonConsumable && qtyVal > 1) {
                 const tags: string[] = [];
@@ -386,14 +390,14 @@ export const ItemModal = ({
                     tags.push(`${baseSku}-${i}`);
                   }
                 } else {
-                  const site = sites.find(s => s.id === itemSiteId);
+                  const site = safeSites.find(s => s?.id === itemSiteId);
                   const categoryPrefix = (selectedCategory?.prefix || "AST").toUpperCase();
                   const sitePrefix = (site?.prefix || "SYS").toUpperCase();
                   const prefix = `${sitePrefix}-${categoryPrefix}-`;
 
                   let nextNum = 1;
                   const allTags: string[] = [];
-                  catalogItems.forEach(it => {
+                  safeCatalogItems.forEach(it => {
                     if (it.assets) {
                       it.assets.forEach(a => {
                         if (a.tagCode.startsWith(prefix)) {

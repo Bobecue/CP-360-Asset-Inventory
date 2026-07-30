@@ -47,11 +47,12 @@ interface LowStockAlertsTabProps {
 export const LowStockAlertsTab = ({
   isUsingMockData,
   currentUser,
-  sites,
-  categories,
-  catalogItems,
+  sites = [],
+  categories = [],
+  catalogItems = [],
   onRefreshCatalog,
 }: LowStockAlertsTabProps) => {
+  const safeCategories = Array.isArray(categories) ? categories : [];
   const [alerts, setAlerts] = useState<any[]>([]);
   const [stats, setStats] = useState({
     totalAlerts: 0,
@@ -487,18 +488,18 @@ export const LowStockAlertsTab = ({
               <option value="ALL">All Categories</option>
               <option value="NON_CONSUMABLE">💻 All Non-Consumables</option>
               <option value="CONSUMABLE">🟢 All Consumables</option>
-              {categories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !c.name.toLowerCase().includes("consumable"))).length > 0 && (
+              {safeCategories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !(c.name || "").toLowerCase().includes("consumable"))).length > 0 && (
                 <optgroup label="💻 Non-Consumable">
-                  {categories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !c.name.toLowerCase().includes("consumable"))).map((c) => (
+                  {safeCategories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !(c.name || "").toLowerCase().includes("consumable"))).map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
                   ))}
                 </optgroup>
               )}
-              {categories.filter(c => c.type === "CONSUMABLE" || c.name.toLowerCase().includes("consumable")).length > 0 && (
+              {safeCategories.filter(c => c.type === "CONSUMABLE" || (c.name || "").toLowerCase().includes("consumable")).length > 0 && (
                 <optgroup label="🟢 Consumable">
-                  {categories.filter(c => c.type === "CONSUMABLE" || c.name.toLowerCase().includes("consumable")).map((c) => (
+                  {safeCategories.filter(c => c.type === "CONSUMABLE" || (c.name || "").toLowerCase().includes("consumable")).map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>

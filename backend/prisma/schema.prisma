@@ -53,12 +53,16 @@ model Site {
   name            String           @unique
   prefix          String           @unique // e.g. "CEB" for Cebu
   address         String?
+  isActive        Boolean          @default(true)
+  createdByUserId String?
+  createdBy       User?            @relation("SiteCreator", fields: [createdByUserId], references: [id])
   users           User[]
   stockLevels     SiteStock[]
   assets          Asset[]
   purchaseOrders  PurchaseOrder[]
   receivingReports ReceivingReport[]
   opexEntries      OpexEntry[]
+  categoryAuditLogs CategoryAuditLog[]
 
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -103,6 +107,11 @@ model User {
   opexEntriesEntered OpexEntry[]      @relation("OpexEncoder")
   opexEntriesApproved OpexEntry[]     @relation("OpexApprover")
   monthlyCloses       MonthlyClose[]  @relation("OpexLocker")
+  categoriesCreated   ExpenseCategory[] @relation("CategoryCreator")
+  sitesCreated        Site[]            @relation("SiteCreator")
+  categoryAuditPerforms CategoryAuditLog[] @relation("CategoryAuditPerformer")
+  transactionAuditPerforms TransactionAuditLog[] @relation("TransactionAuditPerformer")
+  attachmentsUploaded TransactionAttachment[] @relation("AttachmentUploader")
 
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
@@ -479,46 +488,160 @@ enum OpexStatus {
   REJECTED
 }
 
+enum ExpenseCategoryType {
+  OPEX
+  CAPEX
+}
+
+enum CategoryAuditAction {
+  CREATED
+  RENAMED
+  DEACTIVATED
+  REACTIVATED
+}
+
+model ExpenseCategory {
+  id              String               @id @default(uuid())
+  name            String               @unique // e.g. "MAINTENANCE_REPAIRS"
+  type            ExpenseCategoryType  @default(OPEX)
+  isActive        Boolean              @default(true)
+
+  createdByUserId String?
+  createdBy       User?                @relation("CategoryCreator", fields: [createdByUserId], references: [id])
+
+  opexEntries     OpexEntry[]
+  auditLogs       CategoryAuditLog[]
+
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@map("expense_categories")
+}
+
+model CategoryAuditLog {
+  id                String               @id @default(uuid())
+  categoryId        String?
+  category          ExpenseCategory?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  siteId            String?
+  site              Site?                @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  action            CategoryAuditAction
+  performedByUserId String
+  performedByUser   User                 @relation("CategoryAuditPerformer", fields: [performedByUserId], references: [id])
+  previousValue     String?
+  newValue          String?
+
+  createdAt         DateTime             @default(now())
+
+  @@map("category_audit_logs")
+}
+
 model OpexEntry {
-  id                String       @id @default(uuid())
+  id                String           @id @default(uuid())
   itemDescription   String
   brand             String?
-  unitPrice         Decimal      @db.Decimal(12, 2)
-  qty               Decimal      @db.Decimal(12, 2)
-  unit              OpexUnit     @default(PC)
-  category          OpexCategory @default(OFFICE_SUPPLIES)
-  total             Decimal      @db.Decimal(12, 2)
-  status            OpexStatus   @default(PENDING)
+  unitPrice         Decimal          @db.Decimal(12, 2)
+  qty               Decimal          @db.Decimal(12, 2)
+  unit              OpexUnit         @default(PC)
+  category          OpexCategory     @default(OFFICE_SUPPLIES)
+  total             Decimal          @db.Decimal(12, 2)
+  status            OpexStatus       @default(PENDING)
   sourceDocumentUrl String?
-  transactionDate   DateTime     @default(now())
+  transactionDate   DateTime         @default(now())
   rejectionReason   String?
-  isCapex           Boolean      @default(false)
+  isCapex           Boolean          @default(false)
 
   // Relations & Fallbacks
+  expenseCategoryId String?
+  expenseCategory   ExpenseCategory? @relation(fields: [expenseCategoryId], references: [id], onDelete: SetNull)
+
   supplierId        String?
-  supplier          Supplier?    @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  supplier          Supplier?        @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   supplierName      String?
 
   departmentId      String?
-  department        Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  department        Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   destinationName   String?
 
   siteId            String?
-  site              Site?        @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  site              Site?            @relation(fields: [siteId], references: [id], onDelete: SetNull)
 
   enteredByUserId   String
-  enteredByUser     User         @relation("OpexEncoder", fields: [enteredByUserId], references: [id])
+  enteredByUser     User             @relation("OpexEncoder", fields: [enteredByUserId], references: [id])
 
   approvedByUserId  String?
-  approvedByUser    User?        @relation("OpexApprover", fields: [approvedByUserId], references: [id])
+  approvedByUser    User?            @relation("OpexApprover", fields: [approvedByUserId], references: [id])
 
   monthlyCloseId    String?
-  monthlyClose      MonthlyClose? @relation(fields: [monthlyCloseId], references: [id], onDelete: SetNull)
+  monthlyClose      MonthlyClose?    @relation(fields: [monthlyCloseId], references: [id], onDelete: SetNull)
 
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  isDeleted         Boolean          @default(false)
+  deletedAt         DateTime?
 
+  auditLogs         TransactionAuditLog[]
+  attachments       TransactionAttachment[]
+
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([isDeleted, transactionDate])
+  @@index([isDeleted, status])
+  @@index([isDeleted, isCapex])
+  @@index([isDeleted, siteId])
+  @@index([isDeleted, transactionDate, status, isCapex, siteId])
   @@map("opex_entries")
+}
+
+enum TransactionAuditAction {
+  CREATED
+  EDITED
+  APPROVED
+  REJECTED
+  FLAGGED_FOR_REVIEW
+  DELETED
+  REOPENED
+  ATTACHMENT_ADDED
+  ATTACHMENT_REMOVED
+}
+
+model TransactionAuditLog {
+  id                String                 @id @default(uuid())
+  transactionId     String
+  transaction       OpexEntry              @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  action            TransactionAuditAction
+  performedByUserId String
+  performedByUser   User                   @relation("TransactionAuditPerformer", fields: [performedByUserId], references: [id])
+  performedByRole   String                 // Role snapshot at action time
+
+  fieldChanged      String?                // e.g. "unitPrice", "category", "status"
+  previousValue     String?                // JSON string or string representation
+  newValue          String?                // JSON string or string representation
+  reason            String?                // Justification for edits or rejections
+
+  createdAt         DateTime               @default(now())
+
+  @@map("transaction_audit_logs")
+}
+
+model TransactionAttachment {
+  id                String                 @id @default(uuid())
+  transactionId     String
+  transaction       OpexEntry              @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  fileUrl           String
+  originalFilename  String
+  mimeType          String
+  fileSizeBytes     Int                    @default(0)
+
+  uploadedByUserId  String?
+  uploadedByUser    User?                  @relation("AttachmentUploader", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+
+  isDeleted         Boolean                @default(false)
+  isLegacyUrlOnly   Boolean                @default(false)
+
+  uploadedAt        DateTime               @default(now())
+
+  @@map("transaction_attachments")
 }
 
 model MonthlyClose {

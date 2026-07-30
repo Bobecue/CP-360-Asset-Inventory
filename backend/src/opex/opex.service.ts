@@ -1,11 +1,52 @@
 import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateOpexEntryDto, UpdateOpexEntryDto, ApproveOpexEntryDto, LockMonthDto } from './dto/opex.dto';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
+import { CreateOpexEntryDto, UpdateOpexEntryDto, ApproveOpexEntryDto, LockMonthDto, UnlockMonthDto } from './dto/opex.dto';
 import { Prisma } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
+import { join, extname } from 'path';
+import { OnModuleInit } from '@nestjs/common';
+import * as fs from 'fs';
 
 @Injectable()
-export class OpexService {
-  constructor(private prisma: PrismaService) {}
+export class OpexService implements OnModuleInit {
+  constructor(
+    private prisma: PrismaService,
+    private auditLogsService: AuditLogsService,
+  ) { }
+
+  async onModuleInit() {
+    await this.migrateLegacySourceDocumentUrls();
+  }
+
+  // Migrate legacy sourceDocumentUrl text values into TransactionAttachment records
+  async migrateLegacySourceDocumentUrls() {
+    try {
+      const entries = await this.prisma.opexEntry.findMany({
+        where: {
+          sourceDocumentUrl: { not: null },
+          attachments: { none: {} },
+        },
+      });
+
+      for (const entry of entries) {
+        if (!entry.sourceDocumentUrl) continue;
+        await this.prisma.transactionAttachment.create({
+          data: {
+            transactionId: entry.id,
+            fileUrl: entry.sourceDocumentUrl,
+            originalFilename: entry.sourceDocumentUrl.split('/').pop() || 'Legacy Document Link',
+            mimeType: entry.sourceDocumentUrl.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
+            fileSizeBytes: 0,
+            uploadedByUserId: entry.enteredByUserId,
+            isLegacyUrlOnly: true,
+          },
+        });
+      }
+    } catch (err) {
+      console.error('Failed to migrate legacy sourceDocumentUrl entries:', err);
+    }
+  }
 
   private async resolveUser(userIdentifier?: string) {
     if (!userIdentifier) {
@@ -21,6 +62,40 @@ export class OpexService {
     });
     if (found) return found;
     return this.prisma.user.findFirst({ where: { role: 'SUPER_ADMIN' } });
+  }
+
+  // Role assertion guards
+  private assertNotEmployee(user: any) {
+    if (user.role === 'EMPLOYEE') {
+      throw new ForbiddenException('Access Denied: Employees do not have access to the OPEX/CAPEX module.');
+    }
+  }
+
+  private assertCanApprove(user: any) {
+    this.assertNotEmployee(user);
+    if (user.role === 'INVENTORY_STAFF') {
+      throw new ForbiddenException('Forbidden: Inventory Staff cannot approve or sign off on expense entries.');
+    }
+  }
+
+  private assertCanLock(user: any) {
+    this.assertNotEmployee(user);
+    if (user.role === 'INVENTORY_STAFF' || user.role === 'TEAM_LEADER') {
+      throw new ForbiddenException('Forbidden: Only Ops Managers and Super Admins can lock financial periods.');
+    }
+  }
+
+  private assertCanViewReports(user: any) {
+    this.assertNotEmployee(user);
+    if (user.role === 'INVENTORY_STAFF' || user.role === 'TEAM_LEADER') {
+      throw new ForbiddenException('Forbidden: Only Ops Managers and Super Admins can view executive financial rollups and reports.');
+    }
+  }
+
+  private assertCanUnlock(user: any) {
+    if (user.role !== 'SUPER_ADMIN') {
+      throw new ForbiddenException('Forbidden: Only Super Admin can override or unlock closed financial periods.');
+    }
   }
 
   private getYearMonthStr(date: Date): string {
@@ -43,6 +118,7 @@ export class OpexService {
   async create(dto: CreateOpexEntryDto, userIdentifier?: string) {
     const user = await this.resolveUser(userIdentifier);
     if (!user) throw new ForbiddenException('User not found.');
+    this.assertNotEmployee(user);
 
     const txDate = dto.transactionDate ? new Date(dto.transactionDate) : new Date();
     await this.checkMonthNotLocked(txDate);
@@ -77,19 +153,45 @@ export class OpexService {
         site: true,
         enteredByUser: true,
         approvedByUser: true,
+        attachments: {
+          where: { isDeleted: false },
+          include: { uploadedByUser: true },
+        },
       }
     });
   }
 
-  // Find all with query filters
-  async findAll(query: { year?: number; month?: number; status?: string; isCapex?: boolean }) {
-    const where: Prisma.OpexEntryWhereInput = {};
+  // Find all with query filters + offset pagination
+  async findAll(query: {
+    year?: number;
+    month?: number;
+    status?: string;
+    isCapex?: boolean;
+    siteId?: string;
+    destinationName?: string;
+    page?: number;
+    pageSize?: number;
+  }) {
+    const page = Math.max(1, query.page ?? 1);
+    const pageSize = Math.min(200, Math.max(1, query.pageSize ?? 25));
+    const skip = (page - 1) * pageSize;
+
+    const where: Prisma.OpexEntryWhereInput = {
+      isDeleted: false,
+    };
 
     if (query.status) {
       where.status = query.status as any;
     }
     if (query.isCapex !== undefined) {
       where.isCapex = query.isCapex;
+    }
+    if (query.siteId || query.destinationName) {
+      where.OR = [
+        ...(query.siteId ? [{ siteId: query.siteId }] : []),
+        ...(query.destinationName ? [{ destinationName: query.destinationName }] : []),
+        ...(query.destinationName ? [{ site: { name: query.destinationName } }] : []),
+      ];
     }
     if (query.year && query.month) {
       const startDate = new Date(query.year, query.month - 1, 1);
@@ -100,16 +202,76 @@ export class OpexService {
       };
     }
 
+    const orderBy: Prisma.OpexEntryOrderByWithRelationInput[] = [
+      { transactionDate: 'desc' },
+      { id: 'desc' }, // stable secondary sort to prevent row duplication across pages
+    ];
+
+    const [total, data] = await Promise.all([
+      this.prisma.opexEntry.count({ where }),
+      this.prisma.opexEntry.findMany({
+        where,
+        orderBy,
+        skip,
+        take: pageSize,
+        include: {
+          supplier: true,
+          department: true,
+          site: true,
+          enteredByUser: true,
+          approvedByUser: true,
+          attachments: {
+            where: { isDeleted: false },
+            include: { uploadedByUser: true },
+          },
+        },
+      }),
+    ]);
+
+    return {
+      data,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    };
+  }
+
+  // Fetch ALL entries for a filter set (used by CSV/PDF export — never paginated)
+  async findAllForExport(query: {
+    year?: number;
+    month?: number;
+    status?: string;
+    isCapex?: boolean;
+    siteId?: string;
+    destinationName?: string;
+  }) {
+    const where: Prisma.OpexEntryWhereInput = { isDeleted: false };
+    if (query.status) where.status = query.status as any;
+    if (query.isCapex !== undefined) where.isCapex = query.isCapex;
+    if (query.siteId || query.destinationName) {
+      where.OR = [
+        ...(query.siteId ? [{ siteId: query.siteId }] : []),
+        ...(query.destinationName ? [{ destinationName: query.destinationName }] : []),
+        ...(query.destinationName ? [{ site: { name: query.destinationName } }] : []),
+      ];
+    }
+    if (query.year && query.month) {
+      const startDate = new Date(query.year, query.month - 1, 1);
+      const endDate = new Date(query.year, query.month, 0, 23, 59, 59, 999);
+      where.transactionDate = { gte: startDate, lte: endDate };
+    }
     return this.prisma.opexEntry.findMany({
       where,
-      orderBy: { transactionDate: 'desc' },
+      orderBy: [{ transactionDate: 'desc' }, { id: 'desc' }],
       include: {
         supplier: true,
         department: true,
         site: true,
         enteredByUser: true,
         approvedByUser: true,
-      }
+        attachments: { where: { isDeleted: false }, include: { uploadedByUser: true } },
+      },
     });
   }
 
@@ -123,6 +285,10 @@ export class OpexService {
         enteredByUser: true,
         approvedByUser: true,
         monthlyClose: true,
+        attachments: {
+          where: { isDeleted: false },
+          include: { uploadedByUser: true },
+        },
       }
     });
     if (!entry) throw new NotFoundException(`OPEX Entry #${id} not found.`);
@@ -170,6 +336,10 @@ export class OpexService {
         site: true,
         enteredByUser: true,
         approvedByUser: true,
+        attachments: {
+          where: { isDeleted: false },
+          include: { uploadedByUser: true },
+        },
       }
     });
   }
@@ -181,25 +351,31 @@ export class OpexService {
 
     const user = await this.resolveUser(userIdentifier);
     if (!user) throw new ForbiddenException('Approver user not found.');
+    this.assertCanApprove(user);
 
     // Enforce segregation of duties
-    if (entry.enteredByUserId === user.id) {
-      throw new ForbiddenException('Segregation of Duties: You cannot approve/flag an OPEX entry that you created yourself.');
+    if (entry.enteredByUserId === user.id || (entry.enteredByUser && entry.enteredByUser.name === user.name)) {
+      throw new ForbiddenException('Segregation of Duties: You cannot approve or sign off on an expense entry created under your own user account.');
     }
 
-    // Require sourceDocumentUrl if marking as OK
-    const finalDocUrl = dto.sourceDocumentUrl || entry.sourceDocumentUrl;
-    if (dto.status === 'OK' && !finalDocUrl) {
-      throw new BadRequestException('Validation Error: A source document URL is required before marking an entry as OK.');
+    // Enforce attachment compliance gate for status OK
+    if (dto.status === 'OK') {
+      const activeAttachmentsCount = await this.prisma.transactionAttachment.count({
+        where: { transactionId: id, isDeleted: false },
+      });
+      if (activeAttachmentsCount === 0 && !entry.sourceDocumentUrl) {
+        throw new BadRequestException('Compliance Gate: An expense entry cannot be approved (status = OK) without at least one active source document attachment.');
+      }
     }
 
+    // Update entry status
     return this.prisma.opexEntry.update({
       where: { id },
       data: {
         status: dto.status,
         approvedByUserId: user.id,
         rejectionReason: dto.status === 'REJECTED' ? (dto.rejectionReason || 'Rejected by approver') : null,
-        ...(dto.sourceDocumentUrl && { sourceDocumentUrl: dto.sourceDocumentUrl }),
+        ...(dto.sourceDocumentUrl !== undefined && { sourceDocumentUrl: dto.sourceDocumentUrl }),
       },
       include: {
         supplier: true,
@@ -207,6 +383,10 @@ export class OpexService {
         site: true,
         enteredByUser: true,
         approvedByUser: true,
+        attachments: {
+          where: { isDeleted: false },
+          include: { uploadedByUser: true },
+        },
       }
     });
   }
@@ -215,6 +395,16 @@ export class OpexService {
   async lockMonth(dto: LockMonthDto, userIdentifier?: string) {
     const user = await this.resolveUser(userIdentifier);
     if (!user) throw new ForbiddenException('User not found.');
+    this.assertCanLock(user);
+
+    if (!dto.password || !dto.password.trim()) {
+      throw new BadRequestException('Account password is required to lock a financial period.');
+    }
+
+    const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
+    if (!isPasswordValid) {
+      throw new BadRequestException('Invalid account password. Authorization failed.');
+    }
 
     const yearMonth = `${dto.year}-${String(dto.month).padStart(2, '0')}`;
     const existing = await this.prisma.monthlyClose.findUnique({ where: { yearMonth } });
@@ -247,19 +437,14 @@ export class OpexService {
       throw new BadRequestException(`Cannot lock month ${yearMonth}: ${pendingEntries.length} entry/entries are still PENDING.`);
     }
 
-    const okWithoutDoc = entries.filter(e => e.status === 'OK' && !e.sourceDocumentUrl);
-    if (okWithoutDoc.length > 0) {
-      throw new BadRequestException(`Cannot lock month ${yearMonth}: ${okWithoutDoc.length} OK entry/entries are missing source documents.`);
-    }
-
     // Generate executive summary & rollups for snapshot
     const rollup = this.calculateRollupFromEntries(entries);
-    
+
     // Get prior month rollup for MoM delta calculation
     const priorDate = new Date(dto.year, dto.month - 2, 1);
     const priorYearMonth = `${priorDate.getFullYear()}-${String(priorDate.getMonth() + 1).padStart(2, '0')}`;
     const priorClose = await this.prisma.monthlyClose.findUnique({ where: { yearMonth: priorYearMonth } });
-    
+
     let momDelta = 0;
     let priorTotal = 0;
     if (priorClose && (priorClose.summarySnapshot as any)?.executiveSummary) {
@@ -311,13 +496,74 @@ export class OpexService {
     });
   }
 
+  // 3b. Month unlock / override (Super Admin only)
+  async unlockMonth(dto: UnlockMonthDto, userIdentifier?: string) {
+    const user = await this.resolveUser(userIdentifier);
+    if (!user) throw new ForbiddenException('User not found.');
+    this.assertCanUnlock(user);
+
+    if (!dto.password || !dto.password.trim()) {
+      throw new BadRequestException('Account password is required to unlock a closed financial period.');
+    }
+
+    const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
+    if (!isPasswordValid) {
+      throw new BadRequestException('Invalid account password. Authorization failed.');
+    }
+
+    if (!dto.reason || !dto.reason.trim()) {
+      throw new BadRequestException('An explicit justification reason is required to unlock a closed period.');
+    }
+
+    const yearMonth = `${dto.year}-${String(dto.month).padStart(2, '0')}`;
+    const existing = await this.prisma.monthlyClose.findUnique({ where: { yearMonth } });
+    if (!existing) {
+      throw new NotFoundException(`Month ${yearMonth} is not locked.`);
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.opexEntry.updateMany({
+        where: { monthlyCloseId: existing.id },
+        data: { monthlyCloseId: null },
+      });
+
+      await tx.monthlyClose.delete({
+        where: { id: existing.id },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          action: 'OPEX_MONTH_UNLOCK_OVERRIDE',
+          details: `Super Admin ${user.name} (${user.email}) unlocked closed financial period ${yearMonth}. Reason: ${dto.reason}`,
+          userId: user.id,
+        },
+      });
+
+      return { message: `Financial period ${yearMonth} unlocked successfully.`, yearMonth };
+    });
+  }
+
   // 4. Rollup / Report Generation
-  async getRollupReport(year: number, month: number) {
+  async getRollupReport(year: number, month: number, userIdentifier?: string, siteId?: string, destinationName?: string) {
+    const user = await this.resolveUser(userIdentifier);
+    if (!user) throw new ForbiddenException('User not found.');
+    this.assertCanViewReports(user);
+
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 
+    const siteWhere: Prisma.OpexEntryWhereInput = {};
+    if (siteId || destinationName) {
+      siteWhere.OR = [
+        ...(siteId ? [{ siteId }] : []),
+        ...(destinationName ? [{ destinationName }] : []),
+        ...(destinationName ? [{ site: { name: destinationName } }] : []),
+      ];
+    }
+
     const entries = await this.prisma.opexEntry.findMany({
       where: {
+        ...siteWhere,
         transactionDate: {
           gte: startDate,
           lte: endDate,
@@ -339,6 +585,7 @@ export class OpexService {
 
     const priorEntries = await this.prisma.opexEntry.findMany({
       where: {
+        ...siteWhere,
         transactionDate: {
           gte: priorStartDate,
           lte: priorEndDate,
@@ -400,7 +647,7 @@ export class OpexService {
     return archive;
   }
 
-  // Helper rollup calculation
+  // Helper rollup calculation — strictly counts approved/OK transactions
   private calculateRollupFromEntries(entries: any[]) {
     let totalOpex = 0;
     let totalCapex = 0;
@@ -409,7 +656,10 @@ export class OpexService {
     const supplierMap: Record<string, number> = {};
     const categoryMap: Record<string, number> = {};
 
-    for (const e of entries) {
+    // Only include transactions that are approved / status === 'OK'
+    const approvedEntries = entries.filter(e => e.status === 'OK');
+
+    for (const e of approvedEntries) {
       const amt = Number(e.total);
       if (e.isCapex) {
         totalCapex += amt;
@@ -432,5 +682,169 @@ export class OpexService {
     const byCategory = Object.entries(categoryMap).map(([name, total]) => ({ category: name, total })).sort((a, b) => b.total - a.total);
 
     return { totalOpex, totalCapex, byDestination, bySupplier, byCategory };
+  }
+
+  // Upload document attachment file (PDF, JPG, PNG, HEIC)
+  async uploadAttachment(transactionId: string, file: any, userIdentifier?: string) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded.');
+    }
+
+    const entry = await this.findOne(transactionId);
+    await this.checkMonthNotLocked(entry.transactionDate);
+
+    const user = await this.resolveUser(userIdentifier);
+    if (!user) throw new ForbiddenException('User not found.');
+
+    // Validate file type (PDF, JPG, PNG, HEIC)
+    const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.heic'];
+    const ext = extname(file.originalname).toLowerCase();
+    if (!allowedExtensions.includes(ext)) {
+      throw new BadRequestException(`Invalid file type (${ext}). Only PDF, JPG, PNG, and HEIC files are accepted.`);
+    }
+
+    // Max 10MB check
+    if (file.size > 10 * 1024 * 1024) {
+      throw new BadRequestException('File size exceeds the maximum limit of 10MB.');
+    }
+
+    // Save file on local disk
+    const relativeDir = join('uploads', 'attachments', transactionId);
+    const absoluteDir = join(process.cwd(), relativeDir);
+    if (!fs.existsSync(absoluteDir)) {
+      fs.mkdirSync(absoluteDir, { recursive: true });
+    }
+
+    const filename = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    const absolutePath = join(absoluteDir, filename);
+    fs.writeFileSync(absolutePath, file.buffer);
+
+    const hostUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+    
+    // Create record with dynamic stream URL
+    const attachment = await this.prisma.transactionAttachment.create({
+      data: {
+        transactionId,
+        fileUrl: `${hostUrl}/opex/attachments/temp/file`,
+        originalFilename: file.originalname,
+        mimeType: file.mimetype || 'application/octet-stream',
+        fileSizeBytes: file.size || 0,
+        uploadedByUserId: user.id,
+      },
+      include: {
+        uploadedByUser: true,
+      },
+    });
+
+    const fileUrl = `${hostUrl}/opex/attachments/${attachment.id}/file`;
+    const updatedAttachment = await this.prisma.transactionAttachment.update({
+      where: { id: attachment.id },
+      data: { fileUrl },
+      include: { uploadedByUser: true },
+    });
+
+    // Write ATTACHMENT_ADDED audit log entry
+    await this.prisma.transactionAuditLog.create({
+      data: {
+        transactionId,
+        action: 'ATTACHMENT_ADDED',
+        performedByUserId: user.id,
+        performedByRole: user.role || 'INVENTORY_STAFF',
+        newValue: file.originalname,
+      },
+    });
+
+    return updatedAttachment;
+  }
+
+  // Get authenticated attachment file stream from disk with role access enforcement
+  async getAttachmentFile(attachmentId: string, userIdentifier?: string) {
+    const user = await this.resolveUser(userIdentifier);
+    if (!user) throw new ForbiddenException('User not authenticated.');
+
+    // 1. Employee role fully blocked
+    this.assertNotEmployee(user);
+
+    const attachment = await this.prisma.transactionAttachment.findUnique({
+      where: { id: attachmentId },
+      include: { transaction: true },
+    });
+
+    if (!attachment || attachment.isDeleted) {
+      throw new NotFoundException(`Attachment #${attachmentId} not found.`);
+    }
+
+    // 2. Inventory Staff limited to entries created under their account or uploaded by them
+    if (user.role === 'INVENTORY_STAFF') {
+      if (attachment.transaction.enteredByUserId !== user.id && attachment.uploadedByUserId !== user.id) {
+        throw new ForbiddenException('Access Denied: Inventory Staff can only view attachments for expense entries created or uploaded by their account.');
+      }
+    }
+
+    const relativeDir = join('uploads', 'attachments', attachment.transactionId);
+    const absoluteDir = join(process.cwd(), relativeDir);
+    
+    // Find matching file on disk
+    if (!fs.existsSync(absoluteDir)) {
+      throw new NotFoundException('Attachment directory not found on disk.');
+    }
+
+    const files = fs.readdirSync(absoluteDir);
+    const matchingFile = files.find(f => f.includes(attachment.originalFilename.replace(/[^a-zA-Z0-9._-]/g, '_')));
+    const absolutePath = matchingFile ? join(absoluteDir, matchingFile) : join(absoluteDir, files[0]);
+
+    if (!fs.existsSync(absolutePath)) {
+      throw new NotFoundException('Attachment file not found on disk.');
+    }
+
+    return { attachment, absolutePath };
+  }
+
+  // Remove document attachment (soft delete)
+  async removeAttachment(transactionId: string, attachmentId: string, reason?: string, userIdentifier?: string) {
+    const entry = await this.findOne(transactionId);
+    await this.checkMonthNotLocked(entry.transactionDate);
+
+    const user = await this.resolveUser(userIdentifier);
+    if (!user) throw new ForbiddenException('User not found.');
+
+    const attachment = await this.prisma.transactionAttachment.findUnique({
+      where: { id: attachmentId },
+    });
+    if (!attachment || attachment.transactionId !== transactionId) {
+      throw new NotFoundException(`Attachment #${attachmentId} not found.`);
+    }
+
+    // Deleting an attachment on an approved entry requires a justification reason
+    if (entry.status === 'OK' && (!reason || !reason.trim())) {
+      throw new BadRequestException('A justification reason is required to remove an attachment from an approved expense entry.');
+    }
+
+    const updated = await this.prisma.transactionAttachment.update({
+      where: { id: attachmentId },
+      data: { isDeleted: true },
+    });
+
+    // Write ATTACHMENT_REMOVED audit log entry
+    await this.prisma.transactionAuditLog.create({
+      data: {
+        transactionId,
+        action: 'ATTACHMENT_REMOVED',
+        performedByUserId: user.id,
+        performedByRole: user.role || 'INVENTORY_STAFF',
+        previousValue: attachment.originalFilename,
+        reason: reason || null,
+      },
+    });
+
+    return updated;
+  }
+
+  async remove(id: string) {
+    return this.prisma.opexEntry.delete({ where: { id } });
+  }
+
+  async removeAll() {
+    return this.prisma.opexEntry.deleteMany({});
   }
 }

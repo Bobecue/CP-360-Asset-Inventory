@@ -81,7 +81,7 @@ export const CatalogTab = ({
   catalogItems,
   setCatalogItems,
   sites,
-  categories,
+  categories = [],
   selectedSiteId,
   setSelectedSiteId,
   catalogSearch,
@@ -113,6 +113,7 @@ export const CatalogTab = ({
   activeSubTab = "inventory",
   onUpdateCatalog,
 }: CatalogTabProps) => {
+  const safeCategories = Array.isArray(categories) ? categories : [];
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
 
   // Asset Deployments Sub-module states
@@ -1232,18 +1233,18 @@ export const CatalogTab = ({
                   <option value="ALL">All Categories</option>
                   <option value="NON_CONSUMABLE">All Non-Consumables</option>
                   <option value="CONSUMABLE">All Consumables</option>
-                  {categories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !c.name.toLowerCase().includes("consumable"))).length > 0 && (
+                  {safeCategories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !(c.name || "").toLowerCase().includes("consumable"))).length > 0 && (
                     <optgroup label="Non-Consumable">
-                      {categories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !c.name.toLowerCase().includes("consumable"))).map((c) => (
+                      {safeCategories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !(c.name || "").toLowerCase().includes("consumable"))).map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}
                         </option>
                       ))}
                     </optgroup>
                   )}
-                  {categories.filter(c => c.type === "CONSUMABLE" || c.name.toLowerCase().includes("consumable")).length > 0 && (
+                  {safeCategories.filter(c => c.type === "CONSUMABLE" || (c.name || "").toLowerCase().includes("consumable")).length > 0 && (
                     <optgroup label="Consumable">
-                      {categories.filter(c => c.type === "CONSUMABLE" || c.name.toLowerCase().includes("consumable")).map((c) => (
+                      {safeCategories.filter(c => c.type === "CONSUMABLE" || (c.name || "").toLowerCase().includes("consumable")).map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}
                         </option>
@@ -1421,7 +1422,7 @@ export const CatalogTab = ({
                   }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                  + Add Asset
+                  Add Asset
                 </button>
               )}
             </div>

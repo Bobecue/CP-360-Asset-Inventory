@@ -1,112 +1,300 @@
-import { Injectable, ConflictException, NotFoundException, OnModuleInit } from "@nestjs/common";
-import { PrismaService } from "../prisma/prisma.service";
-import { CategoryType } from "@prisma/client";
+import { Injectable, ForbiddenException, NotFoundException, BadRequestException, OnModuleInit } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateCategoryDto, UpdateCategoryDto, CreateSiteDto, UpdateSiteDto } from './dto/category.dto';
+import { ExpenseCategoryType, CategoryAuditAction } from '@prisma/client';
 
 @Injectable()
 export class CategoriesService implements OnModuleInit {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async onModuleInit() {
+    await this.seedDefaultCategories();
+  }
+
+  // Helper: Resolve user & assert Super Admin
+  private async assertSuperAdmin(userIdentifier?: string) {
+    if (!userIdentifier) throw new ForbiddenException('Super Admin access required.');
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: userIdentifier },
+          { id: userIdentifier },
+          { name: userIdentifier },
+        ]
+      }
+    });
+
+    if (!user || user.role !== 'SUPER_ADMIN') {
+      throw new ForbiddenException('Access Denied: Management Category configuration is restricted to Super Admin users.');
+    }
+    return user;
+  }
+
+  // Seed default categories & backfill OpexEntry relations
+  async seedDefaultCategories() {
     const defaultCategories = [
-      { name: "Laptops", prefix: "LAP", type: CategoryType.NON_CONSUMABLE, description: "Laptops, MacBooks, and Notebooks" },
-      { name: "Monitors", prefix: "MON", type: CategoryType.NON_CONSUMABLE, description: "Desktop monitors and displays" },
-      { name: "System Units", prefix: "SYS", type: CategoryType.NON_CONSUMABLE, description: "Desktop PCs, System Units, and Workstations" },
-      { name: "RAM", prefix: "RAM", type: CategoryType.NON_CONSUMABLE, description: "Memory modules and RAM sticks" },
-      { name: "SSD / Storage", prefix: "SSD", type: CategoryType.NON_CONSUMABLE, description: "Solid State Drives and hard drives" },
-      { name: "Headsets", prefix: "HDS", type: CategoryType.NON_CONSUMABLE, description: "Audio headsets, earphones, and microphones" },
-      { name: "Keyboards", prefix: "KBD", type: CategoryType.CONSUMABLE, description: "Keyboards and keypads" },
-      { name: "Mice", prefix: "MOU", type: CategoryType.CONSUMABLE, description: "Computer mice and pointers" },
-      { name: "Cables", prefix: "CAB", type: CategoryType.CONSUMABLE, description: "Cables, adapters, and power cords" },
+      { name: 'OFFICE_SUPPLIES', type: ExpenseCategoryType.OPEX },
+      { name: 'MEDICAL_PHARMACY', type: ExpenseCategoryType.OPEX },
+      { name: 'SECURITY_UNIFORM', type: ExpenseCategoryType.OPEX },
+      { name: 'IT_PERIPHERALS', type: ExpenseCategoryType.CAPEX },
+      { name: 'MAINTENANCE_REPAIRS', type: ExpenseCategoryType.OPEX },
+      { name: 'UTILITIES', type: ExpenseCategoryType.OPEX },
+      { name: 'FACILITIES', type: ExpenseCategoryType.CAPEX },
+      { name: 'MISCELLANEOUS', type: ExpenseCategoryType.OPEX },
     ];
 
     for (const cat of defaultCategories) {
-      await this.prisma.assetCategory.upsert({
-        where: { prefix: cat.prefix },
-        update: { type: cat.type, name: cat.name },
-        create: cat,
+      await this.prisma.expenseCategory.upsert({
+        where: { name: cat.name },
+        update: {},
+        create: {
+          name: cat.name,
+          type: cat.type,
+          isActive: true,
+        },
       });
     }
+
+    // Backfill OpexEntry.expenseCategoryId if missing
+    const allCategories = await this.prisma.expenseCategory.findMany();
+    const categoryMap = new Map(allCategories.map(c => [c.name, c.id]));
+
+    const unlinkedEntries = await this.prisma.opexEntry.findMany({
+      where: { expenseCategoryId: null },
+    });
+
+    for (const entry of unlinkedEntries) {
+      const catId = categoryMap.get(entry.category);
+      if (catId) {
+        await this.prisma.opexEntry.update({
+          where: { id: entry.id },
+          data: { expenseCategoryId: catId },
+        });
+      }
+    }
   }
 
-  async findAll() {
-    return this.prisma.assetCategory.findMany({
-      orderBy: { name: "asc" },
-    });
-  }
-
-  async create(data: { name: string; prefix: string; type: CategoryType; description?: string }) {
-    // Check conflicts
-    const existingName = await this.prisma.assetCategory.findUnique({
-      where: { name: data.name },
-    });
-    if (existingName) {
-      throw new ConflictException("A category with this name already exists.");
-    }
-
-    const existingPrefix = await this.prisma.assetCategory.findUnique({
-      where: { prefix: data.prefix.toUpperCase() },
-    });
-    if (existingPrefix) {
-      throw new ConflictException("A category with this prefix already exists.");
-    }
-
-    return this.prisma.assetCategory.create({
-      data: {
-        name: data.name,
-        prefix: data.prefix.toUpperCase(),
-        type: data.type,
-        description: data.description || null,
+  // CATEGORY OPERATIONS
+  async findAllCategories(activeOnly = false) {
+    const where = activeOnly ? { isActive: true } : {};
+    const categories = await this.prisma.expenseCategory.findMany({
+      where,
+      orderBy: { name: 'asc' },
+      include: {
+        _count: {
+          select: { opexEntries: true },
+        },
       },
     });
+
+    return categories.map(c => ({
+      ...c,
+      transactionCount: c._count.opexEntries,
+    }));
   }
 
-  async update(id: string, data: { name?: string; prefix?: string; type?: CategoryType; description?: string }) {
-    const category = await this.prisma.assetCategory.findUnique({ where: { id } });
-    if (!category) {
-      throw new NotFoundException("Category not found.");
-    }
+  async createCategory(dto: CreateCategoryDto, userIdentifier?: string) {
+    const user = await this.assertSuperAdmin(userIdentifier);
 
-    if (data.name) {
-      const existingName = await this.prisma.assetCategory.findUnique({
-        where: { name: data.name },
-      });
-      if (existingName && existingName.id !== id) {
-        throw new ConflictException("A category with this name already exists.");
+    const formattedName = dto.name.trim().toUpperCase().replace(/\s+/g, '_');
+    const existing = await this.prisma.expenseCategory.findUnique({ where: { name: formattedName } });
+    if (existing) throw new BadRequestException(`Category "${formattedName}" already exists.`);
+
+    const category = await this.prisma.expenseCategory.create({
+      data: {
+        name: formattedName,
+        type: dto.type || ExpenseCategoryType.OPEX,
+        isActive: true,
+        createdByUserId: user.id,
+      },
+    });
+
+    await this.prisma.categoryAuditLog.create({
+      data: {
+        categoryId: category.id,
+        action: CategoryAuditAction.CREATED,
+        performedByUserId: user.id,
+        newValue: JSON.stringify({ name: category.name, type: category.type }),
+      },
+    });
+
+    return category;
+  }
+
+  async updateCategory(id: string, dto: UpdateCategoryDto, userIdentifier?: string) {
+    const user = await this.assertSuperAdmin(userIdentifier);
+    const category = await this.prisma.expenseCategory.findUnique({ where: { id } });
+    if (!category) throw new NotFoundException('Expense Category not found.');
+
+    const previousValue = JSON.stringify({ name: category.name, type: category.type, isActive: category.isActive });
+
+    let newName = category.name;
+    if (dto.name && dto.name.trim()) {
+      newName = dto.name.trim().toUpperCase().replace(/\s+/g, '_');
+      if (newName !== category.name) {
+        const dup = await this.prisma.expenseCategory.findUnique({ where: { name: newName } });
+        if (dup) throw new BadRequestException(`Category "${newName}" already exists.`);
       }
     }
 
-    if (data.prefix) {
-      const existingPrefix = await this.prisma.assetCategory.findUnique({
-        where: { prefix: data.prefix.toUpperCase() },
-      });
-      if (existingPrefix && existingPrefix.id !== id) {
-        throw new ConflictException("A category with this prefix already exists.");
-      }
+    let action: CategoryAuditAction = CategoryAuditAction.RENAMED;
+    if (dto.isActive !== undefined && dto.isActive !== category.isActive) {
+      action = dto.isActive ? CategoryAuditAction.REACTIVATED : CategoryAuditAction.DEACTIVATED;
     }
 
-    return this.prisma.assetCategory.update({
+    const updated = await this.prisma.expenseCategory.update({
       where: { id },
       data: {
-        name: data.name,
-        prefix: data.prefix ? data.prefix.toUpperCase() : undefined,
-        type: data.type,
-        description: data.description !== undefined ? (data.description || null) : undefined,
+        name: newName,
+        type: dto.type !== undefined ? dto.type : category.type,
+        isActive: dto.isActive !== undefined ? dto.isActive : category.isActive,
       },
     });
+
+    await this.prisma.categoryAuditLog.create({
+      data: {
+        categoryId: updated.id,
+        action,
+        performedByUserId: user.id,
+        previousValue,
+        newValue: JSON.stringify({ name: updated.name, type: updated.type, isActive: updated.isActive }),
+      },
+    });
+
+    return updated;
   }
 
-  async remove(id: string) {
-    const category = await this.prisma.assetCategory.findUnique({ where: { id } });
-    if (!category) {
-      throw new NotFoundException("Category not found.");
+  async deleteCategory(id: string, userIdentifier?: string) {
+    const user = await this.assertSuperAdmin(userIdentifier);
+    const category = await this.prisma.expenseCategory.findUnique({ where: { id } });
+    if (!category) throw new NotFoundException('Expense Category not found.');
+
+    const updated = await this.prisma.expenseCategory.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    await this.prisma.categoryAuditLog.create({
+      data: {
+        categoryId: category.id,
+        action: CategoryAuditAction.DEACTIVATED,
+        performedByUserId: user.id,
+        previousValue: JSON.stringify({ name: category.name, isActive: true }),
+        newValue: JSON.stringify({ name: category.name, isActive: false }),
+      },
+    });
+
+    return updated;
+  }
+
+  // SITE / LOCATION OPERATIONS
+  async findAllSites(activeOnly = false) {
+    const where = activeOnly ? { isActive: true } : {};
+    const sites = await this.prisma.site.findMany({
+      where,
+      orderBy: { name: 'asc' },
+      include: {
+        _count: {
+          select: { opexEntries: true },
+        },
+      },
+    });
+
+    return sites.map(s => ({
+      ...s,
+      transactionCount: s._count.opexEntries,
+    }));
+  }
+
+  async createSite(dto: CreateSiteDto, userIdentifier?: string) {
+    const user = await this.assertSuperAdmin(userIdentifier);
+
+    const name = dto.name.trim();
+    const existing = await this.prisma.site.findUnique({ where: { name } });
+    if (existing) throw new BadRequestException(`Site "${name}" already exists.`);
+
+    const prefix = dto.prefix?.trim().toUpperCase() || name.substring(0, 3).toUpperCase();
+
+    const site = await this.prisma.site.create({
+      data: {
+        name,
+        prefix,
+        address: dto.address?.trim() || null,
+        isActive: true,
+        createdByUserId: user.id,
+      },
+    });
+
+    await this.prisma.categoryAuditLog.create({
+      data: {
+        siteId: site.id,
+        action: CategoryAuditAction.CREATED,
+        performedByUserId: user.id,
+        newValue: JSON.stringify({ name: site.name, prefix: site.prefix }),
+      },
+    });
+
+    return site;
+  }
+
+  async updateSite(id: string, dto: UpdateSiteDto, userIdentifier?: string) {
+    const user = await this.assertSuperAdmin(userIdentifier);
+    const site = await this.prisma.site.findUnique({ where: { id } });
+    if (!site) throw new NotFoundException('Site not found.');
+
+    const previousValue = JSON.stringify({ name: site.name, prefix: site.prefix, isActive: site.isActive });
+
+    let newName = site.name;
+    if (dto.name && dto.name.trim()) {
+      newName = dto.name.trim();
+      if (newName !== site.name) {
+        const dup = await this.prisma.site.findUnique({ where: { name: newName } });
+        if (dup) throw new BadRequestException(`Site "${newName}" already exists.`);
+      }
     }
 
-    // Check if category contains items
-    const itemsCount = await this.prisma.item.count({ where: { categoryId: id } });
-    if (itemsCount > 0) {
-      throw new ConflictException("Cannot delete category as it is currently associated with catalog items.");
+    let action: CategoryAuditAction = CategoryAuditAction.RENAMED;
+    if (dto.isActive !== undefined && dto.isActive !== site.isActive) {
+      action = dto.isActive ? CategoryAuditAction.REACTIVATED : CategoryAuditAction.DEACTIVATED;
     }
 
-    return this.prisma.assetCategory.delete({ where: { id } });
+    const updated = await this.prisma.site.update({
+      where: { id },
+      data: {
+        name: newName,
+        prefix: dto.prefix ? dto.prefix.trim().toUpperCase() : site.prefix,
+        address: dto.address !== undefined ? dto.address : site.address,
+        isActive: dto.isActive !== undefined ? dto.isActive : site.isActive,
+      },
+    });
+
+    await this.prisma.categoryAuditLog.create({
+      data: {
+        siteId: updated.id,
+        action,
+        performedByUserId: user.id,
+        previousValue,
+        newValue: JSON.stringify({ name: updated.name, prefix: updated.prefix, isActive: updated.isActive }),
+      },
+    });
+
+    return updated;
+  }
+
+  // AUDIT LOGS
+  async getAuditLogs(userIdentifier?: string) {
+    await this.assertSuperAdmin(userIdentifier);
+
+    return this.prisma.categoryAuditLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      include: {
+        category: true,
+        site: true,
+        performedByUser: {
+          select: { id: true, name: true, email: true, role: true },
+        },
+      },
+    });
   }
 }

@@ -24,6 +24,7 @@ import { ComingSoonPlaceholder } from "./_components/ComingSoonPlaceholder";
 import { ItemHistoryModal } from "./_components/modals/ItemHistoryModal";
 import { ReportsTab } from "./_components/ReportsTab";
 import OpexTab from "./_components/OpexTab";
+import ManagementCategoryTab from "./_components/ManagementCategoryTab";
 import { ScanModal } from "./_components/modals/ScanModal";
 import { ScanOperationsTab } from "./_components/ScanOperationsTab";
 import { OfflineWarningScreen } from "./_components/OfflineWarningScreen";
@@ -223,9 +224,9 @@ export default function DashboardPage() {
       (u.name?.toLowerCase() || "").includes(searchLower) ||
       (u.email?.toLowerCase() || "").includes(searchLower) ||
       (u.employeeId?.toLowerCase() || "").includes(searchLower);
-    
+
     const matchesRole = userRoleFilter === "ALL" || u.role === userRoleFilter;
-    
+
     return matchesSearch && matchesRole;
   });
 
@@ -514,9 +515,9 @@ export default function DashboardPage() {
 
   const handleBarcodeScan = (code: string) => {
     let matchedItem = catalogItems.find(it => it.sku.toUpperCase() === code);
-    
+
     if (!matchedItem) {
-      matchedItem = catalogItems.find(it => 
+      matchedItem = catalogItems.find(it =>
         it.assets?.some((a: any) => a.tagCode.toUpperCase() === code)
       );
     }
@@ -630,13 +631,13 @@ export default function DashboardPage() {
           const data = await res.json();
           const storedEmail = typeof window !== "undefined" ? localStorage.getItem("currentUserEmail") : null;
           const matchedUser = storedEmail ? data.find((u: any) => u.email.toLowerCase() === storedEmail.toLowerCase()) : null;
-          
+
           let userToSet = matchedUser;
           if (!userToSet) {
             const admin = data.find((u: any) => u.email === "superadmin@contactpoint360.com");
             userToSet = admin || data[0] || null;
           }
-          
+
           if (userToSet) {
             setCurrentUser(userToSet);
             if (userToSet.role === "EMPLOYEE" || userToSet.role === "TEAM_LEADER") {
@@ -666,11 +667,11 @@ export default function DashboardPage() {
       case "ADMIN":
       case "OPS_MANAGER":
       case "OPERATIONS_MANAGER":
-        return ["dashboard", "catalog", "deployments", "requests", "procurement", "suppliers", "alerts", "scan-ops", "reports"].includes(tab);
+        return ["dashboard", "catalog", "deployments", "requests", "procurement", "suppliers", "alerts", "scan-ops", "reports", "opex", "opex-reports"].includes(tab);
       case "INVENTORY_STAFF":
-        return ["catalog", "deployments", "requests", "procurement", "suppliers", "alerts", "scan-ops", "reports"].includes(tab);
+        return ["catalog", "deployments", "requests", "procurement", "suppliers", "alerts", "scan-ops", "reports", "opex", "opex-reports"].includes(tab);
       case "TEAM_LEADER":
-        return ["catalog", "requests"].includes(tab);
+        return ["catalog", "requests", "opex", "opex-reports"].includes(tab);
       case "EMPLOYEE":
         return ["catalog", "requests"].includes(tab);
       default:
@@ -706,7 +707,7 @@ export default function DashboardPage() {
     urgency: string
   ): Promise<boolean> => {
     if (!currentUser) return false;
-    
+
     let successCount = 0;
     const createdRequests = [];
 
@@ -872,19 +873,19 @@ export default function DashboardPage() {
       const qty = siteStock ? siteStock.quantity : 0;
       const min = siteStock ? siteStock.reorderPoint : 5;
       return [
-        `"${it.name.replace(/"/g, '""')}"`,
-        `"${it.sku.replace(/"/g, '""')}"`,
+        `"${(it.name || "").replace(/"/g, '""')}"`,
+        `"${(it.sku || "").replace(/"/g, '""')}"`,
         `"${(it.category?.name || "").replace(/"/g, '""')}"`,
         it.category?.type || "",
-        it.unitPrice.toString(),
+        (it.unitPrice ?? 0).toString(),
         qty.toString(),
         min.toString()
       ];
     });
 
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF"
       + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-      
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -1329,7 +1330,7 @@ export default function DashboardPage() {
       if (isUsingMockData) {
         const category = categories.find(c => c.id === itemCategoryId);
         const categoryPrefix = category?.prefix || "AST";
-        
+
         const prefix = `AST-${categoryPrefix.toUpperCase()}-`;
         let nextNum = 1;
         const matchingItems = catalogItems.filter(it => it.sku.startsWith(prefix));
@@ -1371,7 +1372,7 @@ export default function DashboardPage() {
         if ((itemName || "").trim() !== editingItem.name) changes.push(`Name: "${editingItem.name}" -> "${(itemName || "").trim()}"`);
         if (priceNum !== editingItem.unitPrice) changes.push(`Unit Price: ${editingItem.unitPrice} -> ${priceNum}`);
         if (leadTimeNum !== editingItem.leadTimeDays) changes.push(`Lead Time: ${editingItem.leadTimeDays} -> ${leadTimeNum}`);
-        
+
         if (changes.length > 0) {
           const newLog = {
             id: `mock-log-${Date.now()}`,
@@ -1392,12 +1393,12 @@ export default function DashboardPage() {
           prev.map((it) =>
             it.id === editingItem.id
               ? {
-                  ...it,
-                  ...payload,
-                  sku: finalSku,
-                  category: selectedCategory || it.category,
-                  supplier: selectedSupplier || (itemSupplierId ? { id: itemSupplierId, name: "Assigned Supplier" } : null),
-                }
+                ...it,
+                ...payload,
+                sku: finalSku,
+                category: selectedCategory || it.category,
+                supplier: selectedSupplier || (itemSupplierId ? { id: itemSupplierId, name: "Assigned Supplier" } : null),
+              }
               : it
           )
         );
@@ -1499,7 +1500,7 @@ export default function DashboardPage() {
         const method = editingItem ? "PATCH" : "POST";
         const res = await fetch(url, {
           method,
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "x-user-id": currentUser?.id || ""
           },
@@ -1620,7 +1621,7 @@ export default function DashboardPage() {
                 const qtyToRetire = oldQty - qty;
                 const retireCondition = reason === "DAMAGED_OR_BROKEN" ? "DAMAGED"
                   : reason === "LOST_OR_STOLEN" ? "LOST"
-                  : "RETIRED";
+                    : "RETIRED";
                 const availableAtSite = updatedAssets
                   .filter((a: any) => a.siteId === stockSiteId && a.status === "AVAILABLE")
                   .sort((a: any, b: any) => (a.id < b.id ? -1 : 1)); // oldest first by id
@@ -1677,7 +1678,7 @@ export default function DashboardPage() {
         // Backend auto-handles asset tag creation/retirement — just send quantity, reason, comments
         const res = await fetch(`http://localhost:3001/items/${stockItem.id}/stock`, {
           method: "PATCH",
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "x-user-id": currentUser?.id || ""
           },
@@ -2148,6 +2149,22 @@ export default function DashboardPage() {
         return (
           <OpexTab
             currentUser={currentUser}
+            sites={sites}
+            initialSubTab="tracker"
+          />
+        );
+      case "opex-reports":
+        return (
+          <OpexTab
+            currentUser={currentUser}
+            sites={sites}
+            initialSubTab="reports"
+          />
+        );
+      case "management-category":
+        return (
+          <ManagementCategoryTab
+            currentUser={currentUser}
           />
         );
       default:
@@ -2187,7 +2204,7 @@ export default function DashboardPage() {
       />
 
       {isSidebarOpen && (
-        <div 
+        <div
           className="mobile-backdrop"
           onClick={() => setIsSidebarOpen(false)}
         />
@@ -2225,7 +2242,7 @@ export default function DashboardPage() {
           flexDirection: "column",
           gap: "1.5rem",
         }}>
-          <div className="tab-content-animate" key={activeTab}>
+          <div className="tab-content-animate" key={activeTab} style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: "100%", width: "100%" }}>
             {renderActiveTab()}
           </div>
         </main>
@@ -2516,9 +2533,9 @@ export default function DashboardPage() {
           overflow: "hidden",
         }}>
           {toastMessage.type === "success" ? (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
           ) : (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
           )}
           {toastMessage.text}
           <div className="toast-timer" />
