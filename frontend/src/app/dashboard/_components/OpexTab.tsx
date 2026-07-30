@@ -139,12 +139,18 @@ export default function OpexTab({ currentUser, sites = [], initialSubTab = "trac
   const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
   const [activeArchiveDropdown, setActiveArchiveDropdown] = useState<string | null>(null);
 
+  // Date Range filter states
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
+
   const getExportQueryString = () => {
     let query = `year=${selectedYear}&month=${selectedMonth}`;
     if (statusFilter !== "ALL") query += `&status=${statusFilter}`;
     if (capexFilter !== "ALL") query += `&isCapex=${capexFilter === "CAPEX"}`;
     if (siteFilter !== "ALL") query += `&destinationName=${encodeURIComponent(siteFilter)}`;
     if (searchTerm && searchTerm.trim()) query += `&search=${encodeURIComponent(searchTerm.trim())}`;
+    if (filterStartDate) query += `&startDate=${filterStartDate}`;
+    if (filterEndDate) query += `&endDate=${filterEndDate}`;
     return query;
   };
 
@@ -213,6 +219,8 @@ export default function OpexTab({ currentUser, sites = [], initialSubTab = "trac
       if (statusFilter !== "ALL") query += `&status=${statusFilter}`;
       if (capexFilter !== "ALL") query += `&isCapex=${capexFilter === "CAPEX"}`;
       if (siteFilter !== "ALL") query += `&destinationName=${encodeURIComponent(siteFilter)}`;
+      if (filterStartDate) query += `&startDate=${filterStartDate}`;
+      if (filterEndDate) query += `&endDate=${filterEndDate}`;
       query += `&page=${page}&pageSize=${size}`;
 
       const res = await fetch(`${backendUrl}/opex/entries?${query}`);
@@ -232,6 +240,8 @@ export default function OpexTab({ currentUser, sites = [], initialSubTab = "trac
     try {
       let query = `year=${selectedYear}&month=${selectedMonth}`;
       if (siteFilter !== "ALL") query += `&destinationName=${encodeURIComponent(siteFilter)}`;
+      if (filterStartDate) query += `&startDate=${filterStartDate}`;
+      if (filterEndDate) query += `&endDate=${filterEndDate}`;
 
       const res = await fetch(`${backendUrl}/opex/report?${query}`);
       const json = await res.json();
@@ -259,7 +269,7 @@ export default function OpexTab({ currentUser, sites = [], initialSubTab = "trac
     fetchArchives();
     fetchSuppliers();
     fetchActiveCategories();
-  }, [selectedYear, selectedMonth, statusFilter, capexFilter, siteFilter]);
+  }, [selectedYear, selectedMonth, statusFilter, capexFilter, siteFilter, filterStartDate, filterEndDate]);
 
   // When page or pageSize changes (not caused by filter reset)
   useEffect(() => {
@@ -850,6 +860,35 @@ export default function OpexTab({ currentUser, sites = [], initialSubTab = "trac
                 <option key={m} value={idx + 1}>{m}</option>
               ))}
             </select>
+            <div className="flex items-center gap-1.5 border-l border-gray-200 dark:border-gray-700 pl-2">
+              <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase">Range:</span>
+              <input
+                type="date"
+                value={filterStartDate}
+                onChange={e => setFilterStartDate(e.target.value)}
+                className="text-xs py-1 px-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none"
+              />
+              <span className="text-gray-400 text-[10px]">to</span>
+              <input
+                type="date"
+                value={filterEndDate}
+                onChange={e => setFilterEndDate(e.target.value)}
+                className="text-xs py-1 px-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none"
+              />
+              {(filterStartDate || filterEndDate) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterStartDate("");
+                    setFilterEndDate("");
+                  }}
+                  className="text-[10px] font-bold text-rose-500 hover:text-rose-600 bg-rose-50 dark:bg-rose-950/20 px-1.5 py-1 rounded"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+
             {activeSubTab === "tracker" && (
               <>
                 <select

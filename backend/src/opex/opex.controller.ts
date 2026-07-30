@@ -109,6 +109,8 @@ export class OpexController {
     @Query('isCapex') isCapex?: string,
     @Query('siteId') siteId?: string,
     @Query('destinationName') destinationName?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
   ) {
     const data = await this.opexService.findAllForExport({
       year: year ? parseInt(year, 10) : undefined,
@@ -117,6 +119,8 @@ export class OpexController {
       isCapex: isCapex !== undefined ? isCapex === 'true' : undefined,
       siteId: siteId || undefined,
       destinationName: destinationName || undefined,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
     });
     return { data, message: 'OPEX export fetched successfully', statusCode: 200 };
   }
@@ -157,6 +161,8 @@ export class OpexController {
     @Query('month') monthStr: string,
     @Query('siteId') siteId?: string,
     @Query('destinationName') destinationName?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
     @ReqCtx() req?: any,
   ) {
     const userIdentifier = req?.headers['x-user'] || 'superadmin@contactpoint360.com';
@@ -164,7 +170,7 @@ export class OpexController {
     const year = yearStr ? parseInt(yearStr, 10) : now.getFullYear();
     const month = monthStr ? parseInt(monthStr, 10) : now.getMonth() + 1;
 
-    const data = await this.opexService.getRollupReport(year, month, userIdentifier, siteId, destinationName);
+    const data = await this.opexService.getRollupReport(year, month, userIdentifier, siteId, destinationName, startDate, endDate);
     return { data, message: 'OPEX rollup report generated successfully', statusCode: 200 };
   }
 
