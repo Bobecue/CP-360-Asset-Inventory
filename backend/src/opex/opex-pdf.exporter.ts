@@ -154,10 +154,11 @@ export function generateExecutiveSummaryPdfBuffer(options: ExecutiveSummaryPdfOp
       doc.on('end', () => resolve(Buffer.concat(buffers)));
 
       const r = options.reportData || {};
-      const totalOpex = Number(r.totalOpex || 0);
-      const totalCapex = Number(r.totalCapex || 0);
+      const execSummary = r.executiveSummary || {};
+      const totalOpex = Number(execSummary.totalOpex ?? r.totalOpex ?? 0);
+      const totalCapex = Number(execSummary.totalCapex ?? r.totalCapex ?? 0);
       const grandTotal = totalOpex + totalCapex;
-      const momDelta = Number(r.momDeltaPercentage || 0);
+      const momDelta = Number(execSummary.momDeltaPct ?? r.momDeltaPercentage ?? 0);
 
       // Header Banner
       doc.rect(35, 30, 525, 60).fill('#0F172A');
