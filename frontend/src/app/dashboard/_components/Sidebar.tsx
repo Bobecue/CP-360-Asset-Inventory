@@ -361,7 +361,7 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
 
               const isOpexGroup = item.id === "opex";
               const isOpexActive = activeTab === "opex" || activeTab === "opex-reports";
-              const canAccessReports = isSuperAdmin || isOpsAdmin;
+              const canAccessReports = isSuperAdmin || isOpsAdmin || isInventoryStaff;
 
               if (isOpexGroup) {
                 const showOpexSubMenu = isOpexHovered || isOpexActive;

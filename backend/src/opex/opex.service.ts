@@ -88,8 +88,8 @@ export class OpexService implements OnModuleInit {
 
   private assertCanViewReports(user: any) {
     this.assertNotEmployee(user);
-    if (user.role === 'INVENTORY_STAFF' || user.role === 'TEAM_LEADER') {
-      throw new ForbiddenException('Forbidden: Only Ops Managers and Super Admins can view executive financial rollups and reports.');
+    if (user.role === 'TEAM_LEADER') {
+      throw new ForbiddenException('Forbidden: Only Ops Managers, Super Admins, and Inventory Staff can view executive financial rollups and reports.');
     }
   }
 
