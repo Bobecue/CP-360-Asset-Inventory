@@ -128,7 +128,7 @@ export class OpexService implements OnModuleInit {
     const qty = new Prisma.Decimal(dto.qty);
     const total = unitPrice.mul(qty);
 
-    return this.prisma.opexEntry.create({
+    const entry = await this.prisma.opexEntry.create({
       data: {
         itemDescription: dto.itemDescription,
         brand: dto.brand || null,
@@ -160,6 +160,14 @@ export class OpexService implements OnModuleInit {
         },
       }
     });
+
+    await this.auditLogsService.create({
+      action: entry.isCapex ? 'CREATE_CAPEX_ENTRY' : 'CREATE_OPEX_ENTRY',
+      details: `Created expense entry: itemDescription="${entry.itemDescription}", category=${entry.category}, total=₱${Number(entry.total).toLocaleString('en-US')}, site=${entry.destinationName || 'N/A'}`,
+      userId: user.id,
+    });
+
+    return entry;
   }
 
   // Find all with query filters + offset pagination
@@ -312,7 +320,7 @@ export class OpexService implements OnModuleInit {
       await this.checkMonthNotLocked(txDate);
     }
 
-    return this.prisma.opexEntry.update({
+    const updated = await this.prisma.opexEntry.update({
       where: { id },
       data: {
         ...(dto.itemDescription && { itemDescription: dto.itemDescription }),
@@ -343,6 +351,16 @@ export class OpexService implements OnModuleInit {
         },
       }
     });
+
+    if (user) {
+      await this.auditLogsService.create({
+        action: updated.isCapex ? 'UPDATE_CAPEX_ENTRY' : 'UPDATE_OPEX_ENTRY',
+        details: `Updated expense entry: itemDescription="${updated.itemDescription}", category=${updated.category}, total=₱${Number(updated.total).toLocaleString('en-US')}, site=${updated.destinationName || 'N/A'}`,
+        userId: user.id,
+      });
+    }
+
+    return updated;
   }
 
   // 2. Approve/Flag entry — segregation of duties: approver != encoder
@@ -370,7 +388,7 @@ export class OpexService implements OnModuleInit {
     }
 
     // Update entry status
-    return this.prisma.opexEntry.update({
+    const updated = await this.prisma.opexEntry.update({
       where: { id },
       data: {
         status: dto.status,
@@ -390,6 +408,14 @@ export class OpexService implements OnModuleInit {
         },
       }
     });
+
+    await this.auditLogsService.create({
+      action: updated.status === 'OK' ? 'APPROVE_OPEX_ENTRY' : (updated.status === 'REJECTED' ? 'REJECT_OPEX_ENTRY' : 'REVIEW_OPEX_ENTRY'),
+      details: `${updated.status === 'OK' ? 'Approved' : (updated.status === 'REJECTED' ? 'Rejected' : 'Reviewed')} expense entry: itemDescription="${updated.itemDescription}", category=${updated.category}, total=₱${Number(updated.total).toLocaleString('en-US')}${updated.status === 'REJECTED' ? `, Reason: ${updated.rejectionReason || 'No reason provided'}` : ''}`,
+      userId: user.id,
+    });
+
+    return updated;
   }
 
   // 3. Month-end lock & archive snapshot
@@ -470,7 +496,7 @@ export class OpexService implements OnModuleInit {
       entriesSnapshot: entries,
     };
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const close = await tx.monthlyClose.create({
         data: {
           year: dto.year,
@@ -495,6 +521,14 @@ export class OpexService implements OnModuleInit {
 
       return close;
     });
+
+    await this.auditLogsService.create({
+      action: 'LOCK_OPEX_MONTH',
+      details: `Locked financial period: ${yearMonth}, Total spend: ₱${rollup.totalOpex.toLocaleString('en-US')}`,
+      userId: user.id,
+    });
+
+    return result;
   }
 
   // 3b. Month unlock / override (Super Admin only)
@@ -755,6 +789,12 @@ export class OpexService implements OnModuleInit {
       },
     });
 
+    await this.auditLogsService.create({
+      action: 'ADD_OPEX_ATTACHMENT',
+      details: `Added attachment: filename="${file.originalname}" to opexEntryId=${transactionId}`,
+      userId: user.id,
+    });
+
     return updatedAttachment;
   }
 
@@ -838,15 +878,41 @@ export class OpexService implements OnModuleInit {
       },
     });
 
+    await this.auditLogsService.create({
+      action: 'REMOVE_OPEX_ATTACHMENT',
+      details: `Removed attachment: filename="${attachment.originalFilename}" from opexEntryId=${transactionId}${reason ? `, Reason: ${reason}` : ''}`,
+      userId: user.id,
+    });
+
     return updated;
   }
 
-  async remove(id: string) {
-    return this.prisma.opexEntry.delete({ where: { id } });
+  async remove(id: string, userIdentifier?: string) {
+    const entry = await this.findOne(id);
+    await this.checkMonthNotLocked(entry.transactionDate);
+    const user = await this.resolveUser(userIdentifier);
+    const deleted = await this.prisma.opexEntry.delete({ where: { id } });
+    if (user) {
+      await this.auditLogsService.create({
+        action: deleted.isCapex ? 'DELETE_CAPEX_ENTRY' : 'DELETE_OPEX_ENTRY',
+        details: `Deleted expense entry: itemDescription="${deleted.itemDescription}", category=${deleted.category}, total=₱${Number(deleted.total).toLocaleString('en-US')}, site=${deleted.destinationName || 'N/A'}`,
+        userId: user.id,
+      });
+    }
+    return deleted;
   }
 
-  async removeAll() {
-    return this.prisma.opexEntry.deleteMany({});
+  async removeAll(userIdentifier?: string) {
+    const user = await this.resolveUser(userIdentifier);
+    const result = await this.prisma.opexEntry.deleteMany({});
+    if (user) {
+      await this.auditLogsService.create({
+        action: 'DELETE_ALL_OPEX_ENTRIES',
+        details: `Deleted all opex entries from database (${result.count} records)`,
+        userId: user.id,
+      });
+    }
+    return result;
   }
 
   // --- Export Methods ---

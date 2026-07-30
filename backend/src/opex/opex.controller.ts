@@ -49,14 +49,16 @@ export class OpexController {
   }
 
   @Delete('entries/:id')
-  async remove(@Param('id') id: string) {
-    const data = await this.opexService.remove(id);
+  async remove(@Param('id') id: string, @ReqCtx() req: any) {
+    const userIdentifier = req.headers['x-user'] || 'superadmin@contactpoint360.com';
+    const data = await this.opexService.remove(id, userIdentifier);
     return { data, message: 'OPEX entry deleted successfully', statusCode: 200 };
   }
 
   @Delete('entries')
-  async removeAll() {
-    const data = await this.opexService.removeAll();
+  async removeAll(@ReqCtx() req: any) {
+    const userIdentifier = req.headers['x-user'] || 'superadmin@contactpoint360.com';
+    const data = await this.opexService.removeAll(userIdentifier);
     return { data, message: 'All OPEX entries deleted successfully', statusCode: 200 };
   }
 
