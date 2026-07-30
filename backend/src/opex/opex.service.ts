@@ -74,8 +74,8 @@ export class OpexService implements OnModuleInit {
 
   private assertCanApprove(user: any) {
     this.assertNotEmployee(user);
-    if (user.role === 'INVENTORY_STAFF') {
-      throw new ForbiddenException('Forbidden: Inventory Staff cannot approve or sign off on expense entries.');
+    if (user.role === 'TEAM_LEADER') {
+      throw new ForbiddenException('Forbidden: Team Leaders cannot approve or sign off on expense entries.');
     }
   }
 
@@ -775,10 +775,10 @@ export class OpexService implements OnModuleInit {
       throw new NotFoundException(`Attachment #${attachmentId} not found.`);
     }
 
-    // 2. Inventory Staff limited to entries created under their account or uploaded by them
-    if (user.role === 'INVENTORY_STAFF') {
+    // 2. Team Leader limited to entries created under their account or uploaded by them
+    if (user.role === 'TEAM_LEADER') {
       if (attachment.transaction.enteredByUserId !== user.id && attachment.uploadedByUserId !== user.id) {
-        throw new ForbiddenException('Access Denied: Inventory Staff can only view attachments for expense entries created or uploaded by their account.');
+        throw new ForbiddenException('Access Denied: Team Leaders can only view attachments for expense entries created or uploaded by their account.');
       }
     }
 

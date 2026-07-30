@@ -631,7 +631,7 @@ export default function OpexTab({ currentUser, sites = [], initialSubTab = "trac
 
   const canLockMonth = isOpsManager || isSuperAdmin;
   const canViewReports = isOpsManager || isSuperAdmin;
-  const canApproveEntries = isTeamLeader || isOpsManager || isSuperAdmin;
+  const canApproveEntries = isInventoryStaff || isOpsManager || isSuperAdmin;
 
   const handleUnlockMonth = async (archive: MonthlyArchive) => {
     if (!isSuperAdmin) return;

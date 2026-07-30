@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OpexService } from './opex.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
@@ -8,8 +9,12 @@ describe('OpexService Unit Tests', () => {
   let service: OpexService;
   let prisma: PrismaService;
 
-  const mockEncoder = { id: 'user-encoder', email: 'encoder@contactpoint360.com', role: 'EMPLOYEE' };
+  const mockEncoder = { id: 'user-encoder', email: 'encoder@contactpoint360.com', role: 'TEAM_LEADER' };
   const mockApprover = { id: 'user-approver', email: 'approver@contactpoint360.com', role: 'ADMIN' };
+
+  const mockAuditLogsService = {
+    create: jest.fn().mockResolvedValue({ id: 'log-1' }),
+  };
 
   const mockPrismaService = {
     user: {
@@ -27,6 +32,9 @@ describe('OpexService Unit Tests', () => {
       create: jest.fn(),
       findMany: jest.fn(),
     },
+    transactionAttachment: {
+      count: jest.fn().mockResolvedValue(1),
+    },
     $transaction: jest.fn((cb) => cb(mockPrismaService)),
   };
 
@@ -35,6 +43,7 @@ describe('OpexService Unit Tests', () => {
       providers: [
         OpexService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: AuditLogsService, useValue: mockAuditLogsService },
       ],
     }).compile();
 
