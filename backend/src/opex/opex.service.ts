@@ -180,8 +180,6 @@ export class OpexService implements OnModuleInit {
     destinationName?: string;
     page?: number;
     pageSize?: number;
-    startDate?: string;
-    endDate?: string;
   }) {
     const page = Math.max(1, query.page ?? 1);
     const pageSize = Math.min(200, Math.max(1, query.pageSize ?? 25));
@@ -204,17 +202,7 @@ export class OpexService implements OnModuleInit {
         ...(query.destinationName ? [{ site: { name: query.destinationName } }] : []),
       ];
     }
-    if (query.startDate || query.endDate) {
-      const start = query.startDate ? new Date(query.startDate) : new Date(1970, 0, 1);
-      const end = query.endDate ? new Date(query.endDate) : new Date(2100, 0, 1);
-      if (query.endDate) {
-        end.setHours(23, 59, 59, 999);
-      }
-      where.transactionDate = {
-        gte: start,
-        lte: end,
-      };
-    } else if (query.year && query.month) {
+    if (query.year && query.month) {
       const startDate = new Date(query.year, query.month - 1, 1);
       const endDate = new Date(query.year, query.month, 0, 23, 59, 59, 999);
       where.transactionDate = {
@@ -266,8 +254,6 @@ export class OpexService implements OnModuleInit {
     isCapex?: boolean;
     siteId?: string;
     destinationName?: string;
-    startDate?: string;
-    endDate?: string;
   }) {
     const where: Prisma.OpexEntryWhereInput = { isDeleted: false };
     if (query.status) where.status = query.status as any;
@@ -279,14 +265,7 @@ export class OpexService implements OnModuleInit {
         ...(query.destinationName ? [{ site: { name: query.destinationName } }] : []),
       ];
     }
-    if (query.startDate || query.endDate) {
-      const start = query.startDate ? new Date(query.startDate) : new Date(1970, 0, 1);
-      const end = query.endDate ? new Date(query.endDate) : new Date(2100, 0, 1);
-      if (query.endDate) {
-        end.setHours(23, 59, 59, 999);
-      }
-      where.transactionDate = { gte: start, lte: end };
-    } else if (query.year && query.month) {
+    if (query.year && query.month) {
       const startDate = new Date(query.year, query.month - 1, 1);
       const endDate = new Date(query.year, query.month, 0, 23, 59, 59, 999);
       where.transactionDate = { gte: startDate, lte: endDate };
@@ -599,32 +578,14 @@ export class OpexService implements OnModuleInit {
     });
   }
 
-  async getRollupReport(
-    year: number,
-    month: number,
-    userIdentifier?: string,
-    siteId?: string,
-    destinationName?: string,
-    startDateStr?: string,
-    endDateStr?: string
-  ) {
+  // 4. Rollup / Report Generation
+  async getRollupReport(year: number, month: number, userIdentifier?: string, siteId?: string, destinationName?: string) {
     const user = await this.resolveUser(userIdentifier);
     if (!user) throw new ForbiddenException('User not found.');
     this.assertCanViewReports(user);
 
-    let startDate: Date;
-    let endDate: Date;
-
-    if (startDateStr || endDateStr) {
-      startDate = startDateStr ? new Date(startDateStr) : new Date(year, month - 1, 1);
-      endDate = endDateStr ? new Date(endDateStr) : new Date(year, month, 0, 23, 59, 59, 999);
-      if (endDateStr) {
-        endDate.setHours(23, 59, 59, 999);
-      }
-    } else {
-      startDate = new Date(year, month - 1, 1);
-      endDate = new Date(year, month, 0, 23, 59, 59, 999);
-    }
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 
     const siteWhere: Prisma.OpexEntryWhereInput = {};
     if (siteId || destinationName) {
@@ -794,7 +755,7 @@ export class OpexService implements OnModuleInit {
     fs.writeFileSync(absolutePath, file.buffer);
 
     const hostUrl = process.env.BACKEND_URL || 'http://localhost:3001';
-    
+
     // Create record with dynamic stream URL
     const attachment = await this.prisma.transactionAttachment.create({
       data: {
@@ -863,7 +824,7 @@ export class OpexService implements OnModuleInit {
 
     const relativeDir = join('uploads', 'attachments', attachment.transactionId);
     const absoluteDir = join(process.cwd(), relativeDir);
-    
+
     // Find matching file on disk
     if (!fs.existsSync(absoluteDir)) {
       throw new NotFoundException('Attachment directory not found on disk.');
@@ -1078,7 +1039,7 @@ export class OpexService implements OnModuleInit {
     const year = query.year ? parseInt(query.year, 10) : now.getFullYear();
     const month = query.month ? parseInt(query.month, 10) : now.getMonth() + 1;
 
-    const reportData = await this.getRollupReport(year, month, userIdentifier, query.siteId, query.destinationName, query.startDate, query.endDate);
+    const reportData = await this.getRollupReport(year, month, userIdentifier, query.siteId, query.destinationName);
 
     await this.auditLogsService.create({
       action: 'EXPORT_EXECUTIVE_SUMMARY_PDF',
