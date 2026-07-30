@@ -506,7 +506,7 @@ export const SettingsTab = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {categories.map((c, index) => (
+                    {(Array.isArray(categories) ? categories : (categories as any)?.data || []).map((c, index) => (
                       <tr key={c.id} 
                         className="animated-row"
                         style={{ borderBottom: "1px solid #f8fafc", animationDelay: `${index * 0.04}s` }}

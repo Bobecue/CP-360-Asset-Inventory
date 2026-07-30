@@ -387,8 +387,8 @@ export default function DashboardPage() {
     try {
       const res = await fetch("http://localhost:3001/categories");
       if (res.ok) {
-        const data = await res.json();
-        setCategories(data);
+        const json = await res.json();
+        setCategories(Array.isArray(json) ? json : json.data || []);
       } else {
         setIsBackendOffline(true);
       }
