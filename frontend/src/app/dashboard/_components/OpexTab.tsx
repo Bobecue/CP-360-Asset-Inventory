@@ -72,6 +72,11 @@ export default function OpexTab({ currentUser, sites = [], initialSubTab = "trac
   const [isNewEntryOpen, setIsNewEntryOpen] = useState(false);
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<OpexEntry | null>(null);
+  
+  // Approval Modal form states
+  const [approveStatus, setApproveStatus] = useState<"OK" | "FOR_REVIEW" | "REJECTED">("OK");
+  const [approveDocUrl, setApproveDocUrl] = useState("");
+  const [rejectionReason, setRejectionReason] = useState("");
 
   // Lock Month Password Modal states
   const [isLockModalOpen, setIsLockModalOpen] = useState(false);
