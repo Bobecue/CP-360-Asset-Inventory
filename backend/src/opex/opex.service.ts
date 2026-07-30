@@ -7,6 +7,7 @@ import * as bcrypt from 'bcryptjs';
 import { join, extname } from 'path';
 import { OnModuleInit } from '@nestjs/common';
 import * as fs from 'fs';
+import { generateTransactionsPdfBuffer, generateExecutiveSummaryPdfBuffer, generateArchivePdfBuffer } from './opex-pdf.exporter';
 
 @Injectable()
 export class OpexService implements OnModuleInit {
@@ -847,4 +848,187 @@ export class OpexService implements OnModuleInit {
   async removeAll() {
     return this.prisma.opexEntry.deleteMany({});
   }
+
+  // --- Export Methods ---
+
+  async exportTransactionsCSV(query: any, userIdentifier?: string) {
+    const user = await this.resolveUser(userIdentifier);
+    if (!user) throw new ForbiddenException('User not found.');
+    this.assertNotEmployee(user);
+
+    let entries = await this.findAllForExport(query);
+
+    if (query.search && query.search.trim()) {
+      const q = query.search.toLowerCase().trim();
+      entries = entries.filter((e: any) =>
+        (e.itemDescription || '').toLowerCase().includes(q) ||
+        (e.category || '').toLowerCase().includes(q) ||
+        (e.supplierName || e.supplier?.name || '').toLowerCase().includes(q) ||
+        (e.destinationName || e.site?.name || '').toLowerCase().includes(q) ||
+        (e.status || '').toLowerCase().includes(q)
+      );
+    }
+
+    const filterSummary = `Year=${query.year || 'ALL'}, Month=${query.month || 'ALL'}, Status=${query.status || 'ALL'}, Type=${query.isCapex !== undefined ? (query.isCapex ? 'CAPEX' : 'OPEX') : 'ALL'}, Site=${query.destinationName || query.siteId || 'ALL'}, Search="${query.search || 'None'}"`;
+
+    await this.auditLogsService.create({
+      action: 'EXPORT_TRANSACTIONS_CSV',
+      details: `Exported ${entries.length} records. Scope: ${filterSummary}`,
+      userId: user.id,
+    });
+
+    const csvHeaders = [
+      'Date',
+      'Description',
+      'Category',
+      'Type',
+      'Location',
+      'Supplier',
+      'Qty',
+      'Unit Price (PHP)',
+      'Total (PHP)',
+      'Status',
+      'Reviewed By',
+      'Attachment Count',
+    ];
+
+    const lines = [
+      `# ContactPoint 360 - Transaction Tracker Export`,
+      `# Filter Criteria: ${filterSummary}`,
+      `# Exported By: ${user.name || user.email} (${user.role})`,
+      `# Exported At: ${new Date().toLocaleString()}`,
+      csvHeaders.map(h => `"${h}"`).join(','),
+    ];
+
+    entries.forEach((item: any) => {
+      const row = [
+        `"${item.transactionDate ? new Date(item.transactionDate).toLocaleDateString() : ''}"`,
+        `"${(item.itemDescription || '').replace(/"/g, '""')}"`,
+        `"${(item.category || '').replace(/"/g, '""')}"`,
+        item.isCapex ? 'CAPEX' : 'OPEX',
+        `"${(item.destinationName || item.site?.name || 'N/A').replace(/"/g, '""')}"`,
+        `"${(item.supplierName || item.supplier?.name || 'Unassigned').replace(/"/g, '""')}"`,
+        `${Number(item.qty || 0)} ${item.unit || 'PC'}`,
+        Number(item.unitPrice || 0).toFixed(2),
+        Number(item.total || 0).toFixed(2),
+        item.status || 'PENDING',
+        `"${(item.approvedByUser?.name || item.approvedByUser?.email || 'N/A').replace(/"/g, '""')}"`,
+        Array.isArray(item.attachments) ? item.attachments.length : (item.sourceDocumentUrl ? 1 : 0),
+      ];
+      lines.push(row.join(','));
+    });
+
+    return {
+      csvContent: lines.join('\n'),
+      filename: `Transactions_Export_${new Date().toISOString().split('T')[0]}.csv`,
+    };
+  }
+
+  async exportTransactionsPdf(query: any, userIdentifier?: string) {
+    const user = await this.resolveUser(userIdentifier);
+    if (!user) throw new ForbiddenException('User not found.');
+    this.assertNotEmployee(user);
+
+    let entries = await this.findAllForExport(query);
+
+    if (query.search && query.search.trim()) {
+      const q = query.search.toLowerCase().trim();
+      entries = entries.filter((e: any) =>
+        (e.itemDescription || '').toLowerCase().includes(q) ||
+        (e.category || '').toLowerCase().includes(q) ||
+        (e.supplierName || e.supplier?.name || '').toLowerCase().includes(q) ||
+        (e.destinationName || e.site?.name || '').toLowerCase().includes(q) ||
+        (e.status || '').toLowerCase().includes(q)
+      );
+    }
+
+    const filterSummary = `Year=${query.year || 'ALL'}, Month=${query.month || 'ALL'}, Status=${query.status || 'ALL'}, Type=${query.isCapex !== undefined ? (query.isCapex ? 'CAPEX' : 'OPEX') : 'ALL'}, Site=${query.destinationName || query.siteId || 'ALL'}, Search="${query.search || 'None'}"`;
+
+    await this.auditLogsService.create({
+      action: 'EXPORT_TRANSACTIONS_PDF',
+      details: `Exported ${entries.length} records. Scope: ${filterSummary}`,
+      userId: user.id,
+    });
+
+    const pdfBuffer = await generateTransactionsPdfBuffer({
+      title: 'Transaction Tracker Report',
+      filterSummary,
+      generatedBy: `${user.name || user.email} (${user.role})`,
+      generatedAt: new Date().toLocaleString(),
+      entries,
+    });
+
+    return {
+      pdfBuffer,
+      filename: `Transaction_Tracker_Report_${new Date().toISOString().split('T')[0]}.pdf`,
+    };
+  }
+
+  async exportExecutiveSummaryPdf(query: any, userIdentifier?: string) {
+    const user = await this.resolveUser(userIdentifier);
+    if (!user) throw new ForbiddenException('User not found.');
+    this.assertCanViewReports(user);
+
+    const now = new Date();
+    const year = query.year ? parseInt(query.year, 10) : now.getFullYear();
+    const month = query.month ? parseInt(query.month, 10) : now.getMonth() + 1;
+
+    const reportData = await this.getRollupReport(year, month, userIdentifier, query.siteId, query.destinationName);
+
+    await this.auditLogsService.create({
+      action: 'EXPORT_EXECUTIVE_SUMMARY_PDF',
+      details: `Exported executive summary for ${year}-${String(month).padStart(2, '0')}`,
+      userId: user.id,
+    });
+
+    const pdfBuffer = await generateExecutiveSummaryPdfBuffer({
+      year,
+      month,
+      generatedBy: `${user.name || user.email} (${user.role})`,
+      generatedAt: new Date().toLocaleString(),
+      reportData,
+    });
+
+    return {
+      pdfBuffer,
+      filename: `Executive_Summary_${year}_${String(month).padStart(2, '0')}.pdf`,
+    };
+  }
+
+  async exportArchivePdf(yearMonth: string, userIdentifier?: string) {
+    const user = await this.resolveUser(userIdentifier);
+    if (!user) throw new ForbiddenException('User not found.');
+
+    const archive = await this.getArchiveByYearMonth(yearMonth);
+    if (!archive) throw new NotFoundException(`Archive for period ${yearMonth} not found.`);
+
+    const reopenLogs = await this.prisma.auditLog.findMany({
+      where: {
+        action: { in: ['UNLOCK_MONTH', 'LOCK_MONTH'] },
+        details: { contains: yearMonth },
+      },
+      include: { user: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    await this.auditLogsService.create({
+      action: 'EXPORT_LOCKED_ARCHIVE_PDF',
+      details: `Exported historical locked archive snapshot for period ${yearMonth}`,
+      userId: user.id,
+    });
+
+    const pdfBuffer = await generateArchivePdfBuffer({
+      yearMonth,
+      generatedBy: `${user.name || user.email} (${user.role})`,
+      generatedAt: new Date().toLocaleString(),
+      archive,
+      reopenLogs,
+    });
+
+    return {
+      pdfBuffer,
+      filename: `Locked_Archive_${yearMonth}.pdf`,
+    };
+  }
 }
+

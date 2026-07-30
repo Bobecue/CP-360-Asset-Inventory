@@ -177,4 +177,60 @@ export class OpexController {
     const data = await this.opexService.getArchiveByYearMonth(yearMonth);
     return { data, message: `Archive for ${yearMonth} fetched successfully`, statusCode: 200 };
   }
+
+  @Get('export/transactions/csv')
+  async exportTransactionsCSV(
+    @Query() query: any,
+    @ReqCtx() req: any,
+    @Res() res: any,
+  ) {
+    const userIdentifier = req.headers['x-user'] || 'superadmin@contactpoint360.com';
+    const { csvContent, filename } = await this.opexService.exportTransactionsCSV(query, userIdentifier);
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.send(csvContent);
+  }
+
+  @Get('export/transactions/pdf')
+  async exportTransactionsPdf(
+    @Query() query: any,
+    @ReqCtx() req: any,
+    @Res() res: any,
+  ) {
+    const userIdentifier = req.headers['x-user'] || 'superadmin@contactpoint360.com';
+    const { pdfBuffer, filename } = await this.opexService.exportTransactionsPdf(query, userIdentifier);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.send(pdfBuffer);
+  }
+
+  @Get('export/summary/pdf')
+  async exportExecutiveSummaryPdf(
+    @Query() query: any,
+    @ReqCtx() req: any,
+    @Res() res: any,
+  ) {
+    const userIdentifier = req.headers['x-user'] || 'superadmin@contactpoint360.com';
+    const { pdfBuffer, filename } = await this.opexService.exportExecutiveSummaryPdf(query, userIdentifier);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.send(pdfBuffer);
+  }
+
+  @Get('export/archives/:yearMonth/pdf')
+  async exportArchivePdf(
+    @Param('yearMonth') yearMonth: string,
+    @ReqCtx() req: any,
+    @Res() res: any,
+  ) {
+    const userIdentifier = req.headers['x-user'] || 'superadmin@contactpoint360.com';
+    const { pdfBuffer, filename } = await this.opexService.exportArchivePdf(yearMonth, userIdentifier);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.send(pdfBuffer);
+  }
 }

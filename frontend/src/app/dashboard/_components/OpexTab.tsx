@@ -129,10 +129,51 @@ export default function OpexTab({ currentUser, sites = [], initialSubTab = "trac
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
 
-  // Approval Modal form
-  const [approveStatus, setApproveStatus] = useState<"OK" | "FOR_REVIEW" | "REJECTED">("OK");
-  const [approveDocUrl, setApproveDocUrl] = useState("");
-  const [rejectionReason, setRejectionReason] = useState("");
+  // Export states & helpers
+  const [isExporting, setIsExporting] = useState(false);
+
+  const getExportQueryString = () => {
+    let query = `year=${selectedYear}&month=${selectedMonth}`;
+    if (statusFilter !== "ALL") query += `&status=${statusFilter}`;
+    if (capexFilter !== "ALL") query += `&isCapex=${capexFilter === "CAPEX"}`;
+    if (siteFilter !== "ALL") query += `&destinationName=${encodeURIComponent(siteFilter)}`;
+    if (searchTerm && searchTerm.trim()) query += `&search=${encodeURIComponent(searchTerm.trim())}`;
+    return query;
+  };
+
+  const handleExportDownload = async (endpointPath: string, fallbackFilename: string) => {
+    setIsExporting(true);
+    try {
+      const res = await fetch(`${backendUrl}/opex/${endpointPath}`, {
+        headers: {
+          "x-user": currentUser?.email || "superadmin@contactpoint360.com",
+        },
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        alert(`Export failed: ${json.message || res.statusText}`);
+        return;
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get("content-disposition");
+      let filename = fallbackFilename;
+      if (disposition && disposition.includes("filename=")) {
+        filename = disposition.split("filename=")[1].replace(/"/g, "");
+      }
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err: any) {
+      alert(`Export error: ${err.message}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -685,25 +726,59 @@ export default function OpexTab({ currentUser, sites = [], initialSubTab = "trac
               : "Executive spend summaries, Month-over-Month deltas, and historical locked financial archives."}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           {activeSubTab === "tracker" && (
-            <button
-              onClick={() => setIsNewEntryOpen(true)}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-sm rounded-xl transition-all shadow-md shadow-indigo-200 dark:shadow-none"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              Log Expense Entry
-            </button>
+            <>
+              <button
+                type="button"
+                disabled={isExporting}
+                onClick={() => handleExportDownload(`export/transactions/csv?${getExportQueryString()}`, `transactions_${selectedYear}_${selectedMonth}.csv`)}
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-xl border border-slate-200 dark:border-slate-700 transition-all shadow-xs disabled:opacity-50"
+              >
+                📊 Export CSV
+              </button>
+
+              <button
+                type="button"
+                disabled={isExporting}
+                onClick={() => handleExportDownload(`export/transactions/pdf?${getExportQueryString()}`, `transactions_${selectedYear}_${selectedMonth}.pdf`)}
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-xl border border-slate-200 dark:border-slate-700 transition-all shadow-xs disabled:opacity-50"
+              >
+                📄 Export PDF
+              </button>
+
+              <button
+                onClick={() => setIsNewEntryOpen(true)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-sm rounded-xl transition-all shadow-md shadow-indigo-200 dark:shadow-none"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                Log Expense Entry
+              </button>
+            </>
           )}
-          {canLockMonth && activeSubTab === "reports" && (
-            <button
-              onClick={handleOpenLockModal}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-medium text-sm rounded-xl transition-all shadow-md shadow-emerald-200 dark:shadow-none"
-            >
-              🔒 Lock Month ({selectedYear}-{String(selectedMonth).padStart(2, "0")})
-            </button>
+
+          {activeSubTab === "reports" && (
+            <>
+              <button
+                type="button"
+                disabled={isExporting}
+                onClick={() => handleExportDownload(`export/summary/pdf?${getExportQueryString()}`, `executive_summary_${selectedYear}_${selectedMonth}.pdf`)}
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-xs rounded-xl transition-all shadow-md shadow-indigo-200 dark:shadow-none disabled:opacity-50"
+              >
+                📄 Export Summary (PDF)
+              </button>
+
+              {canLockMonth && (
+                <button
+                  onClick={handleOpenLockModal}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-medium text-sm rounded-xl transition-all shadow-md shadow-emerald-200 dark:shadow-none"
+                >
+                  🔒 Lock Month ({selectedYear}-{String(selectedMonth).padStart(2, "0")})
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -1232,17 +1307,27 @@ export default function OpexTab({ currentUser, sites = [], initialSubTab = "trac
                           {formatMoney(a.summarySnapshot?.totalOpex || 0)}
                         </span>
                       </div>
-                      {isSuperAdmin && (
+                      <div className="flex items-center gap-2">
                         <button
-                          onClick={() => handleOpenUnlockModal(a)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-semibold rounded-lg transition-colors shadow-sm"
+                          type="button"
+                          disabled={isExporting}
+                          onClick={() => handleExportDownload(`export/archives/${a.yearMonth}/pdf`, `archive_${a.yearMonth}.pdf`)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 text-xs font-semibold rounded-lg transition-colors shadow-xs disabled:opacity-50"
                         >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                          </svg>
-                          Unlock Month (Override)
+                          📄 Export PDF
                         </button>
-                      )}
+                        {isSuperAdmin && (
+                          <button
+                            onClick={() => handleOpenUnlockModal(a)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:hover:bg-rose-900/50 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-semibold rounded-lg transition-colors shadow-sm"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                            </svg>
+                            Unlock Month (Override)
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
