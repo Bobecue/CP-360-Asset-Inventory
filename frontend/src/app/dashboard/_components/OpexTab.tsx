@@ -136,6 +136,8 @@ export default function OpexTab({ currentUser, sites = [], initialSubTab = "trac
 
   // Export states & helpers
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
+  const [activeArchiveDropdown, setActiveArchiveDropdown] = useState<string | null>(null);
 
   const getExportQueryString = () => {
     let query = `year=${selectedYear}&month=${selectedMonth}`;
@@ -733,47 +735,58 @@ export default function OpexTab({ currentUser, sites = [], initialSubTab = "trac
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
           {activeSubTab === "tracker" && (
-            <>
-              <button
-                type="button"
-                disabled={isExporting}
-                onClick={() => handleExportDownload(`export/transactions/csv?${getExportQueryString()}`, `transactions_${selectedYear}_${selectedMonth}.csv`)}
-                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-xl border border-slate-200 dark:border-slate-700 transition-all shadow-xs disabled:opacity-50"
-              >
-                📊 Export CSV
-              </button>
-
-              <button
-                type="button"
-                disabled={isExporting}
-                onClick={() => handleExportDownload(`export/transactions/pdf?${getExportQueryString()}`, `transactions_${selectedYear}_${selectedMonth}.pdf`)}
-                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-xl border border-slate-200 dark:border-slate-700 transition-all shadow-xs disabled:opacity-50"
-              >
-                📄 Export PDF
-              </button>
-
-              <button
-                onClick={() => setIsNewEntryOpen(true)}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-sm rounded-xl transition-all shadow-md shadow-indigo-200 dark:shadow-none"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                Log Expense Entry
-              </button>
-            </>
+            <button
+              onClick={() => setIsNewEntryOpen(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-sm rounded-xl transition-all shadow-md shadow-indigo-200 dark:shadow-none"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Log Expense Entry
+            </button>
           )}
 
           {activeSubTab === "reports" && (
             <>
-              <button
-                type="button"
-                disabled={isExporting}
-                onClick={() => handleExportDownload(`export/summary/pdf?${getExportQueryString()}`, `executive_summary_${selectedYear}_${selectedMonth}.pdf`)}
-                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-xs rounded-xl transition-all shadow-md shadow-indigo-200 dark:shadow-none disabled:opacity-50"
-              >
-                📄 Export Summary (PDF)
-              </button>
+              <div className="relative inline-block text-left" id="export-dropdown-container">
+                <button
+                  type="button"
+                  disabled={isExporting}
+                  onClick={() => setIsExportDropdownOpen(!isExportDropdownOpen)}
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-xs rounded-xl transition-all shadow-md shadow-indigo-200 dark:shadow-none disabled:opacity-50"
+                >
+                  📥 Export Report
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </button>
+                
+                {isExportDropdownOpen && (
+                  <div 
+                    className="absolute right-0 mt-2 w-48 rounded-xl bg-white dark:bg-gray-800 shadow-lg border border-gray-100 dark:border-gray-700 py-1.5 z-50 focus:outline-none"
+                    style={{ minWidth: '200px' }}
+                  >
+                    <button
+                      onClick={() => {
+                        setIsExportDropdownOpen(false);
+                        handleExportDownload(`export/summary/pdf?${getExportQueryString()}`, `executive_summary_${selectedYear}_${selectedMonth}.pdf`);
+                      }}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-left"
+                    >
+                      📄 Export PDF (Summary)
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsExportDropdownOpen(false);
+                        handleExportDownload(`export/transactions/csv?${getExportQueryString()}`, `transactions_${selectedYear}_${selectedMonth}.csv`);
+                      }}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-left"
+                    >
+                      📊 Export Excel file (CSV)
+                    </button>
+                  </div>
+                )}
+              </div>
 
               {canLockMonth && (
                 <button
@@ -1313,14 +1326,46 @@ export default function OpexTab({ currentUser, sites = [], initialSubTab = "trac
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          disabled={isExporting}
-                          onClick={() => handleExportDownload(`export/archives/${a.yearMonth}/pdf`, `archive_${a.yearMonth}.pdf`)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 text-xs font-semibold rounded-lg transition-colors shadow-xs disabled:opacity-50"
-                        >
-                          📄 Export PDF
-                        </button>
+                        <div className="relative inline-block text-left">
+                          <button
+                            type="button"
+                            disabled={isExporting}
+                            onClick={() => setActiveArchiveDropdown(activeArchiveDropdown === a.yearMonth ? null : a.yearMonth)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 text-xs font-semibold rounded-lg transition-colors shadow-xs disabled:opacity-50"
+                          >
+                            📥 Export Archive
+                            <svg className="w-3 h-3 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                            </svg>
+                          </button>
+                          
+                          {activeArchiveDropdown === a.yearMonth && (
+                            <div 
+                              className="absolute right-0 mt-2 w-48 rounded-lg bg-white dark:bg-gray-800 shadow-lg border border-gray-100 dark:border-gray-700 py-1 z-50 focus:outline-none"
+                              style={{ minWidth: '180px' }}
+                            >
+                              <button
+                                onClick={() => {
+                                  setActiveArchiveDropdown(null);
+                                  handleExportDownload(`export/archives/${a.yearMonth}/pdf`, `archive_${a.yearMonth}.pdf`);
+                                }}
+                                className="flex w-full items-center gap-2 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-left"
+                              >
+                                📄 Export PDF (Summary)
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setActiveArchiveDropdown(null);
+                                  const [yStr, mStr] = a.yearMonth.split("-");
+                                  handleExportDownload(`export/transactions/csv?year=${yStr}&month=${mStr}`, `archive_transactions_${a.yearMonth}.csv`);
+                                }}
+                                className="flex w-full items-center gap-2 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-left"
+                              >
+                                📊 Export Excel file (CSV)
+                              </button>
+                            </div>
+                          )}
+                        </div>
                         {isSuperAdmin && (
                           <button
                             onClick={() => handleOpenUnlockModal(a)}
