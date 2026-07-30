@@ -103,7 +103,7 @@ export default function DashboardPage() {
   const [isSubmittingEditForm, setIsSubmittingEditForm] = useState(false);
 
   // Settings configuration states
-  const [settingsSubTab, setSettingsSubTab] = useState<"sites" | "departments" | "categories">("sites");
+  const [settingsSubTab, setSettingsSubTab] = useState<"sites" | "departments" | "categories" | "expense-units" | "expense-categories">("sites");
   const [sites, setSites] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -2034,6 +2034,7 @@ export default function DashboardPage() {
             isUsingMockData={isUsingMockData}
             settingsSubTab={settingsSubTab}
             setSettingsSubTab={setSettingsSubTab}
+            currentUser={currentUser}
             sites={sites}
             departments={departments}
             categories={categories}
@@ -2049,7 +2050,7 @@ export default function DashboardPage() {
                 setDeptName("");
                 setDeptError(null);
                 setDeptModalOpen(true);
-              } else {
+              } else if (settingsSubTab === "categories") {
                 setEditingCategory(null);
                 setCategoryName("");
                 setCategoryPrefix("");

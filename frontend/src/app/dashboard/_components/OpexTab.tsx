@@ -1470,15 +1470,6 @@ export default function OpexTab({ currentUser, sites = [], initialSubTab = "trac
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
                     <div className="flex items-center justify-between">
                       <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Unit</label>
-                      {(isSuperAdmin || isOpsManager) && (
-                        <button
-                          type="button"
-                          onClick={() => setIsUnitModalOpen(true)}
-                          className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold underline flex items-center gap-0.5"
-                        >
-                          ⚙️ Manage Units
-                        </button>
-                      )}
                     </div>
                     <select
                       value={unit}
@@ -1500,18 +1491,6 @@ export default function OpexTab({ currentUser, sites = [], initialSubTab = "trac
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
                     <div className="flex items-center justify-between">
                       <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Category *</label>
-                      {(isSuperAdmin || isOpsManager) && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            fetchActiveCategories();
-                            setIsCategoryModalOpen(true);
-                          }}
-                          className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold underline flex items-center gap-0.5"
-                        >
-                          ⚙️ Manage Categories
-                        </button>
-                      )}
                     </div>
                     <select
                       value={category}
@@ -2250,171 +2229,6 @@ export default function OpexTab({ currentUser, sites = [], initialSubTab = "trac
         document.body
       )}
 
-      {/* Modal: SuperAdmin Unit Items Manager */}
-      {isUnitModalOpen && typeof document !== "undefined" && createPortal(
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          backgroundColor: "rgba(15, 23, 42, 0.65)",
-          backdropFilter: "blur(4px)",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          zIndex: 999999,
-          padding: "1rem",
-        }}>
-          <div style={{
-            width: "100%",
-            maxWidth: "460px",
-            backgroundColor: "#ffffff",
-            borderRadius: "16px",
-            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-            border: "1px solid #e2e8f0",
-            overflow: "hidden",
-          }}>
-            <div className="p-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                  ⚙️ Manage Expense Measurement Units
-                </h3>
-                <p className="text-xs text-slate-500">Add or remove custom unit types for expense entries.</p>
-              </div>
-              <button onClick={() => setIsUnitModalOpen(false)} className="text-slate-400 hover:text-slate-600 font-bold">✕</button>
-            </div>
-
-            <div className="p-4 space-y-4">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="e.g. LITER, KG, PAIR, BOTTLE"
-                  value={newUnitInput}
-                  onChange={(e) => setNewUnitInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddUnit(); } }}
-                  className="flex-1 text-xs px-3 py-2 border border-slate-200 rounded-lg uppercase"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddUnit}
-                  className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs"
-                >
-                  + Add Unit
-                </button>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Available Units ({unitsList.length})</label>
-                <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
-                  {unitsList.map((u) => (
-                    <div key={u} className="px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs font-semibold">
-                      <span className="text-slate-800 dark:text-slate-200 font-mono">{u}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveUnit(u)}
-                        className="text-rose-500 hover:text-rose-700 text-xs font-bold px-1.5 py-0.5 rounded hover:bg-rose-50"
-                        title="Remove unit"
-                      >
-                        ✕ Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* Modal: SuperAdmin Expense Category Manager */}
-      {isCategoryModalOpen && typeof document !== "undefined" && createPortal(
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          backgroundColor: "rgba(15, 23, 42, 0.65)",
-          backdropFilter: "blur(4px)",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          zIndex: 999999,
-          padding: "1rem",
-        }}>
-          <div style={{
-            width: "100%",
-            maxWidth: "520px",
-            backgroundColor: "#ffffff",
-            borderRadius: "16px",
-            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-            border: "1px solid #e2e8f0",
-            overflow: "hidden",
-          }}>
-            <div className="p-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                  ⚙️ Manage Expense Categories
-                </h3>
-                <p className="text-xs text-slate-500">Create or deactivate OPEX/CAPEX category options.</p>
-              </div>
-              <button onClick={() => setIsCategoryModalOpen(false)} className="text-slate-400 hover:text-slate-600 font-bold">✕</button>
-            </div>
-
-            <div className="p-4 space-y-4">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
-                <span className="text-xs font-bold text-slate-700">Add New Category Option</span>
-                <div className="grid grid-cols-3 gap-2">
-                  <input
-                    type="text"
-                    placeholder="Category Name"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    className="col-span-2 text-xs px-3 py-2 border border-slate-200 rounded-lg uppercase"
-                  />
-                  <select
-                    value={newCategoryType}
-                    onChange={(e) => setNewCategoryType(e.target.value as any)}
-                    className="text-xs px-2 py-2 border border-slate-200 rounded-lg bg-white font-medium"
-                  >
-                    <option value="OPEX">OPEX</option>
-                    <option value="CAPEX">CAPEX</option>
-                  </select>
-                </div>
-                <button
-                  type="button"
-                  disabled={isManagingCategory}
-                  onClick={handleCreateCategory}
-                  className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
-                >
-                  {isManagingCategory ? "Saving..." : "+ Save Category"}
-                </button>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Active Categories ({categoriesList.length})</label>
-                <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
-                  {categoriesList.map((c) => (
-                    <div key={c.id} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${c.type === "CAPEX" ? "bg-purple-100 text-purple-700" : "bg-emerald-100 text-emerald-700"}`}>
-                          {c.type}
-                        </span>
-                        <span className="font-bold text-slate-800 dark:text-slate-200">{c.name.replace(/_/g, " ")}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteCategory(c.id, c.name)}
-                        className="text-rose-500 hover:text-rose-700 text-xs font-semibold px-2 py-1 rounded hover:bg-rose-50"
-                        title="Remove category"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
     </div>
   );
 }

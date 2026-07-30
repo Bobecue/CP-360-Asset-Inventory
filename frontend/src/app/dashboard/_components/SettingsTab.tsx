@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { getCategoryIcon, AssetTypeBadge } from "@/types/dashboard";
 
 const getDepartmentIcon = (name: string = "") => {
@@ -66,8 +67,8 @@ const getDepartmentIcon = (name: string = "") => {
 
 interface SettingsTabProps {
   isUsingMockData: boolean;
-  settingsSubTab: "sites" | "departments" | "categories";
-  setSettingsSubTab: (tab: "sites" | "departments" | "categories") => void;
+  settingsSubTab: "sites" | "departments" | "categories" | "expense-units" | "expense-categories";
+  setSettingsSubTab: (tab: "sites" | "departments" | "categories" | "expense-units" | "expense-categories") => void;
   sites: any[];
   departments: any[];
   categories: any[];
@@ -75,6 +76,7 @@ interface SettingsTabProps {
   onOpenEditSiteModal: (site: any) => void;
   onOpenEditCategoryModal: (cat: any) => void;
   onDeleteTarget: (type: "site" | "department" | "category", id: string, name: string) => void;
+  currentUser?: any;
 }
 
 export const SettingsTab = ({
@@ -88,7 +90,128 @@ export const SettingsTab = ({
   onOpenEditSiteModal,
   onOpenEditCategoryModal,
   onDeleteTarget,
+  currentUser,
 }: SettingsTabProps) => {
+  const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
+  // Expense Units states
+  const DEFAULT_UNITS = ["PC", "PACK", "BOX", "TAB", "SACH", "CAP", "NEB", "SET", "ROLL", "UNIT"];
+  const [unitsList, setUnitsList] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("cp360_opex_custom_units");
+      if (saved) {
+        try { return JSON.parse(saved); } catch { }
+      }
+    }
+    return DEFAULT_UNITS;
+  });
+  const [newUnitInput, setNewUnitInput] = useState("");
+
+  // Expense Categories states
+  const [expenseCategoriesList, setExpenseCategoriesList] = useState<any[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryType, setNewCategoryType] = useState<"OPEX" | "CAPEX">("OPEX");
+  const [isManagingCategory, setIsManagingCategory] = useState(false);
+
+  const fetchActiveCategories = async () => {
+    try {
+      const res = await fetch(`${backendUrl}/categories/active`);
+      const json = await res.json();
+      setExpenseCategoriesList(Array.isArray(json.data) ? json.data : []);
+    } catch (err) {
+      console.error("Failed to fetch active categories:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (settingsSubTab === "expense-categories") {
+      fetchActiveCategories();
+    }
+  }, [settingsSubTab]);
+
+  const handleAddUnit = () => {
+    if (!newUnitInput.trim()) return;
+    const formatted = newUnitInput.trim().toUpperCase().replace(/\s+/g, "_");
+    if (unitsList.includes(formatted)) {
+      alert(`Unit "${formatted}" already exists.`);
+      return;
+    }
+    const updated = [...unitsList, formatted];
+    setUnitsList(updated);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("cp360_opex_custom_units", JSON.stringify(updated));
+    }
+    setNewUnitInput("");
+    alert(`Unit "${formatted}" added successfully.`);
+  };
+
+  const handleRemoveUnit = (unitToRemove: string) => {
+    if (unitsList.length <= 1) {
+      alert("At least one unit option must remain.");
+      return;
+    }
+    if (!confirm(`Are you sure you want to remove the unit "${unitToRemove}"?`)) return;
+    const updated = unitsList.filter(u => u !== unitToRemove);
+    setUnitsList(updated);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("cp360_opex_custom_units", JSON.stringify(updated));
+    }
+  };
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    setIsManagingCategory(true);
+    try {
+      const res = await fetch(`${backendUrl}/categories`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user": currentUser?.email || "superadmin@contactpoint360.com",
+        },
+        body: JSON.stringify({
+          name: newCategoryName.trim(),
+          type: newCategoryType,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        alert(`Error: ${json.message}`);
+        return;
+      }
+      setNewCategoryName("");
+      await fetchActiveCategories();
+      alert(`Category "${json.data.name}" added successfully.`);
+    } catch (err: any) {
+      alert(`Failed to add category: ${err.message}`);
+    } finally {
+      setIsManagingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (catId: string, catName: string) => {
+    if (!confirm(`Are you sure you want to remove the category "${catName}"?`)) return;
+    setIsManagingCategory(true);
+    try {
+      const res = await fetch(`${backendUrl}/categories/${catId}`, {
+        method: "DELETE",
+        headers: {
+          "x-user": currentUser?.email || "superadmin@contactpoint360.com",
+        },
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        alert(`Error: ${json.message}`);
+        return;
+      }
+      await fetchActiveCategories();
+      alert(`Category "${catName}" removed.`);
+    } catch (err: any) {
+      alert(`Failed to remove category: ${err.message}`);
+    } finally {
+      setIsManagingCategory(false);
+    }
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       
@@ -131,6 +254,8 @@ export const SettingsTab = ({
             { id: "sites", label: "Managed Sites" },
             { id: "departments", label: "Departments" },
             { id: "categories", label: "Asset Categories" },
+            { id: "expense-units", label: "Expense Units" },
+            { id: "expense-categories", label: "Expense Categories" },
           ].map((tab) => {
             const isActive = settingsSubTab === tab.id;
             return (
@@ -157,27 +282,29 @@ export const SettingsTab = ({
           })}
         </div>
 
-        <button
-          onClick={onOpenAddModal}
-          className="click-active card-shine-effect"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.4rem",
-            background: "linear-gradient(135deg, #210cae 0%, #4dc9e6 100%)",
-            color: "#ffffff",
-            border: "none",
-            borderRadius: 8,
-            padding: "0.5rem 1rem",
-            fontSize: "0.82rem",
-            fontWeight: 600,
-            cursor: "pointer",
-            boxShadow: "0 2px 6px rgba(33,12,174,0.15)",
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-          {settingsSubTab === "sites" ? "Add Site" : settingsSubTab === "departments" ? "Add Department" : "Add Category"}
-        </button>
+        {settingsSubTab !== "expense-units" && settingsSubTab !== "expense-categories" && (
+          <button
+            onClick={onOpenAddModal}
+            className="click-active card-shine-effect"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              background: "linear-gradient(135deg, #210cae 0%, #4dc9e6 100%)",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: 8,
+              padding: "0.5rem 1rem",
+              fontSize: "0.82rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              boxShadow: "0 2px 6px rgba(33,12,174,0.15)",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+            {settingsSubTab === "sites" ? "Add Site" : settingsSubTab === "departments" ? "Add Department" : "Add Category"}
+          </button>
+        )}
       </div>
 
       {/* Content Table Card */}
@@ -457,7 +584,108 @@ export const SettingsTab = ({
             )}
           </>
         )}
-        </div>
+
+        {settingsSubTab === "expense-units" && (
+          <div className="space-y-6">
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 max-w-md">
+              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Add Custom Measurement Unit</h3>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. LITER, KG, PAIR, BOTTLE"
+                  value={newUnitInput}
+                  onChange={(e) => setNewUnitInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddUnit(); } }}
+                  className="flex-1 text-xs px-3 py-2 border border-slate-200 rounded-lg uppercase"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddUnit}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
+                >
+                  + Add Unit
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Available Units ({unitsList.length})</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                {unitsList.map((u) => (
+                  <div key={u} className="px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs font-semibold">
+                    <span className="text-slate-800 dark:text-slate-200 font-mono">{u}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveUnit(u)}
+                      className="text-rose-500 hover:text-rose-700 text-xs font-bold px-2 py-1 rounded hover:bg-rose-50 transition-colors"
+                      title="Remove unit"
+                    >
+                      ✕ Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {settingsSubTab === "expense-categories" && (
+          <div className="space-y-6">
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 max-w-md">
+              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Add Custom Expense Category</h3>
+              <div className="grid grid-cols-3 gap-2">
+                <input
+                  type="text"
+                  placeholder="Category Name"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  className="col-span-2 text-xs px-3 py-2 border border-slate-200 rounded-lg uppercase"
+                />
+                <select
+                  value={newCategoryType}
+                  onChange={(e) => setNewCategoryType(e.target.value as any)}
+                  className="text-xs px-2 py-2 border border-slate-200 rounded-lg bg-white font-medium"
+                >
+                  <option value="OPEX">OPEX</option>
+                  <option value="CAPEX">CAPEX</option>
+                </select>
+              </div>
+              <button
+                type="button"
+                disabled={isManagingCategory}
+                onClick={handleCreateCategory}
+                className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors disabled:opacity-50"
+              >
+                {isManagingCategory ? "Saving..." : "+ Save Category"}
+              </button>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Active Categories ({expenseCategoriesList.length})</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {expenseCategoriesList.map((c) => (
+                  <div key={c.id} className="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${c.type === "CAPEX" ? "bg-purple-100 text-purple-700" : "bg-emerald-100 text-emerald-700"}`}>
+                        {c.type}
+                      </span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">{c.name.replace(/_/g, " ")}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCategory(c.id, c.name)}
+                      className="text-rose-500 hover:text-rose-700 text-xs font-semibold px-2 py-1 rounded hover:bg-rose-50 transition-colors"
+                      title="Remove category"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
       </div>
 
     </div>
