@@ -22,8 +22,11 @@ interface OpexEntry {
   supplier?: { id: string; name: string };
   department?: { id: string; name: string };
   site?: { id: string; name: string };
+  siteId?: string;
+  enteredByUserId?: string;
   enteredByUser?: { id: string; name: string; email: string };
   approvedByUser?: { id: string; name: string; email: string };
+  attachments?: any[];
 }
 
 interface MonthlyArchive {

@@ -118,6 +118,7 @@ export default function DashboardPage() {
   const [siteName, setSiteName] = useState("");
   const [sitePrefix, setSitePrefix] = useState("");
   const [siteAddress, setSiteAddress] = useState("");
+  const [siteFloor, setSiteFloor] = useState("");
   const [siteError, setSiteError] = useState<string | null>(null);
 
   const [deptModalOpen, setDeptModalOpen] = useState(false);
@@ -415,11 +416,9 @@ export default function DashboardPage() {
     await Promise.all([fetchSites(), fetchDepartments(), fetchCategories(), fetchSuppliersList()]);
   };
 
+  // Only fetch metadata if backend is online
   useEffect(() => {
-    fetchAllMetadata();
-  }, []);
-
-  useEffect(() => {
+    if (isBackendOffline) return;
     if (activeTab === "users") {
       fetchUsers();
       fetchAllMetadata();
@@ -429,7 +428,7 @@ export default function DashboardPage() {
       fetchItems();
       fetchAllMetadata();
     }
-  }, [activeTab]);
+  }, [activeTab, isBackendOffline]);
 
   useEffect(() => {
     setSelectedItemIds([]);
@@ -1022,6 +1021,7 @@ export default function DashboardPage() {
       name: siteName.trim(),
       prefix: sitePrefix.trim().toUpperCase(),
       address: siteAddress.trim() || undefined,
+      floor: siteFloor.trim() || undefined,
     };
 
     setIsSubmittingSite(true);
@@ -1040,6 +1040,7 @@ export default function DashboardPage() {
       setSiteName("");
       setSitePrefix("");
       setSiteAddress("");
+      setSiteFloor("");
       setIsSubmittingSite(false);
     } else {
       try {
@@ -1061,6 +1062,7 @@ export default function DashboardPage() {
         setSiteName("");
         setSitePrefix("");
         setSiteAddress("");
+        setSiteFloor("");
       } catch (err: any) {
         console.error(err);
         setSiteError(err.message || "Failed to save site.");
@@ -1151,7 +1153,10 @@ export default function DashboardPage() {
         const method = editingCategory ? "PATCH" : "POST";
         const res = await fetch(url, {
           method,
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-user": currentUser?.email || "superadmin@contactpoint360.com",
+          },
           body: JSON.stringify(payload),
         });
         if (!res.ok) {
@@ -2044,6 +2049,7 @@ export default function DashboardPage() {
                 setSiteName("");
                 setSitePrefix("");
                 setSiteAddress("");
+                setSiteFloor("");
                 setSiteError(null);
                 setSiteModalOpen(true);
               } else if (settingsSubTab === "departments") {
@@ -2065,6 +2071,7 @@ export default function DashboardPage() {
               setSiteName(s.name);
               setSitePrefix(s.prefix);
               setSiteAddress(s.address || "");
+              setSiteFloor(s.floor || "");
               setSiteError(null);
               setSiteModalOpen(true);
             }}
@@ -2416,6 +2423,8 @@ export default function DashboardPage() {
         setSitePrefix={setSitePrefix}
         siteAddress={siteAddress}
         setSiteAddress={setSiteAddress}
+        siteFloor={siteFloor}
+        setSiteFloor={setSiteFloor}
         siteError={siteError}
         isSubmittingSite={isSubmittingSite}
         onCancel={() => {

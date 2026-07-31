@@ -706,52 +706,50 @@ export class ItemsService {
       const isConsumable = item.category?.type === 'CONSUMABLE' || item.category?.name?.toLowerCase().includes('consumable');
       const defaultRP = item.reorderPoint || 5;
 
-      if (siteId && siteId !== 'ALL') {
-        const matchingStock = (item.stockLevels || []).find(s => s.siteId === siteId);
-        let siteStock = 0;
-        let siteRP = matchingStock?.reorderPoint || defaultRP;
+      const stockLevels = item.stockLevels && item.stockLevels.length > 0 ? item.stockLevels : [];
 
-        if (matchingStock) {
-          siteStock = matchingStock.quantity || 0;
-        } else if (!isConsumable && item.assets && item.assets.length > 0) {
-          siteStock = item.assets.filter(a => a.siteId === siteId && a.status === 'AVAILABLE' && a.condition !== 'BAD' && a.condition !== 'DAMAGED').length;
-        } else {
-          continue;
-        }
+      if (stockLevels.length > 0) {
+        for (const s of stockLevels) {
+          if (siteId && siteId !== 'ALL' && s.siteId !== siteId) continue;
 
-        if (siteStock <= siteRP) {
-          const isCritical = siteStock === 0 || siteStock <= Math.floor(siteRP / 2);
-          const itemSeverity = isCritical ? 'CRITICAL' : 'WARNING';
+          let siteStock = s.quantity || 0;
+          let siteRP = s.reorderPoint || defaultRP;
 
-          if (!severity || severity === 'ALL' || itemSeverity === severity) {
-            alerts.push({
-              id: `${item.id}-${siteId}`,
-              itemId: item.id,
-              siteId: siteId,
-              siteName: matchingStock?.site?.name || 'Selected Site',
-              sitePrefix: matchingStock?.site?.prefix || 'SITE',
-              name: item.name,
-              sku: item.sku,
-              unitPrice: item.unitPrice,
-              leadTimeDays: item.leadTimeDays,
-              reorderPoint: siteRP,
-              reorderQuantity: item.reorderQuantity || 10,
-              currentQuantity: siteStock,
-              severity: itemSeverity,
-              category: item.category,
-              stockLevels: item.stockLevels,
-              daysBelowThreshold: 1
-            });
-            this.notificationsService.checkAndTriggerLowStockAlert(item.id, siteId, siteStock, siteRP).catch(() => {});
+          if (siteStock <= siteRP) {
+            const isCritical = siteStock === 0 || siteStock <= Math.floor(siteRP / 2);
+            const itemSeverity = isCritical ? 'CRITICAL' : 'WARNING';
+
+            if (!severity || severity === 'ALL' || itemSeverity === severity) {
+              alerts.push({
+                id: `${item.id}-${s.siteId}`,
+                itemId: item.id,
+                siteId: s.siteId,
+                siteName: s.site?.name || 'Selected Site',
+                sitePrefix: s.site?.prefix || 'SITE',
+                name: item.name,
+                sku: item.sku,
+                unitPrice: item.unitPrice,
+                leadTimeDays: item.leadTimeDays,
+                reorderPoint: siteRP,
+                reorderQuantity: item.reorderQuantity || 10,
+                currentQuantity: siteStock,
+                severity: itemSeverity,
+                category: item.category,
+                stockLevels: item.stockLevels,
+                daysBelowThreshold: 1
+              });
+              this.notificationsService.checkAndTriggerLowStockAlert(item.id, s.siteId, siteStock, siteRP).catch(() => {});
+            }
           }
         }
       } else {
-        // All Sites view: aggregate stock matching Asset Catalog
         let totalStock = 0;
         if (!isConsumable && item.assets && item.assets.length > 0) {
-          totalStock = item.assets.filter(a => a.status === 'AVAILABLE' && a.condition !== 'BAD' && a.condition !== 'DAMAGED').length;
-        } else if (item.stockLevels && item.stockLevels.length > 0) {
-          totalStock = item.stockLevels.reduce((sum, s) => sum + (s.quantity || 0), 0);
+          let relAssets = item.assets.filter(a => a.status === 'AVAILABLE' && a.condition !== 'BAD' && a.condition !== 'DAMAGED');
+          if (siteId && siteId !== 'ALL') {
+            relAssets = relAssets.filter(a => a.siteId === siteId);
+          }
+          totalStock = relAssets.length;
         } else {
           totalStock = (item as any).quantity || 0;
         }
@@ -762,11 +760,11 @@ export class ItemsService {
 
           if (!severity || severity === 'ALL' || itemSeverity === severity) {
             alerts.push({
-              id: `${item.id}-all`,
+              id: `${item.id}-${siteId || 'all'}`,
               itemId: item.id,
-              siteId: 'ALL',
-              siteName: 'All Sites',
-              sitePrefix: 'ALL',
+              siteId: siteId || 'ALL',
+              siteName: siteId && siteId !== 'ALL' ? 'Selected Site' : 'All Sites',
+              sitePrefix: siteId && siteId !== 'ALL' ? 'SITE' : 'ALL',
               name: item.name,
               sku: item.sku,
               unitPrice: item.unitPrice,
@@ -779,7 +777,6 @@ export class ItemsService {
               stockLevels: item.stockLevels,
               daysBelowThreshold: 1
             });
-            this.notificationsService.checkAndTriggerLowStockAlert(item.id, 'ALL', totalStock, defaultRP).catch(() => {});
           }
         }
       }
@@ -791,13 +788,13 @@ export class ItemsService {
     const totalItemsToReorder = alerts.reduce((sum, a) => sum + Math.max(1, a.reorderPoint - a.currentQuantity), 0);
 
     return {
+      alerts,
       stats: {
         totalAlerts,
         criticalAlerts,
         warningAlerts,
-        totalItemsToReorder
-      },
-      alerts
+        totalItemsToReorder,
+      }
     };
   }
 

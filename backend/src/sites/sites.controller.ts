@@ -17,6 +17,7 @@ export class SitesController {
       name: string;
       prefix: string;
       address?: string;
+      floor?: string;
     },
   ) {
     return this.sitesService.create(body);
@@ -30,6 +31,7 @@ export class SitesController {
       name?: string;
       prefix?: string;
       address?: string;
+      floor?: string;
     },
   ) {
     return this.sitesService.update(id, body);

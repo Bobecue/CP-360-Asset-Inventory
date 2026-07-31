@@ -43,6 +43,26 @@ async function main() {
     },
   });
 
+  // Seed default sites with pre-identified floors
+  const sitesToSeed = [
+    { name: "Skyrise 4B", prefix: "SK4", address: "Cebu IT Park, Skyrise 4B", floor: "10th, 11th floor" },
+    { name: "Skyrise Alpha", prefix: "SKA", address: "Cebu Business Park, Skyrise Alpha", floor: "6th floor" },
+    { name: "Skyrise Beta", prefix: "SKB", address: "Cebu Business Park, Skyrise Beta", floor: "10th, 12th floor" },
+  ];
+
+  for (const s of sitesToSeed) {
+    await prisma.site.upsert({
+      where: { name: s.name },
+      update: { floor: s.floor },
+      create: {
+        name: s.name,
+        prefix: s.prefix,
+        address: s.address,
+        floor: s.floor,
+      },
+    });
+  }
+
   console.log("-----------------------------------------");
   console.log("Seeding completed successfully!");
   console.log(`Default Super Admin User Created/Updated:`);

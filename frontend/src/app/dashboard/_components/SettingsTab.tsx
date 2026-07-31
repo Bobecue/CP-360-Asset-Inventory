@@ -332,6 +332,7 @@ export const SettingsTab = ({
                   <thead>
                     <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
                       <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Site Name</th>
+                      <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Floor</th>
                       <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Prefix</th>
                       <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600 }}>Address</th>
                       <th style={{ padding: "0.6rem 0.5rem", color: "#64748b", fontWeight: 600, textAlign: "right" }}>Actions</th>
@@ -348,6 +349,7 @@ export const SettingsTab = ({
                         <td style={{ padding: "0.75rem 0.5rem" }}>
                           <span className="glitter-site-badge" style={{ fontWeight: 600, color: "#1e293b", padding: "0.15rem 0.5rem", borderRadius: "6px" }}>{s.name}</span>
                         </td>
+                        <td style={{ padding: "0.75rem 0.5rem", color: "#475569" }}>{s.floor || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
                         <td style={{ padding: "0.75rem 0.5rem" }}>
                           <span className="glitter-site-badge" style={{ fontSize: "0.68rem", backgroundColor: "rgba(33, 12, 174, 0.06)", color: "#210cae", padding: "0.1rem 0.35rem", borderRadius: 4, fontWeight: 700 }}>
                             {s.prefix}
@@ -506,7 +508,7 @@ export const SettingsTab = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {(Array.isArray(categories) ? categories : (categories as any)?.data || []).map((c, index) => (
+                    {(Array.isArray(categories) ? categories : (categories as any)?.data || []).map((c: any, index: number) => (
                       <tr key={c.id} 
                         className="animated-row"
                         style={{ borderBottom: "1px solid #f8fafc", animationDelay: `${index * 0.04}s` }}
@@ -543,7 +545,7 @@ export const SettingsTab = ({
                           </span>
                         </td>
                         <td style={{ padding: "0.75rem 0.5rem" }}>
-                          <AssetTypeBadge type={c.type} size="sm" />
+                          <AssetTypeBadge type={c.type} categoryName={c.name} size="sm" />
                         </td>
                         <td style={{ padding: "0.75rem 0.5rem", color: "#475569" }}>{c.description || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
                         <td style={{ padding: "0.75rem 0.5rem", textAlign: "right" }}>

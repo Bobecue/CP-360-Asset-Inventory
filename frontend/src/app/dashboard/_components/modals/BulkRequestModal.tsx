@@ -22,6 +22,7 @@ interface Site {
   name: string;
   prefix: string;
   address?: string;
+  floor?: string;
 }
 
 interface BulkRequestModalProps {
@@ -35,6 +36,19 @@ interface BulkRequestModalProps {
 }
 
 import { getCategoryIcon } from '@/types/dashboard';
+
+const parseFloors = (floorStr?: string): string[] => {
+  if (!floorStr) return [];
+  return floorStr
+    .split(',')
+    .map(f => {
+      let cleaned = f.toLowerCase().replace(/floors?/g, '').trim();
+      if (!cleaned) return '';
+      const cap = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+      return cap.endsWith('Floor') ? cap : `${cap} Floor`;
+    })
+    .filter(Boolean);
+};
 
 export function BulkRequestModal({ open, onClose, selectedItems, sites, currentUser, initialMode, onSubmit }: BulkRequestModalProps) {
   const canDeploy = !currentUser || currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'INVENTORY_STAFF' || currentUser?.role === 'OPS_MANAGER' || currentUser?.role === 'ADMIN';
@@ -50,15 +64,29 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
   });
 
   // Employee & Deployment Fields
+  const [deploymentType, setDeploymentType] = useState<'employee' | 'station'>('employee');
   const [employeeName, setEmployeeName] = useState('');
   const [employeeAccount, setEmployeeAccount] = useState('');
   const [employeeEid, setEmployeeEid] = useState('');
+  const [stationName, setStationName] = useState('');
+  const [stationDept, setStationDept] = useState('');
   const [reqSiteId, setReqSiteId] = useState('');
+  const [selectedFloor, setSelectedFloor] = useState('');
   const [deploymentNotes, setDeploymentNotes] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reqFormError, setReqFormError] = useState<string | null>(null);
   const [liveTagsMap, setLiveTagsMap] = useState<Record<string, { availableTags: string[]; allExistingTags: string[] }>>({});
+
+  const selectedSiteObj = sites.find(s => s.name === reqSiteId || s.id === reqSiteId);
+  const availableFloors = parseFloors(selectedSiteObj?.floor);
+
+  const isDeployDisabled = isDeployMode && (
+    deploymentType === 'employee' 
+      ? (!employeeName.trim() || !employeeAccount.trim() || !employeeEid.trim())
+      : (!stationName.trim() || !stationDept.trim())
+  );
+  const isSubmitDisabled = isSubmitting || selectedItems.length === 0 || !reqSiteId.trim() || isDeployDisabled;
 
   useEffect(() => {
     if (!open || selectedItems.length === 0) return;
@@ -120,21 +148,47 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
     setReqFormError(null);
 
     if (isDeployMode) {
-      if (!employeeName.trim()) {
-        setReqFormError("Employee's Name is required.");
-        return;
+      if (deploymentType === 'employee') {
+        if (!employeeEid.trim()) {
+          setReqFormError("Employee EID is required.");
+          return;
+        }
+        if (!employeeAccount.trim()) {
+          setReqFormError("Employee's Account is required.");
+          return;
+        }
+        if (!employeeName.trim()) {
+          setReqFormError("Employee's Name is required.");
+          return;
+        }
+        if (!reqSiteId.trim()) {
+          setReqFormError("Employee's Site is required.");
+          return;
+        }
+      } else {
+        if (!stationName.trim()) {
+          setReqFormError("Station Name / Number is required.");
+          return;
+        }
+        if (!stationDept.trim()) {
+          setReqFormError("Station Department / Area is required.");
+          return;
+        }
+        if (!reqSiteId.trim()) {
+          setReqFormError("Station Site is required.");
+          return;
+        }
       }
-      if (!employeeAccount.trim()) {
-        setReqFormError("Employee's Account is required.");
-        return;
-      }
-      if (!employeeEid.trim()) {
-        setReqFormError("Employee EID is required.");
+
+      const selectedSiteObj = sites.find(s => s.name === reqSiteId || s.id === reqSiteId);
+      const availableFloors = parseFloors(selectedSiteObj?.floor);
+      if (availableFloors.length > 0 && !selectedFloor) {
+        setReqFormError("Floor selection is required.");
         return;
       }
     }
-    if (!reqSiteId.trim()) {
-      setReqFormError(isDeployMode ? "Deployment Site is required." : "Target Site is required.");
+    if (!reqSiteId.trim() && !isDeployMode) {
+      setReqFormError("Target Site is required.");
       return;
     }
 
@@ -148,8 +202,11 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
         quantity: quantities[item.id] || 1
       }));
 
+      const floorSuffix = selectedFloor ? ` | Floor: ${selectedFloor}` : '';
       const deploymentReason = isDeployMode
-        ? `[ASSET DEPLOYMENT] Deploy to: ${employeeName.trim()} | Account: ${employeeAccount.trim()} | EID: ${employeeEid.trim()}${deploymentNotes.trim() ? ` | Notes: ${deploymentNotes.trim()}` : ''}`
+        ? (deploymentType === 'employee'
+            ? `[ASSET DEPLOYMENT] Deploy to Employee: ${employeeName.trim()} | Account: ${employeeAccount.trim()} | EID: ${employeeEid.trim()} | Site: ${reqSiteId}${floorSuffix}${deploymentNotes.trim() ? ` | Notes: ${deploymentNotes.trim()}` : ''}`
+            : `[ASSET DEPLOYMENT] Deploy to Station: ${stationName.trim()} | Dept/Area: ${stationDept.trim()} | Site: ${reqSiteId}${floorSuffix}${deploymentNotes.trim() ? ` | Notes: ${deploymentNotes.trim()}` : ''}`)
         : (deploymentNotes.trim() || 'Request for selected items');
 
       const success = await onSubmit(requestsToSend, siteIdToSend, deploymentReason, 'NORMAL');
@@ -157,7 +214,10 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
         setEmployeeName('');
         setEmployeeAccount('');
         setEmployeeEid('');
+        setStationName('');
+        setStationDept('');
         setReqSiteId('');
+        setSelectedFloor('');
         setDeploymentNotes('');
         onClose();
       }
@@ -191,16 +251,27 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
 
       doc.setFont('helvetica', 'normal');
       doc.text(`Date & Time: ${nowStr}`, 20, 40);
-      doc.text(`Employee Name: ${employeeName.trim() || 'N/A'}`, 20, 46);
-      doc.text(`Employee Account: ${employeeAccount.trim() || 'N/A'}`, 20, 52);
-      doc.text(`Employee ID (EID): ${employeeEid.trim() || 'N/A'}`, 20, 58);
-      doc.text(`Deployment Site: ${reqSiteId.trim() || 'N/A'}`, 20, 64);
+      if (deploymentType === 'employee') {
+        doc.text(`Employee Name: ${employeeName.trim() || 'N/A'}`, 20, 46);
+        doc.text(`Employee Account: ${employeeAccount.trim() || 'N/A'}`, 20, 52);
+        doc.text(`Employee ID (EID): ${employeeEid.trim() || 'N/A'}`, 20, 58);
+      } else {
+        doc.text(`Station Name/Number: ${stationName.trim() || 'N/A'}`, 20, 46);
+        doc.text(`Department / Area: ${stationDept.trim() || 'N/A'}`, 20, 52);
+      }
+      const siteY = deploymentType === 'employee' ? 64 : 58;
+      doc.text(`Deployment Site: ${reqSiteId.trim() || 'N/A'}`, 20, siteY);
+      let notesY = siteY + 6;
+      if (selectedFloor) {
+        doc.text(`Floor: ${selectedFloor}`, 20, notesY);
+        notesY += 6;
+      }
       if (deploymentNotes.trim()) {
-        doc.text(`Notes: ${deploymentNotes.trim()}`, 20, 70);
+        doc.text(`Notes: ${deploymentNotes.trim()}`, 20, notesY);
       }
 
       // Assets Table Header
-      let y = deploymentNotes.trim() ? 80 : 74;
+      let y = deploymentNotes.trim() ? (notesY + 10) : (notesY + 4);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
       doc.setTextColor(33, 12, 174);
@@ -257,10 +328,11 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
-      doc.text("Received By (Employee Signature)", 20, y + 5);
+      doc.text(deploymentType === 'employee' ? "Received By (Employee Signature)" : "Received By (Station Representative)", 20, y + 5);
       doc.text("Issued By (Inventory Staff)", 110, y + 5);
 
-      const fileName = `Asset_Deployment_${employeeEid.trim() || 'Record'}_${Date.now()}.pdf`;
+      const identifier = deploymentType === 'employee' ? (employeeEid.trim() || 'Record') : (stationName.trim() || 'Record');
+      const fileName = `Asset_Deployment_${identifier}_${Date.now()}.pdf`;
       doc.save(fileName);
     } catch (err) {
       console.error('Failed to generate PDF:', err);
@@ -304,7 +376,7 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
             <div>
               <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{isDeployMode ? "Asset Deployment" : "Asset Transfer"}</h2>
               <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
-                {isDeployMode ? `Deploy ${selectedItems.length} selected asset${selectedItems.length === 1 ? '' : 's'} to employee` : `Submit request for ${selectedItems.length} selected item${selectedItems.length === 1 ? '' : 's'}`}
+                {isDeployMode ? `Deploy ${selectedItems.length} selected asset${selectedItems.length === 1 ? '' : 's'} to ${deploymentType}` : `Submit request for ${selectedItems.length} selected item${selectedItems.length === 1 ? '' : 's'}`}
               </p>
             </div>
             <button
@@ -531,65 +603,216 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
               </div>
             </div>
 
-            {/* Conditional Fields: Employee details ONLY in Deploy mode */}
+            {/* Conditional Fields: Employee or Station details ONLY in Deploy mode */}
             {isDeployMode ? (
               <>
-                {/* Employee's Name */}
+                {/* Deployment Type Choice */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Employee&apos;s Name *</label>
-                  <input
-                    type="text"
-                    placeholder="Enter full name of employee..."
-                    value={employeeName}
-                    onChange={(e) => setEmployeeName(e.target.value)}
-                    style={{ padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', color: '#0f172a', width: '100%', backgroundColor: '#ffffff' }}
-                  />
+                  <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Deployment Type *</label>
+                  <div style={{ display: 'flex', backgroundColor: '#f1f5f9', borderRadius: 10, padding: '0.2rem', gap: '0.2rem', border: '1px solid #e2e8f0', width: 'fit-content' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDeploymentType('employee');
+                        setReqSiteId('');
+                        setSelectedFloor('');
+                      }}
+                      style={{
+                        padding: '0.4rem 1rem',
+                        borderRadius: 8,
+                        border: 'none',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        backgroundColor: deploymentType === 'employee' ? '#210cae' : 'transparent',
+                        color: deploymentType === 'employee' ? '#ffffff' : '#64748b',
+                        boxShadow: deploymentType === 'employee' ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      Employee
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDeploymentType('station');
+                        setReqSiteId('');
+                        setSelectedFloor('');
+                      }}
+                      style={{
+                        padding: '0.4rem 1rem',
+                        borderRadius: 8,
+                        border: 'none',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        backgroundColor: deploymentType === 'station' ? '#210cae' : 'transparent',
+                        color: deploymentType === 'station' ? '#ffffff' : '#64748b',
+                        boxShadow: deploymentType === 'station' ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      Station
+                    </button>
+                  </div>
                 </div>
 
-                {/* Employee's Account */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Employee&apos;s Account *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Finance / Customer Support / IT..."
-                    value={employeeAccount}
-                    onChange={(e) => setEmployeeAccount(e.target.value)}
-                    style={{ padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', color: '#0f172a', width: '100%', backgroundColor: '#ffffff' }}
-                  />
-                </div>
+                {deploymentType === 'employee' ? (
+                  <>
+                    {/* Employee's Site */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Employee&apos;s Site *</label>
+                      <select
+                        value={reqSiteId}
+                        onChange={(e) => {
+                          setReqSiteId(e.target.value);
+                          setSelectedFloor('');
+                        }}
+                        style={{ padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', color: '#0f172a', width: '100%', backgroundColor: '#ffffff' }}
+                      >
+                        <option value="">Select a site...</option>
+                        {sites.map(site => (
+                          <option key={site.id} value={site.name}>{site.name}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                {/* Employee ID (EID) */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Employee ID (EID) *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. EMP-10492"
-                    value={employeeEid}
-                    onChange={(e) => setEmployeeEid(e.target.value)}
-                    style={{ padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', color: '#0f172a', width: '100%', backgroundColor: '#ffffff' }}
-                  />
-                </div>
+                    {/* Available Floors (conditional dropdown) */}
+                    {reqSiteId && availableFloors.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Floor *</label>
+                        <select
+                          value={selectedFloor}
+                          onChange={(e) => setSelectedFloor(e.target.value)}
+                          style={{ padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', color: '#0f172a', width: '100%', backgroundColor: '#ffffff' }}
+                        >
+                          <option value="">Select floor...</option>
+                          {availableFloors.map(floor => (
+                            <option key={floor} value={floor}>{floor}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Employee ID (EID) */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Employee ID (EID) *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. EMP-10492"
+                        value={employeeEid}
+                        onChange={(e) => setEmployeeEid(e.target.value)}
+                        style={{ padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', color: '#0f172a', width: '100%', backgroundColor: '#ffffff' }}
+                      />
+                    </div>
+
+                    {/* Employee's Account */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Employee&apos;s Account *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Finance / Customer Support / IT..."
+                        value={employeeAccount}
+                        onChange={(e) => setEmployeeAccount(e.target.value)}
+                        style={{ padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', color: '#0f172a', width: '100%', backgroundColor: '#ffffff' }}
+                      />
+                    </div>
+
+                    {/* Employee's Name */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Employee&apos;s Name *</label>
+                      <input
+                        type="text"
+                        placeholder="Enter full name of employee..."
+                        value={employeeName}
+                        onChange={(e) => setEmployeeName(e.target.value)}
+                        style={{ padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', color: '#0f172a', width: '100%', backgroundColor: '#ffffff' }}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Station's Site */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Station&apos;s Site *</label>
+                      <select
+                        value={reqSiteId}
+                        onChange={(e) => {
+                          setReqSiteId(e.target.value);
+                          setSelectedFloor('');
+                        }}
+                        style={{ padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', color: '#0f172a', width: '100%', backgroundColor: '#ffffff' }}
+                      >
+                        <option value="">Select a site...</option>
+                        {sites.map(site => (
+                          <option key={site.id} value={site.name}>{site.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Available Floors (conditional dropdown) */}
+                    {reqSiteId && availableFloors.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Floor *</label>
+                        <select
+                          value={selectedFloor}
+                          onChange={(e) => setSelectedFloor(e.target.value)}
+                          style={{ padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', color: '#0f172a', width: '100%', backgroundColor: '#ffffff' }}
+                        >
+                          <option value="">Select floor...</option>
+                          {availableFloors.map(floor => (
+                            <option key={floor} value={floor}>{floor}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Station's Account */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Station&apos;s Account *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Operations / HR / Recruitment..."
+                        value={stationDept}
+                        onChange={(e) => setStationDept(e.target.value)}
+                        style={{ padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', color: '#0f172a', width: '100%', backgroundColor: '#ffffff' }}
+                      />
+                    </div>
+
+                    {/* Station Name / Number */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Station Name / Number *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. STN-01 or HR Station 1..."
+                        value={stationName}
+                        onChange={(e) => setStationName(e.target.value)}
+                        style={{ padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', color: '#0f172a', width: '100%', backgroundColor: '#ffffff' }}
+                      />
+                    </div>
+                  </>
+                )}
               </>
-            ) : null}
-
-            {/* Deployment / Target Site */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-              <label htmlFor="site-input" style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>{isDeployMode ? "Deployment Site *" : "Target Site *"}</label>
-              <input
-                id="site-input"
-                list="sites-list"
-                type="text"
-                placeholder="Select or enter site name..."
-                value={reqSiteId}
-                onChange={(e) => setReqSiteId(e.target.value)}
-                style={{ padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', color: '#0f172a', width: '100%', backgroundColor: '#ffffff' }}
-              />
-              <datalist id="sites-list">
-                {sites.map(site => (
-                  <option key={site.id} value={site.name} />
-                ))}
-              </datalist>
-            </div>
+            ) : (
+              /* Deployment / Target Site in non-deploy mode */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <label htmlFor="site-input" style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Target Site *</label>
+                <input
+                  id="site-input"
+                  list="sites-list"
+                  type="text"
+                  placeholder="Select or enter site name..."
+                  value={reqSiteId}
+                  onChange={(e) => setReqSiteId(e.target.value)}
+                  style={{ padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', color: '#0f172a', width: '100%', backgroundColor: '#ffffff' }}
+                />
+                <datalist id="sites-list">
+                  {sites.map(site => (
+                    <option key={site.id} value={site.name} />
+                  ))}
+                </datalist>
+              </div>
+            )}
 
             {/* Notes / Reason */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -648,7 +871,7 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={isSubmitting || selectedItems.length === 0 || !reqSiteId.trim() || (isDeployMode && (!employeeName.trim() || !employeeAccount.trim() || !employeeEid.trim()))}
+            disabled={isSubmitDisabled}
             style={{
               backgroundColor: isDeployMode ? '#210cae' : '#7c3aed',
               color: '#ffffff',
@@ -657,8 +880,8 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
               padding: '0.5rem 1.25rem',
               fontSize: '0.82rem',
               fontWeight: 600,
-              cursor: (isSubmitting || selectedItems.length === 0 || !reqSiteId.trim() || (isDeployMode && (!employeeName.trim() || !employeeAccount.trim() || !employeeEid.trim()))) ? 'not-allowed' : 'pointer',
-              opacity: (isSubmitting || selectedItems.length === 0 || !reqSiteId.trim() || (isDeployMode && (!employeeName.trim() || !employeeAccount.trim() || !employeeEid.trim()))) ? 0.5 : 1,
+              cursor: isSubmitDisabled ? 'not-allowed' : 'pointer',
+              opacity: isSubmitDisabled ? 0.5 : 1,
               transition: 'all 0.15s ease'
             }}
           >

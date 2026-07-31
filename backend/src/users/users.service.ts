@@ -104,6 +104,17 @@ export class UsersService {
     }
 
     const { passwordHash, ...userWithoutPassword } = user;
+
+    // Log the user login event in AuditLog
+    await this.prisma.auditLog.create({
+      data: {
+        action: "USER_LOGIN",
+        details: `User ${user.name || user.email} (${user.role}) logged in successfully`,
+        userId: user.id,
+        ipAddress: "127.0.0.1"
+      }
+    }).catch(err => console.warn("Failed to create login audit log:", err));
+
     return userWithoutPassword;
   }
 

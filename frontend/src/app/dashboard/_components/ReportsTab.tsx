@@ -147,6 +147,12 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
+  // ── User Auth Log Pagination State ──
+  const [authSearchQuery, setAuthSearchQuery] = useState("");
+  const [authEventType, setAuthEventType] = useState("ALL");
+  const [authCurrentPage, setAuthCurrentPage] = useState(1);
+  const authItemsPerPage = 6;
+
   const showNotification = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
@@ -227,13 +233,13 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
       if (reqsRes && reqsRes.ok) setRequestsList(await reqsRes.json().then(d => Array.isArray(d) ? d : d.data || []));
       if (logsRes && logsRes.ok) {
         setLogs(await logsRes.json().then(d => Array.isArray(d) ? d : d.data || []));
-      } else if (mockAuditLogs && mockAuditLogs.length > 0) {
-        setLogs(mockAuditLogs);
+      } else {
+        setLogs([]);
       }
       if (posRes && posRes.ok) setPurchaseOrders(await posRes.json().then(d => Array.isArray(d) ? d : d.data || []));
     } catch (err) {
       console.error("Error fetching live system data:", err);
-      if (mockAuditLogs && mockAuditLogs.length > 0) setLogs(mockAuditLogs);
+      setLogs([]);
     } finally {
       setIsLoading(false);
     }
@@ -349,12 +355,12 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   }, [purchaseOrders, selectedSite]);
 
   const siteLogs = useMemo(() => {
-    let result = logs.length > 0 ? logs : mockAuditLogs;
+    let result = logs;
     if (selectedSite !== "ALL") {
       result = result.filter(l => (l.siteId || l.user?.siteId) === selectedSite || (l.siteName || l.user?.site?.name) === selectedSite);
     }
     return result;
-  }, [logs, mockAuditLogs, selectedSite]);
+  }, [logs, selectedSite]);
 
   // Export individual Chart to PNG
   const handleExportChartPNG = async (chartElementId: string, chartTitle: string) => {
@@ -383,7 +389,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   const getItemStock = (item: any, siteFilter?: string): number => {
     if (!item) return 0;
     if (siteFilter && siteFilter !== "ALL" && Array.isArray(item.stockLevels) && item.stockLevels.length > 0) {
-      const siteStock = item.stockLevels.find((sl: any) => sl.siteId === siteFilter);
+      const siteStock = item.stockLevels.find((sl: any) => sl.siteId === siteFilter || sl.site?.name === siteFilter);
       if (siteStock) return Number(siteStock.quantity ?? 0);
     }
     if (Array.isArray(item.stockLevels) && item.stockLevels.length > 0) {
@@ -392,17 +398,37 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     return Number(item.quantity ?? item.stock ?? 0) || 0;
   };
 
+  // Helper function to calculate low stock alert occurrences matching system rules
+  const countLowStockAlerts = (items: any[], siteFilter: string): number => {
+    let alertCount = 0;
+    items.forEach(item => {
+      const threshold = Number(item.reorderPoint ?? 5);
+      if (Array.isArray(item.stockLevels) && item.stockLevels.length > 0) {
+        if (siteFilter && siteFilter !== "ALL") {
+          const sl = item.stockLevels.find((s: any) => s.siteId === siteFilter || s.site?.name === siteFilter);
+          const qty = Number(sl?.quantity ?? 0);
+          if (qty <= threshold) alertCount++;
+        } else {
+          item.stockLevels.forEach((sl: any) => {
+            const qty = Number(sl.quantity ?? 0);
+            if (qty <= threshold) alertCount++;
+          });
+        }
+      } else {
+        const qty = Number(item.quantity ?? item.stock ?? 0);
+        if (qty <= threshold) alertCount++;
+      }
+    });
+    return alertCount;
+  };
+
   // ── KPI CARD COMPUTATIONS (STRICT 2-ROW SCREENSHOT SPECIFICATION) ──
   const kpiRow1 = useMemo(() => {
     const actionRequired = siteRequests.filter(r => (r.status || "").includes("PENDING")).length;
     const stockAdjustments = siteLogs.filter(l => (l.action || "").toUpperCase().includes("STOCK") || (l.action || "").toUpperCase().includes("ADJUST")).length;
     
-    // Calculate stock accurately across stockLevels arrays (stock > 0 and <= reorderPoint)
-    const lowStockAlerts = siteItems.filter(i => {
-      const stock = getItemStock(i, selectedSite);
-      const threshold = i.reorderPoint ?? 5;
-      return stock > 0 && stock <= threshold;
-    }).length;
+    // Calculate low stock alerts accurately matching system threshold & site stockLevels
+    const lowStockAlerts = countLowStockAlerts(siteItems, selectedSite);
     const allLogsCount = siteLogs.length;
 
     return [
@@ -419,11 +445,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     const approvalRate = siteRequests.length > 0 ? Math.round((approvedCount / siteRequests.length) * 100) : 100;
     const activeSuppliers = suppliersList.length;
     
-    const lowStockCount = siteItems.filter(i => {
-      const stock = getItemStock(i, selectedSite);
-      const threshold = i.reorderPoint ?? 5;
-      return stock > 0 && stock <= threshold;
-    }).length;
+    const lowStockCount = countLowStockAlerts(siteItems, selectedSite);
 
     return [
       { id: "total_actions", label: "TOTAL ACTIONS", val: totalActions, unit: "", color: "#1E293B" },
@@ -458,7 +480,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
 
   const activeFilteredItems = useMemo(() => {
     if (kpiFilter === "low_stock_alerts_top" || kpiFilter === "low_stock_alerts_bottom") {
-      return siteItems.filter(i => getItemStock(i, selectedSite) <= (i.reorderPoint ?? 5));
+      return siteItems.filter(i => countLowStockAlerts([i], selectedSite) > 0);
     }
     return siteItems;
   }, [siteItems, kpiFilter, selectedSite]);
@@ -470,26 +492,123 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     return siteRequests;
   }, [siteRequests, kpiFilter]);
 
-  // 1. Activity Over Last 7 Days (Smooth Multi-Line Area Chart)
+  // 1. Activity Over Last 7 Days (Smooth Multi-Line Area Chart - Dynamic Calendar Dates)
   const chart7DaysActivity = useMemo(() => {
-    const days = ["Jul 22", "Jul 23", "Jul 24", "Jul 25", "Jul 26", "Jul 27", "Jul 28"];
-    return days.map((d, idx) => ({
-      day: d,
-      "Inventory Transactions": activeFilteredLogs.filter(l => (l.createdAt || "").includes(d)).length || (kpiFilter === "action_required" ? 0 : [4, 14, 6, 12, 5, 8, 3][idx]),
-      "Purchase Orders": sitePOs.filter(p => (p.createdAt || "").includes(d)).length || (kpiFilter === "low_stock_alerts_top" ? 0 : [2, 5, 3, 8, 2, 4, 1][idx]),
-      "Asset Deployments": activeFilteredRequests.filter(r => (r.createdAt || "").includes(d)).length || [3, 9, 4, 7, 3, 5, 2][idx],
-      "Returned Assets": activeFilteredRequests.filter(r => (r.status || "").includes("RETURN")).length || [1, 3, 1, 4, 1, 2, 1][idx]
-    }));
-  }, [activeFilteredLogs, sitePOs, activeFilteredRequests, kpiFilter]);
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    });
 
-  // 2. Actions by Type (Sorted Horizontal Bar Chart)
+    return days.map((d) => {
+      const isDateMatch = (dateStr?: string) => {
+        if (!dateStr) return false;
+        try {
+          return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" }) === d;
+        } catch {
+          return dateStr.includes(d);
+        }
+      };
+
+      if (kpiFilter === "stock_adjustments") {
+        return {
+          day: d,
+          "Stock Additions": siteLogs.filter(l => isDateMatch(l.createdAt) && ((l.action || "").toUpperCase().includes("ADD") || (l.action || "").toUpperCase().includes("CREATE"))).length,
+          "Stock Deductions": siteLogs.filter(l => isDateMatch(l.createdAt) && ((l.action || "").toUpperCase().includes("DEDUCT") || (l.action || "").toUpperCase().includes("DELETE"))).length,
+          "Asset Transfers": siteLogs.filter(l => isDateMatch(l.createdAt) && (l.action || "").toUpperCase().includes("TRANSFER")).length
+        };
+      }
+
+      if (kpiFilter === "low_stock_alerts_top" || kpiFilter === "low_stock_alerts_bottom") {
+        const lowStockLogs = siteLogs.filter(l => (l.details || "").toUpperCase().includes("LOW STOCK") || (l.action || "").toUpperCase().includes("LOW_STOCK"));
+        return {
+          day: d,
+          "Low Stock Alerts": lowStockLogs.filter(l => isDateMatch(l.createdAt)).length,
+          "Critical Out of Stock": siteItems.filter(i => getItemStock(i, selectedSite) === 0 && isDateMatch(i.updatedAt || i.createdAt)).length,
+          "Replenished Items": siteLogs.filter(l => isDateMatch(l.createdAt) && ((l.action || "").toUpperCase().includes("ADD") || (l.action || "").toUpperCase().includes("STOCK"))).length
+        };
+      }
+
+      return {
+        day: d,
+        "Inventory Transactions": activeFilteredLogs.filter(l => isDateMatch(l.createdAt)).length,
+        "Purchase Orders": sitePOs.filter(p => isDateMatch(p.createdAt)).length,
+        "Asset Deployments": activeFilteredRequests.filter(r => isDateMatch(r.createdAt) && (r.reason?.includes("[ASSET DEPLOYMENT]") || r.status === "RELEASED")).length,
+        "Returned Assets": activeFilteredRequests.filter(r => (r.status || "").toUpperCase().includes("RETURN") && isDateMatch(r.createdAt)).length
+      };
+    });
+  }, [activeFilteredLogs, sitePOs, activeFilteredRequests, siteLogs, siteItems, selectedSite, kpiFilter]);
+
+  // 2. Actions by Type (Sorted Horizontal Bar Chart - Strict Live Counts)
   const chartActionsByType = useMemo(() => {
-    const created = activeFilteredLogs.filter(l => (l.action || "").toUpperCase().includes("CREATE")).length || (kpiFilter === "action_required" ? 0 : 18);
-    const updated = activeFilteredLogs.filter(l => (l.action || "").toUpperCase().includes("UPDATE") || (l.action || "").toUpperCase().includes("EDIT")).length || (kpiFilter === "action_required" ? 0 : 24);
-    const deleted = activeFilteredLogs.filter(l => (l.action || "").toUpperCase().includes("DELETE") || (l.action || "").toUpperCase().includes("REMOVE")).length || (kpiFilter === "action_required" ? 0 : 5);
-    const pos = kpiFilter === "low_stock_alerts_top" ? 0 : sitePOs.length || 14;
-    const deployments = activeFilteredRequests.filter(r => (r.status || "").includes("RELEASED") || (r.status || "").includes("APPROVED")).length || 16;
-    const returns = activeFilteredRequests.filter(r => (r.status || "").includes("RETURN")).length || 8;
+    if (kpiFilter === "low_stock_alerts_top" || kpiFilter === "low_stock_alerts_bottom") {
+      const siteCountsMap = new Map<string, number>();
+      siteItems.forEach((item: any) => {
+        const threshold = Number(item.reorderPoint ?? 5);
+        if (Array.isArray(item.stockLevels) && item.stockLevels.length > 0) {
+          item.stockLevels.forEach((sl: any) => {
+            const qty = Number(sl.quantity ?? 0);
+            if (qty <= threshold) {
+              const sName = sl.site?.name || sl.siteId || "System Site";
+              siteCountsMap.set(sName, (siteCountsMap.get(sName) || 0) + 1);
+            }
+          });
+        } else {
+          const qty = Number(item.quantity ?? item.stock ?? 0);
+          if (qty <= threshold) {
+            const sName = item.siteName || item.site?.name || "System Site";
+            siteCountsMap.set(sName, (siteCountsMap.get(sName) || 0) + 1);
+          }
+        }
+      });
+
+      const colors = ["#EF4444", "#F59E0B", "#2563EB", "#10B981", "#8B5CF6"];
+      const list = Array.from(siteCountsMap.entries()).map(([name, count], idx) => ({
+        name,
+        count,
+        color: colors[idx % colors.length]
+      }));
+
+      if (list.length === 0) {
+        list.push({ name: "System Sites", count: 0, color: "#10B981" });
+      }
+      return list.sort((a, b) => b.count - a.count);
+    }
+
+    if (kpiFilter === "action_required") {
+      const pendingStaff = siteRequests.filter(r => (r.status || "").includes("PENDING") && !(r.status || "").includes("OPS")).length;
+      const pendingOps = siteRequests.filter(r => (r.status || "").includes("OPS")).length;
+      const awaitingSignoff = siteRequests.filter(r => (r.status || "").includes("AWAITING") || (r.status || "").includes("CONFIRMATION")).length;
+      const approved = siteRequests.filter(r => (r.status || "").includes("APPROVED") || (r.status || "").includes("RELEASED")).length;
+
+      return [
+        { name: "Approved / Released", count: approved, color: "#10B981" },
+        { name: "Pending Staff Review", count: pendingStaff, color: "#6366F1" },
+        { name: "Pending Ops Approval", count: pendingOps, color: "#F59E0B" },
+        { name: "Awaiting Sign-off", count: awaitingSignoff, color: "#8B5CF6" }
+      ].sort((a, b) => b.count - a.count);
+    }
+
+    if (kpiFilter === "stock_adjustments") {
+      const added = siteLogs.filter(l => (l.action || "").toUpperCase().includes("CREATE") || (l.action || "").toUpperCase().includes("ADD")).length;
+      const updated = siteLogs.filter(l => (l.action || "").toUpperCase().includes("UPDATE") || (l.action || "").toUpperCase().includes("EDIT")).length;
+      const deleted = siteLogs.filter(l => (l.action || "").toUpperCase().includes("DELETE") || (l.action || "").toUpperCase().includes("REMOVE")).length;
+      const transferred = siteLogs.filter(l => (l.action || "").toUpperCase().includes("TRANSFER")).length;
+
+      return [
+        { name: "Stock Deductions", count: deleted, color: "#EF4444" },
+        { name: "Stock Additions", count: added, color: "#10B981" },
+        { name: "Stock Updates", count: updated, color: "#2563EB" },
+        { name: "Asset Transfers", count: transferred, color: "#8B5CF6" }
+      ].sort((a, b) => b.count - a.count);
+    }
+
+    const created = activeFilteredLogs.filter(l => (l.action || "").toUpperCase().includes("CREATE")).length;
+    const updated = activeFilteredLogs.filter(l => (l.action || "").toUpperCase().includes("UPDATE") || (l.action || "").toUpperCase().includes("EDIT")).length;
+    const deleted = activeFilteredLogs.filter(l => (l.action || "").toUpperCase().includes("DELETE") || (l.action || "").toUpperCase().includes("REMOVE")).length;
+    const pos = sitePOs.length;
+    const deployments = activeFilteredRequests.filter(r => (r.status || "").includes("RELEASED") || (r.status || "").includes("APPROVED") || (r.reason || "").includes("[ASSET DEPLOYMENT]")).length;
+    const returns = activeFilteredRequests.filter(r => (r.status || "").includes("RETURN")).length;
 
     const list = [
       { name: "Assets Created", count: created, color: "#2563EB" },
@@ -501,50 +620,261 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
     ];
 
     return list.sort((a, b) => b.count - a.count);
-  }, [activeFilteredLogs, sitePOs, activeFilteredRequests, kpiFilter]);
+  }, [activeFilteredLogs, sitePOs, activeFilteredRequests, siteItems, siteRequests, siteLogs, kpiFilter]);
 
-  // 3. Activity by Category (Stacked Horizontal Bar Chart)
+  // 3. Activity by Category (Stacked Horizontal Bar Chart - Live Data)
   const chartActivityByCategory = useMemo(() => {
-    const categories = [
-      "Computers", "Monitors", "Keyboards", "Mouse", "RAM", "Storage", "Printers", "Networking", "Accessories"
-    ];
+    // Dynamically derive categories from actual system items and categories list
+    const systemCategorySet = new Set<string>();
+    if (Array.isArray(siteItems) && siteItems.length > 0) {
+      siteItems.forEach((i: any) => {
+        const catName = i.category?.name || i.category || i.categoryName || i.itemCategory;
+        if (catName && typeof catName === "string" && catName.trim()) {
+          systemCategorySet.add(catName.trim());
+        }
+      });
+    }
+    if (systemCategorySet.size === 0 && categoriesList.length > 0) {
+      categoriesList.forEach((c: any) => {
+        const name = typeof c === "string" ? c : c.name;
+        if (name && typeof name === "string" && name.trim()) {
+          systemCategorySet.add(name.trim());
+        }
+      });
+    }
 
-    return categories.map((cat, idx) => {
-      const catItems = activeFilteredItems.filter(i => (i.category?.name || i.category || "").toLowerCase().includes(cat.toLowerCase()));
-      const base = catItems.length || (kpiFilter === "action_required" ? 1 : 10 - idx);
+    const categories = systemCategorySet.size > 0 
+      ? Array.from(systemCategorySet)
+      : ["Monitors", "Mouse", "Headsets", "Ram", "System Unit", "Keyboards"];
+
+    const formatCategoryLabel = (name: string) => {
+      if (!name) return "General";
+      return String(name)
+        .replace(/_/g, " ")
+        .toLowerCase()
+        .replace(/\b(it|ram|po|id)\b/gi, m => m.toUpperCase())
+        .replace(/\b\w/g, l => l.toUpperCase());
+    };
+
+    return categories.map((catRaw: string) => {
+      const catLabel = formatCategoryLabel(catRaw);
+      const matchCat = (val?: any) => {
+        if (!val) return false;
+        let str = "";
+        if (typeof val === "string") str = val;
+        else if (typeof val === "object") str = val.name || val.type || val.title || val.category || "";
+        else str = String(val);
+        const lowerVal = str.toLowerCase();
+        return lowerVal.includes(catRaw.toLowerCase()) || lowerVal.includes(catLabel.toLowerCase());
+      };
+
+      const catLogs = activeFilteredLogs.filter(l => matchCat(l.details) || matchCat(l.item) || matchCat(l.category));
+      const catRequests = activeFilteredRequests.filter(r => matchCat(r.itemName) || matchCat(r.itemCategory));
+
+      if (kpiFilter === "low_stock_alerts_top" || kpiFilter === "low_stock_alerts_bottom") {
+        let lowCount = 0;
+        let outCount = 0;
+
+        siteItems.forEach(i => {
+          const catName = i.category?.name || i.category || i.categoryName || i.itemCategory || i.name || "";
+          if (!matchCat(catName)) return;
+
+          const thresh = Number(i.reorderPoint ?? 5);
+          if (Array.isArray(i.stockLevels) && i.stockLevels.length > 0) {
+            if (selectedSite && selectedSite !== "ALL") {
+              const sl = i.stockLevels.find((s: any) => s.siteId === selectedSite || s.site?.name === selectedSite);
+              const qty = Number(sl?.quantity ?? 0);
+              if (qty === 0) outCount++;
+              else if (qty <= thresh) lowCount++;
+            } else {
+              i.stockLevels.forEach((sl: any) => {
+                const qty = Number(sl.quantity ?? 0);
+                if (qty === 0) outCount++;
+                else if (qty <= thresh) lowCount++;
+              });
+            }
+          } else {
+            const qty = Number(i.quantity ?? i.stock ?? 0);
+            if (qty === 0) outCount++;
+            else if (qty <= thresh) lowCount++;
+          }
+        });
+
+        return {
+          category: catLabel,
+          "Low Stock": lowCount,
+          "Out of Stock": outCount
+        };
+      }
+
+      if (kpiFilter === "action_required") {
+        return {
+          category: catLabel,
+          "Pending Staff": catRequests.filter(r => (r.status || "").includes("PENDING") && !(r.status || "").includes("OPS")).length,
+          "Pending Ops": catRequests.filter(r => (r.status || "").includes("OPS")).length,
+          "Approved": catRequests.filter(r => (r.status || "").includes("APPROVED") || (r.status || "").includes("RELEASED")).length
+        };
+      }
+
+      if (kpiFilter === "stock_adjustments") {
+        return {
+          category: catLabel,
+          "Stock Added": catLogs.filter(l => (l.action || "").toUpperCase().includes("ADD") || (l.action || "").toUpperCase().includes("CREATE")).length,
+          "Stock Deducted": catLogs.filter(l => (l.action || "").toUpperCase().includes("DEDUCT") || (l.action || "").toUpperCase().includes("DELETE")).length,
+          "Transfers": catLogs.filter(l => (l.action || "").toUpperCase().includes("TRANSFER")).length
+        };
+      }
 
       return {
-        category: cat,
-        Created: Math.round(base * 1.2) || 1,
-        Updated: Math.round(base * 1.5) || 2,
-        Deleted: Math.round(base * 0.3) || 0,
-        "Checked Out": Math.round(base * 1.1) || 1,
-        Returned: Math.round(base * 0.4) || 0
+        category: catLabel,
+        Created: catLogs.filter(l => (l.action || "").toUpperCase().includes("CREATE")).length,
+        Updated: catLogs.filter(l => (l.action || "").toUpperCase().includes("UPDATE") || (l.action || "").toUpperCase().includes("EDIT")).length,
+        Deleted: catLogs.filter(l => (l.action || "").toUpperCase().includes("DELETE")).length,
+        "Checked Out": catRequests.filter(r => (r.status || "").includes("RELEASED") || (r.status || "").includes("APPROVED") || (r.reason || "").includes("[ASSET DEPLOYMENT]")).length,
+        Returned: catRequests.filter(r => (r.status || "").includes("RETURN")).length
       };
     });
-  }, [activeFilteredItems, kpiFilter]);
+  }, [categoriesList, activeFilteredLogs, activeFilteredRequests, siteItems, kpiFilter, selectedSite]);
 
-  // 4. Inventory Status (Modern Donut Chart with Quantities & Percentages)
+  // 4. Inventory Status (Modern Donut Chart - Strict Live Percentages)
   const chartInventoryStatus = useMemo(() => {
-    const total = activeFilteredItems.reduce((acc, i) => acc + getItemStock(i, selectedSite), 0) || 1;
+    if (kpiFilter === "low_stock_alerts_top" || kpiFilter === "low_stock_alerts_bottom") {
+      let criticalCount = 0;
+      let lowCount = 0;
+      let adequateCount = 0;
+
+      siteItems.forEach((item: any) => {
+        const threshold = Number(item.reorderPoint ?? 5);
+        if (Array.isArray(item.stockLevels) && item.stockLevels.length > 0) {
+          if (selectedSite && selectedSite !== "ALL") {
+            const sl = item.stockLevels.find((s: any) => s.siteId === selectedSite || s.site?.name === selectedSite);
+            const qty = Number(sl?.quantity ?? 0);
+            if (qty === 0) criticalCount++;
+            else if (qty <= threshold) lowCount++;
+            else adequateCount++;
+          } else {
+            item.stockLevels.forEach((sl: any) => {
+              const qty = Number(sl.quantity ?? 0);
+              if (qty === 0) criticalCount++;
+              else if (qty <= threshold) lowCount++;
+              else adequateCount++;
+            });
+          }
+        } else {
+          const qty = Number(item.quantity ?? item.stock ?? 0);
+          if (qty === 0) criticalCount++;
+          else if (qty <= threshold) lowCount++;
+          else adequateCount++;
+        }
+      });
+
+      const totalAlerts = criticalCount + lowCount + adequateCount || 1;
+
+      return [
+        { name: "Critical (0 Stock)", qty: criticalCount, pct: Math.round((criticalCount / totalAlerts) * 100), color: "#EF4444" },
+        { name: "Low Stock (<= Min)", qty: lowCount, pct: Math.round((lowCount / totalAlerts) * 100), color: "#F59E0B" },
+        { name: "Adequate Stock", qty: adequateCount, pct: Math.round((adequateCount / totalAlerts) * 100), color: "#10B981" }
+      ];
+    }
+
+    if (kpiFilter === "action_required") {
+      const pendingStaff = siteRequests.filter(r => (r.status || "").includes("PENDING") && !(r.status || "").includes("OPS")).length;
+      const pendingOps = siteRequests.filter(r => (r.status || "").includes("OPS")).length;
+      const awaitingSignoff = siteRequests.filter(r => (r.status || "").includes("AWAITING") || (r.status || "").includes("CONFIRMATION")).length;
+      const approved = siteRequests.filter(r => (r.status || "").includes("APPROVED") || (r.status || "").includes("RELEASED")).length;
+
+      const totalReqs = pendingStaff + pendingOps + awaitingSignoff + approved || 1;
+
+      return [
+        { name: "Approved / Released", qty: approved, pct: Math.round((approved / totalReqs) * 100), color: "#10B981" },
+        { name: "Pending Staff", qty: pendingStaff, pct: Math.round((pendingStaff / totalReqs) * 100), color: "#6366F1" },
+        { name: "Pending Ops", qty: pendingOps, pct: Math.round((pendingOps / totalReqs) * 100), color: "#F59E0B" },
+        { name: "Awaiting Sign-off", qty: awaitingSignoff, pct: Math.round((awaitingSignoff / totalReqs) * 100), color: "#8B5CF6" }
+      ];
+    }
+
+    if (kpiFilter === "stock_adjustments") {
+      const added = siteLogs.filter(l => (l.action || "").toUpperCase().includes("CREATE") || (l.action || "").toUpperCase().includes("ADD")).length;
+      const updated = siteLogs.filter(l => (l.action || "").toUpperCase().includes("UPDATE") || (l.action || "").toUpperCase().includes("EDIT")).length;
+      const deleted = siteLogs.filter(l => (l.action || "").toUpperCase().includes("DELETE") || (l.action || "").toUpperCase().includes("REMOVE")).length;
+      const transferred = siteLogs.filter(l => (l.action || "").toUpperCase().includes("TRANSFER")).length;
+
+      const totalAdj = added + updated + deleted + transferred || 1;
+
+      return [
+        { name: "Stock Deductions", qty: deleted, pct: Math.round((deleted / totalAdj) * 100), color: "#EF4444" },
+        { name: "Stock Additions", qty: added, pct: Math.round((added / totalAdj) * 100), color: "#10B981" },
+        { name: "Stock Updates", qty: updated, pct: Math.round((updated / totalAdj) * 100), color: "#2563EB" },
+        { name: "Asset Transfers", qty: transferred, pct: Math.round((transferred / totalAdj) * 100), color: "#8B5CF6" }
+      ];
+    }
+
+    const total = activeFilteredItems.reduce((acc, i) => acc + getItemStock(i, selectedSite), 0);
     const inStock = activeFilteredItems.filter(i => (i.status || "AVAILABLE").toUpperCase() === "AVAILABLE").reduce((a, b) => a + getItemStock(b, selectedSite), 0);
     const checkedOut = activeFilteredItems.filter(i => (i.status || "").toUpperCase() === "ASSIGNED" || (i.status || "").toUpperCase() === "CHECKED_OUT").reduce((a, b) => a + getItemStock(b, selectedSite), 0);
-    const reserved = activeFilteredRequests.filter(r => (r.status || "").includes("APPROVED")).length;
-    const lowStock = activeFilteredItems.filter(i => {
-      const stock = getItemStock(i, selectedSite);
-      const reorder = i.reorderPoint ?? 5;
-      return stock > 0 && stock <= reorder;
-    }).length;
+    const reserved = activeFilteredRequests.filter(r => (r.status || "").includes("APPROVED") || (r.status || "").includes("PENDING")).length;
+    const lowStock = countLowStockAlerts(activeFilteredItems, selectedSite);
     const outOfStock = activeFilteredItems.filter(i => getItemStock(i, selectedSite) === 0).length;
 
+    const safeTotal = total > 0 ? total : 1;
+
     return [
-      { name: "In Stock", qty: inStock, pct: Math.round((inStock / total) * 100) || 0, color: "#10B981" },
-      { name: "Checked Out", qty: checkedOut, pct: Math.round((checkedOut / total) * 100) || 0, color: "#2563EB" },
-      { name: "Reserved", qty: reserved, pct: Math.round((reserved / total) * 100) || 0, color: "#8B5CF6" },
-      { name: "Low Stock", qty: lowStock, pct: Math.round((lowStock / total) * 100) || 0, color: "#F59E0B" },
-      { name: "Out of Stock", qty: outOfStock, pct: Math.round((outOfStock / total) * 100) || 0, color: "#EF4444" }
+      { name: "In Stock", qty: inStock, pct: total > 0 ? Math.round((inStock / safeTotal) * 100) : 0, color: "#10B981" },
+      { name: "Checked Out", qty: checkedOut, pct: total > 0 ? Math.round((checkedOut / safeTotal) * 100) : 0, color: "#2563EB" },
+      { name: "Reserved", qty: reserved, pct: total > 0 ? Math.round((reserved / safeTotal) * 100) : 0, color: "#8B5CF6" },
+      { name: "Low Stock", qty: lowStock, pct: total > 0 ? Math.round((lowStock / safeTotal) * 100) : 0, color: "#F59E0B" },
+      { name: "Out of Stock", qty: outOfStock, pct: total > 0 ? Math.round((outOfStock / safeTotal) * 100) : 0, color: "#EF4444" }
     ];
-  }, [activeFilteredItems, activeFilteredRequests, selectedSite]);
+  }, [activeFilteredItems, activeFilteredRequests, siteItems, siteRequests, siteLogs, selectedSite, kpiFilter]);
+
+  // Dynamic Chart Titles & Subtitles reactive to selected KPI Card
+  const chartConfigs = useMemo(() => {
+    if (kpiFilter === "action_required") {
+      return {
+        chart1Title: "1. Pending Actions Trend (Last 7 Days)",
+        chart1Sub: "Daily volume of requests awaiting staff review & ops approval",
+        chart2Title: "2. Pending Requests by Status",
+        chart2Sub: "Breakdown of requests pending staff review or ops sign-off",
+        chart3Title: "3. Pending Requests by Category",
+        chart3Sub: "Items pending approval grouped by hardware category",
+        chart4Title: "4. Pending Requests Status Distribution",
+        chart4Sub: "Distribution of pending request statuses",
+      };
+    } else if (kpiFilter === "stock_adjustments") {
+      return {
+        chart1Title: "1. Stock Adjustment Activity (Last 7 Days)",
+        chart1Sub: "Daily count of stock additions, deductions, and transfers",
+        chart2Title: "2. Adjustments by Action Type",
+        chart2Sub: "Quantity changes categorized by adjustment activity",
+        chart3Title: "3. Adjustments by Category",
+        chart3Sub: "Stock level modifications grouped by hardware category",
+        chart4Title: "4. Stock Movement Breakdown",
+        chart4Sub: "Proportion of stock additions vs deductions vs transfers",
+      };
+    } else if (kpiFilter === "low_stock_alerts_top" || kpiFilter === "low_stock_alerts_bottom") {
+      return {
+        chart1Title: "1. Low Stock Alert Trend (Last 7 Days)",
+        chart1Sub: "Daily count of items dropping below reorder threshold",
+        chart2Title: "2. Low Stock Alerts by Action Type",
+        chart2Sub: "Alerts categorized by stock warning severity",
+        chart3Title: "3. Low Stock Alerts by Category",
+        chart3Sub: "Low and out of stock items grouped by category",
+        chart4Title: "4. Stock Deficit Severity",
+        chart4Sub: "Proportion of critical (0 stock) vs low stock items",
+      };
+    }
+
+    return {
+      chart1Title: "1. Activity Over Last 7 Days",
+      chart1Sub: "Smooth trend of transactions, POs, and deployments",
+      chart2Title: "2. Actions by Type",
+      chart2Sub: "Sorted totals across operational event types",
+      chart3Title: "3. Activity by Category",
+      chart3Sub: "Stacked lifecycle events across hardware categories",
+      chart4Title: "4. Inventory Status",
+      chart4Sub: "Stock distribution percentages and unit counts",
+    };
+  }, [kpiFilter]);
 
   // ── FILTERED ACTIVITY LOG TABLE ──
   const filteredTableLogs = useMemo(() => {
@@ -573,6 +903,46 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   }, [filteredTableLogs, currentPage]);
 
   const totalPages = Math.ceil(filteredTableLogs.length / itemsPerPage) || 1;
+
+  // ── FILTERED USER LOG IN & LOG OUT ACTIVITY LOGS ──
+  const userAuthLogs = useMemo(() => {
+    return siteLogs.filter((log: any) => {
+      const actionUpper = (log.action || "").toUpperCase();
+      const detailsUpper = (log.details || "").toUpperCase();
+      
+      const isAuthEvent = (
+        actionUpper.includes("LOGIN") ||
+        actionUpper.includes("LOGOUT") ||
+        actionUpper.includes("AUTH") ||
+        actionUpper.includes("SIGN_IN") ||
+        actionUpper.includes("SIGN_OUT") ||
+        detailsUpper.includes("LOGGED IN") ||
+        detailsUpper.includes("LOGGED OUT") ||
+        detailsUpper.includes("SESSION")
+      );
+
+      if (!isAuthEvent) return false;
+
+      const q = authSearchQuery.toLowerCase();
+      const matchesSearch = !authSearchQuery || JSON.stringify(log).toLowerCase().includes(q);
+      
+      let matchesType = true;
+      if (authEventType === "LOGIN") {
+        matchesType = actionUpper.includes("LOGIN") || detailsUpper.includes("LOGGED IN");
+      } else if (authEventType === "LOGOUT") {
+        matchesType = actionUpper.includes("LOGOUT") || detailsUpper.includes("LOGGED OUT");
+      }
+
+      return matchesSearch && matchesType;
+    });
+  }, [siteLogs, authSearchQuery, authEventType]);
+
+  const paginatedAuthLogs = useMemo(() => {
+    const start = (authCurrentPage - 1) * authItemsPerPage;
+    return userAuthLogs.slice(start, start + authItemsPerPage);
+  }, [userAuthLogs, authCurrentPage]);
+
+  const totalAuthPages = Math.ceil(userAuthLogs.length / authItemsPerPage) || 1;
 
   // ── SCHEDULE REPORT MANAGEMENT FUNCTIONS ──
   const handleSaveSchedule = () => {
@@ -1346,89 +1716,100 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
       </div>
 
       {/* ====================================================
-          CHARTS ROW (PRESERVING 3-CHARTS GRID SPECIFICATION)
+          DYNAMIC ENTERPRISE CHARTS GRID (FITTED PER KPI FILTER)
           ==================================================== */}
-      {/* ====================================================
-          4 UPGRADED ENTERPRISE CHARTS GRID
-          ==================================================== */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "1.25rem", marginBottom: "1.75rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(380px, 1fr))", gap: "1.25rem", marginBottom: "1.75rem" }}>
         
-        {/* 1. Activity Over Last 7 Days (Smooth Multi-Line Area Chart) */}
-        <div id="chart-7days" style={{ backgroundColor: "#FFFFFF", borderRadius: "12px", padding: "1.25rem", border: "1px solid #E2E8F0", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-            <div>
-              <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#1E293B", margin: 0 }}>1. Activity Over Last 7 Days</h3>
-              <span style={{ fontSize: "11px", color: "#64748B" }}>Smooth trend of transactions, POs, and deployments</span>
+        {/* CHART 1: Activity / Trend Chart (Hidden for Low Stock Alerts & Action Required if not fitted) */}
+        {(kpiFilter === null || kpiFilter === "all_logs" || kpiFilter === "stock_adjustments") && (
+          <div id="chart-7days" style={{ backgroundColor: "#FFFFFF", borderRadius: "12px", padding: "1.25rem", border: "1px solid #E2E8F0", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+              <div>
+                <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#1E293B", margin: 0 }}>{chartConfigs.chart1Title}</h3>
+                <span style={{ fontSize: "11px", color: "#64748B" }}>{chartConfigs.chart1Sub}</span>
+              </div>
+              <div style={{ display: "flex", gap: "0.35rem" }}>
+                <button onClick={() => handleExportChartPNG("chart-7days", "Activity_Trend")} title="Download PNG" style={{ padding: "0.35rem", borderRadius: "6px", border: "1px solid #E2E8F0", backgroundColor: "#F8FAFC", cursor: "pointer", color: "#475569" }}><Download size={13} /></button>
+                <button onClick={() => setFullScreenChart({ title: chartConfigs.chart1Title, chartId: "chart-7days" })} title="Full Screen" style={{ padding: "0.35rem", borderRadius: "6px", border: "1px solid #E2E8F0", backgroundColor: "#F8FAFC", cursor: "pointer", color: "#475569" }}><Maximize2 size={13} /></button>
+              </div>
             </div>
-            <div style={{ display: "flex", gap: "0.35rem" }}>
-              <button onClick={() => handleExportChartPNG("chart-7days", "Activity_Over_7_Days")} title="Download PNG" style={{ padding: "0.35rem", borderRadius: "6px", border: "1px solid #E2E8F0", backgroundColor: "#F8FAFC", cursor: "pointer", color: "#475569" }}><Download size={13} /></button>
-              <button onClick={() => setFullScreenChart({ title: "Activity Over Last 7 Days", chartId: "chart-7days" })} title="Full Screen" style={{ padding: "0.35rem", borderRadius: "6px", border: "1px solid #E2E8F0", backgroundColor: "#F8FAFC", cursor: "pointer", color: "#475569" }}><Maximize2 size={13} /></button>
-            </div>
-          </div>
 
-          <div style={{ width: "100%", height: "260px" }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chart7DaysActivity} onClick={(e: any) => { if (e && (e.activePayload || e.activeLabel)) { setActionFilter("ALL"); showNotification("Filtered table by 7-day activity"); } }}>
-                <defs>
-                  <linearGradient id="colorTx" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563EB" stopOpacity={0.4}/><stop offset="95%" stopColor="#2563EB" stopOpacity={0}/></linearGradient>
-                  <linearGradient id="colorPO" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10B981" stopOpacity={0.4}/><stop offset="95%" stopColor="#10B981" stopOpacity={0}/></linearGradient>
-                  <linearGradient id="colorDep" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.4}/><stop offset="95%" stopColor="#8B5CF6" stopOpacity={0}/></linearGradient>
-                  <linearGradient id="colorRet" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#F59E0B" stopOpacity={0.4}/><stop offset="95%" stopColor="#F59E0B" stopOpacity={0}/></linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                <XAxis dataKey="day" stroke="#94A3B8" fontSize={11} />
-                <YAxis stroke="#94A3B8" fontSize={11} />
-                <Tooltip contentStyle={{ backgroundColor: "#FFFFFF", borderRadius: "8px", border: "1px solid #E2E8F0", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", fontSize: "12px" }} wrapperStyle={{ zIndex: 1000 }} />
-                <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
-                <Area type="monotone" dataKey="Inventory Transactions" stroke="#2563EB" strokeWidth={2} fillOpacity={1} fill="url(#colorTx)" />
-                <Area type="monotone" dataKey="Purchase Orders" stroke="#10B981" strokeWidth={2} fillOpacity={1} fill="url(#colorPO)" />
-                <Area type="monotone" dataKey="Asset Deployments" stroke="#8B5CF6" strokeWidth={2} fillOpacity={1} fill="url(#colorDep)" />
-                <Area type="monotone" dataKey="Returned Assets" stroke="#F59E0B" strokeWidth={2} fillOpacity={1} fill="url(#colorRet)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* 2. Actions by Type (Sorted Horizontal Bar Chart) */}
-        <div id="chart-actions-type" style={{ backgroundColor: "#FFFFFF", borderRadius: "12px", padding: "1.25rem", border: "1px solid #E2E8F0", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-            <div>
-              <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#1E293B", margin: 0 }}>2. Actions by Type</h3>
-              <span style={{ fontSize: "11px", color: "#64748B" }}>Sorted totals across operational event types</span>
-            </div>
-            <div style={{ display: "flex", gap: "0.35rem" }}>
-              <button onClick={() => handleExportChartPNG("chart-actions-type", "Actions_By_Type")} title="Download PNG" style={{ padding: "0.35rem", borderRadius: "6px", border: "1px solid #E2E8F0", backgroundColor: "#F8FAFC", cursor: "pointer", color: "#475569" }}><Download size={13} /></button>
-              <button onClick={() => setFullScreenChart({ title: "Actions by Type", chartId: "chart-actions-type" })} title="Full Screen" style={{ padding: "0.35rem", borderRadius: "6px", border: "1px solid #E2E8F0", backgroundColor: "#F8FAFC", cursor: "pointer", color: "#475569" }}><Maximize2 size={13} /></button>
+            <div style={{ width: "100%", height: "260px" }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chart7DaysActivity} onClick={(e: any) => { if (e && (e.activePayload || e.activeLabel)) { setActionFilter("ALL"); showNotification("Filtered table by activity trend"); } }}>
+                  <defs>
+                    <linearGradient id="colorTx" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563EB" stopOpacity={0.4}/><stop offset="95%" stopColor="#2563EB" stopOpacity={0}/></linearGradient>
+                    <linearGradient id="colorPO" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10B981" stopOpacity={0.4}/><stop offset="95%" stopColor="#10B981" stopOpacity={0}/></linearGradient>
+                    <linearGradient id="colorDep" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.4}/><stop offset="95%" stopColor="#8B5CF6" stopOpacity={0}/></linearGradient>
+                    <linearGradient id="colorRet" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#F59E0B" stopOpacity={0.4}/><stop offset="95%" stopColor="#F59E0B" stopOpacity={0}/></linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+                  <XAxis dataKey="day" stroke="#94A3B8" fontSize={11} />
+                  <YAxis stroke="#94A3B8" fontSize={11} />
+                  <Tooltip contentStyle={{ backgroundColor: "#FFFFFF", borderRadius: "8px", border: "1px solid #E2E8F0", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", fontSize: "12px" }} wrapperStyle={{ zIndex: 1000 }} />
+                  <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
+                  {kpiFilter === "stock_adjustments" ? (
+                    <>
+                      <Area type="monotone" dataKey="Stock Additions" stroke="#10B981" strokeWidth={2} fillOpacity={1} fill="url(#colorPO)" />
+                      <Area type="monotone" dataKey="Stock Deductions" stroke="#EF4444" strokeWidth={2} fillOpacity={1} fill="url(#colorTx)" />
+                      <Area type="monotone" dataKey="Asset Transfers" stroke="#8B5CF6" strokeWidth={2} fillOpacity={1} fill="url(#colorDep)" />
+                    </>
+                  ) : (
+                    <>
+                      <Area type="monotone" dataKey="Inventory Transactions" stroke="#2563EB" strokeWidth={2} fillOpacity={1} fill="url(#colorTx)" />
+                      <Area type="monotone" dataKey="Purchase Orders" stroke="#10B981" strokeWidth={2} fillOpacity={1} fill="url(#colorPO)" />
+                      <Area type="monotone" dataKey="Asset Deployments" stroke="#8B5CF6" strokeWidth={2} fillOpacity={1} fill="url(#colorDep)" />
+                      <Area type="monotone" dataKey="Returned Assets" stroke="#F59E0B" strokeWidth={2} fillOpacity={1} fill="url(#colorRet)" />
+                    </>
+                  )}
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </div>
+        )}
 
-          <div style={{ width: "100%", height: "260px" }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartActionsByType} layout="vertical" onClick={(e: any) => { if (e && e.activePayload && e.activePayload[0]) { setActionFilter(e.activePayload[0].payload.name); showNotification(`Filtered by '${e.activePayload[0].payload.name}'`); } }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                <XAxis type="number" stroke="#94A3B8" fontSize={11} />
-                <YAxis dataKey="name" type="category" stroke="#94A3B8" fontSize={11} width={110} />
-                <Tooltip contentStyle={{ backgroundColor: "#FFFFFF", borderRadius: "8px", border: "1px solid #E2E8F0", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", fontSize: "12px" }} wrapperStyle={{ zIndex: 1000 }} formatter={(val: any) => [`${val} actions`, "Total"]} />
-                <Bar dataKey="count" fill="#2563EB" radius={[0, 6, 6, 0]}>
-                  {chartActionsByType.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+        {/* CHART 2: Actions / Status by Type (Hidden for Low Stock Alerts if redundant) */}
+        {(kpiFilter === null || kpiFilter === "all_logs" || kpiFilter === "action_required" || kpiFilter === "stock_adjustments") && (
+          <div id="chart-actions-type" style={{ backgroundColor: "#FFFFFF", borderRadius: "12px", padding: "1.25rem", border: "1px solid #E2E8F0", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+              <div>
+                <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#1E293B", margin: 0 }}>{chartConfigs.chart2Title}</h3>
+                <span style={{ fontSize: "11px", color: "#64748B" }}>{chartConfigs.chart2Sub}</span>
+              </div>
+              <div style={{ display: "flex", gap: "0.35rem" }}>
+                <button onClick={() => handleExportChartPNG("chart-actions-type", "Actions_By_Type")} title="Download PNG" style={{ padding: "0.35rem", borderRadius: "6px", border: "1px solid #E2E8F0", backgroundColor: "#F8FAFC", cursor: "pointer", color: "#475569" }}><Download size={13} /></button>
+                <button onClick={() => setFullScreenChart({ title: chartConfigs.chart2Title, chartId: "chart-actions-type" })} title="Full Screen" style={{ padding: "0.35rem", borderRadius: "6px", border: "1px solid #E2E8F0", backgroundColor: "#F8FAFC", cursor: "pointer", color: "#475569" }}><Maximize2 size={13} /></button>
+              </div>
+            </div>
+
+            <div style={{ width: "100%", height: "260px" }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartActionsByType} layout="vertical" onClick={(e: any) => { if (e && e.activePayload && e.activePayload[0]) { setActionFilter(e.activePayload[0].payload.name); showNotification(`Filtered by '${e.activePayload[0].payload.name}'`); } }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+                  <XAxis type="number" stroke="#94A3B8" fontSize={11} />
+                  <YAxis dataKey="name" type="category" stroke="#94A3B8" fontSize={11} width={140} />
+                  <Tooltip contentStyle={{ backgroundColor: "#FFFFFF", borderRadius: "8px", border: "1px solid #E2E8F0", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", fontSize: "12px" }} wrapperStyle={{ zIndex: 1000 }} formatter={(val: any) => [`${val} items`, "Total"]} />
+                  <Bar dataKey="count" fill="#2563EB" radius={[0, 6, 6, 0]}>
+                    {chartActionsByType.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* 3. Activity by Category (Stacked Horizontal Bar Chart) */}
+        {/* CHART 3: Activity / Low Stock by Category (Always Shown - Fitted per Filter) */}
         <div id="chart-activity-category" style={{ backgroundColor: "#FFFFFF", borderRadius: "12px", padding: "1.25rem", border: "1px solid #E2E8F0", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
             <div>
-              <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#1E293B", margin: 0 }}>3. Activity by Category</h3>
-              <span style={{ fontSize: "11px", color: "#64748B" }}>Stacked lifecycle events across 9 hardware categories</span>
+              <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#1E293B", margin: 0 }}>{chartConfigs.chart3Title}</h3>
+              <span style={{ fontSize: "11px", color: "#64748B" }}>{chartConfigs.chart3Sub}</span>
             </div>
             <div style={{ display: "flex", gap: "0.35rem" }}>
               <button onClick={() => handleExportChartPNG("chart-activity-category", "Activity_By_Category")} title="Download PNG" style={{ padding: "0.35rem", borderRadius: "6px", border: "1px solid #E2E8F0", backgroundColor: "#F8FAFC", cursor: "pointer", color: "#475569" }}><Download size={13} /></button>
-              <button onClick={() => setFullScreenChart({ title: "Activity by Category", chartId: "chart-activity-category" })} title="Full Screen" style={{ padding: "0.35rem", borderRadius: "6px", border: "1px solid #E2E8F0", backgroundColor: "#F8FAFC", cursor: "pointer", color: "#475569" }}><Maximize2 size={13} /></button>
+              <button onClick={() => setFullScreenChart({ title: chartConfigs.chart3Title, chartId: "chart-activity-category" })} title="Full Screen" style={{ padding: "0.35rem", borderRadius: "6px", border: "1px solid #E2E8F0", backgroundColor: "#F8FAFC", cursor: "pointer", color: "#475569" }}><Maximize2 size={13} /></button>
             </div>
           </div>
 
@@ -1437,36 +1818,57 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
               <BarChart data={chartActivityByCategory} layout="vertical" onClick={(e: any) => { if (e && e.activePayload && e.activePayload[0]) { setSearchQuery(e.activePayload[0].payload.category); showNotification(`Filtered table by '${e.activePayload[0].payload.category}'`); } }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
                 <XAxis type="number" stroke="#94A3B8" fontSize={11} />
-                <YAxis dataKey="category" type="category" stroke="#94A3B8" fontSize={11} width={90} />
+                <YAxis dataKey="category" type="category" stroke="#94A3B8" fontSize={11} width={130} />
                 <Tooltip contentStyle={{ backgroundColor: "#FFFFFF", borderRadius: "8px", border: "1px solid #E2E8F0", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", fontSize: "12px" }} wrapperStyle={{ zIndex: 1000 }} />
                 <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
-                <Bar dataKey="Created" stackId="a" fill="#2563EB" />
-                <Bar dataKey="Updated" stackId="a" fill="#10B981" />
-                <Bar dataKey="Deleted" stackId="a" fill="#EF4444" />
-                <Bar dataKey="Checked Out" stackId="a" fill="#8B5CF6" />
-                <Bar dataKey="Returned" stackId="a" fill="#F59E0B" />
+                {kpiFilter === "low_stock_alerts_top" || kpiFilter === "low_stock_alerts_bottom" ? (
+                  <>
+                    <Bar dataKey="Low Stock" stackId="a" fill="#F59E0B" />
+                    <Bar dataKey="Out of Stock" stackId="a" fill="#EF4444" />
+                  </>
+                ) : kpiFilter === "action_required" ? (
+                  <>
+                    <Bar dataKey="Pending Staff" stackId="a" fill="#6366F1" />
+                    <Bar dataKey="Pending Ops" stackId="a" fill="#F59E0B" />
+                    <Bar dataKey="Approved" stackId="a" fill="#10B981" />
+                  </>
+                ) : kpiFilter === "stock_adjustments" ? (
+                  <>
+                    <Bar dataKey="Stock Added" stackId="a" fill="#10B981" />
+                    <Bar dataKey="Stock Deducted" stackId="a" fill="#EF4444" />
+                    <Bar dataKey="Transfers" stackId="a" fill="#3B82F6" />
+                  </>
+                ) : (
+                  <>
+                    <Bar dataKey="Created" stackId="a" fill="#2563EB" />
+                    <Bar dataKey="Updated" stackId="a" fill="#10B981" />
+                    <Bar dataKey="Deleted" stackId="a" fill="#EF4444" />
+                    <Bar dataKey="Checked Out" stackId="a" fill="#8B5CF6" />
+                    <Bar dataKey="Returned" stackId="a" fill="#F59E0B" />
+                  </>
+                )}
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* 4. Inventory Status (Donut Chart with Quantities & Percentages) */}
+        {/* CHART 4: Inventory Status / Low Stock Severity (Donut Chart - Fitted per Filter) */}
         <div id="chart-inventory-status" style={{ backgroundColor: "#FFFFFF", borderRadius: "12px", padding: "1.25rem", border: "1px solid #E2E8F0", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
             <div>
-              <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#1E293B", margin: 0 }}>4. Inventory Status</h3>
-              <span style={{ fontSize: "11px", color: "#64748B" }}>Stock distribution percentages and unit counts</span>
+              <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#1E293B", margin: 0 }}>{chartConfigs.chart4Title}</h3>
+              <span style={{ fontSize: "11px", color: "#64748B" }}>{chartConfigs.chart4Sub}</span>
             </div>
             <div style={{ display: "flex", gap: "0.35rem" }}>
               <button onClick={() => handleExportChartPNG("chart-inventory-status", "Inventory_Status")} title="Download PNG" style={{ padding: "0.35rem", borderRadius: "6px", border: "1px solid #E2E8F0", backgroundColor: "#F8FAFC", cursor: "pointer", color: "#475569" }}><Download size={13} /></button>
-              <button onClick={() => setFullScreenChart({ title: "Inventory Status", chartId: "chart-inventory-status" })} title="Full Screen" style={{ padding: "0.35rem", borderRadius: "6px", border: "1px solid #E2E8F0", backgroundColor: "#F8FAFC", cursor: "pointer", color: "#475569" }}><Maximize2 size={13} /></button>
+              <button onClick={() => setFullScreenChart({ title: chartConfigs.chart4Title, chartId: "chart-inventory-status" })} title="Full Screen" style={{ padding: "0.35rem", borderRadius: "6px", border: "1px solid #E2E8F0", backgroundColor: "#F8FAFC", cursor: "pointer", color: "#475569" }}><Maximize2 size={13} /></button>
             </div>
           </div>
 
           <div style={{ width: "100%", height: "260px", display: "flex", alignItems: "center" }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={chartInventoryStatus} cx="40%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="qty" onClick={(e: any) => { if (e && e.name) { setSearchQuery(e.name); showNotification(`Filtered table by status '${e.name}'`); } }}>
+                <Pie data={chartInventoryStatus} cx="40%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={4} dataKey="qty" onClick={(e: any) => { if (e && e.name) { setSearchQuery(e.name); showNotification(`Filtered table by '${e.name}'`); } }}>
                   {chartInventoryStatus.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
@@ -1612,6 +2014,147 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
             <button
               disabled={currentPage >= totalPages}
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              style={{ padding: "0.35rem 0.7rem", borderRadius: "6px", border: "1px solid #CBD5E1", backgroundColor: "#FFFFFF", cursor: "pointer" }}
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ====================================================
+          SYSTEM USER LOG IN & LOG OUT ACTIVITY TABLE
+          ==================================================== */}
+      <div style={{ backgroundColor: "#FFFFFF", borderRadius: "14px", border: "1px solid #E2E8F0", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", overflow: "hidden", marginBottom: "2rem" }}>
+        
+        {/* Header */}
+        <div style={{ padding: "1.1rem 1.5rem", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem", backgroundColor: "#F8FAFC" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: "#EEF2FF", display: "flex", alignItems: "center", justifyContent: "center", color: "#4F46E5" }}>
+              <Users size={16} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#0F172A", margin: 0 }}>System User Log In & Log Out Activity</h3>
+              <span style={{ fontSize: "11px", color: "#64748B" }}>Real-time user authentication and session history</span>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ position: "relative", minWidth: "200px" }}>
+              <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#94A3B8" }} />
+              <input
+                type="text"
+                placeholder="Search user, email, or details..."
+                value={authSearchQuery}
+                onChange={(e) => { setAuthSearchQuery(e.target.value); setAuthCurrentPage(1); }}
+                style={{
+                  width: "100%", padding: "0.4rem 0.6rem 0.4rem 2rem", borderRadius: "6px",
+                  border: "1px solid #CBD5E1", fontSize: "12px", color: "#1E293B", outline: "none", backgroundColor: "#FFFFFF"
+                }}
+              />
+            </div>
+
+            <select
+              value={authEventType}
+              onChange={(e) => { setAuthEventType(e.target.value); setAuthCurrentPage(1); }}
+              style={{ padding: "0.4rem 0.75rem", borderRadius: "6px", border: "1px solid #CBD5E1", fontSize: "12px", color: "#334155", backgroundColor: "#FFFFFF", cursor: "pointer" }}
+            >
+              <option value="ALL">All Event Types</option>
+              <option value="LOGIN">Log Ins Only</option>
+              <option value="LOGOUT">Log Outs Only</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Table Body */}
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.82rem" }}>
+            <thead>
+              <tr style={{ backgroundColor: "#FFFFFF", borderBottom: "1px solid #E2E8F0" }}>
+                <th style={{ padding: "0.85rem 1.25rem", fontSize: "11px", fontWeight: 700, color: "#64748B", letterSpacing: "0.05em" }}>TIMESTAMP</th>
+                <th style={{ padding: "0.85rem 1.25rem", fontSize: "11px", fontWeight: 700, color: "#64748B", letterSpacing: "0.05em" }}>USER / ACCOUNT</th>
+                <th style={{ padding: "0.85rem 1.25rem", fontSize: "11px", fontWeight: 700, color: "#64748B", letterSpacing: "0.05em" }}>EVENT TYPE</th>
+                <th style={{ padding: "0.85rem 1.25rem", fontSize: "11px", fontWeight: 700, color: "#64748B", letterSpacing: "0.05em" }}>IP ADDRESS</th>
+                <th style={{ padding: "0.85rem 1.25rem", fontSize: "11px", fontWeight: 700, color: "#64748B", letterSpacing: "0.05em" }}>SESSION DETAILS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedAuthLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ padding: "2.5rem", textAlign: "center", color: "#94A3B8", fontSize: "13px" }}>
+                    No user log in or log out activity records recorded.
+                  </td>
+                </tr>
+              ) : (
+                paginatedAuthLogs.map((log: any, idx: number) => {
+                  const actionStr = (log.action || "").toUpperCase();
+                  const isLogin = actionStr.includes("LOGIN") || (log.details || "").toUpperCase().includes("LOGGED IN");
+                  const userDisplayName = log.userName || log.user?.name || log.user || "System User";
+                  const userEmail = log.user?.email || log.userEmail || "";
+                  const userRole = log.user?.role || log.userRole || "STAFF";
+
+                  return (
+                    <tr
+                      key={log.id || "auth_" + idx}
+                      style={{
+                        borderBottom: "1px solid #F1F5F9",
+                        backgroundColor: idx % 2 === 1 ? "#F8FAFC" : "#FFFFFF"
+                      }}
+                    >
+                      <td style={{ padding: "0.85rem 1.25rem", color: "#64748B", whiteSpace: "nowrap" }}>
+                        {formatLogTimestamp(log.createdAt || log.timestamp)}
+                      </td>
+                      <td style={{ padding: "0.85rem 1.25rem" }}>
+                        <div style={{ display: "flex", flexDirection: "column" }}>
+                          <span style={{ fontWeight: 700, color: "#0F172A" }}>{userDisplayName}</span>
+                          {userEmail && <span style={{ fontSize: "0.72rem", color: "#64748B" }}>{userEmail}</span>}
+                        </div>
+                      </td>
+                      <td style={{ padding: "0.85rem 1.25rem" }}>
+                        <span style={{
+                          padding: "0.2rem 0.6rem", borderRadius: "12px", fontWeight: 700, fontSize: "0.7rem",
+                          backgroundColor: isLogin ? "#DCFCE7" : "#F1F5F9",
+                          color: isLogin ? "#15803D" : "#475569",
+                          border: `1px solid ${isLogin ? "#86EFAC" : "#CBD5E1"}`
+                        }}>
+                          {isLogin ? "LOG IN" : "LOG OUT"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "0.85rem 1.25rem", fontFamily: "monospace", fontSize: "0.75rem", color: "#334155" }}>
+                        {log.ipAddress || "127.0.0.1"}
+                      </td>
+                      <td style={{ padding: "0.85rem 1.25rem", color: "#475569" }}>
+                        {formatDetails(log.details)}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        <div style={{ padding: "0.85rem 1.25rem", backgroundColor: "#F8FAFC", borderTop: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: "12px", color: "#64748B" }}>
+            Showing {paginatedAuthLogs.length} of {userAuthLogs.length} authentication records
+          </span>
+
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button
+              disabled={authCurrentPage === 1}
+              onClick={() => setAuthCurrentPage(prev => Math.max(prev - 1, 1))}
+              style={{ padding: "0.35rem 0.7rem", borderRadius: "6px", border: "1px solid #CBD5E1", backgroundColor: "#FFFFFF", cursor: "pointer" }}
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span style={{ fontSize: "12px", color: "#334155", fontWeight: 600, display: "flex", alignItems: "center", padding: "0 0.4rem" }}>
+              Page {authCurrentPage} of {totalAuthPages}
+            </span>
+            <button
+              disabled={authCurrentPage >= totalAuthPages}
+              onClick={() => setAuthCurrentPage(prev => Math.min(prev + 1, totalAuthPages))}
               style={{ padding: "0.35rem 0.7rem", borderRadius: "6px", border: "1px solid #CBD5E1", backgroundColor: "#FFFFFF", cursor: "pointer" }}
             >
               <ChevronRight size={14} />

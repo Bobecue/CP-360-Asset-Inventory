@@ -208,10 +208,12 @@ export const DashboardOverview = ({
             siteId: req.siteId || req.requestedBySiteId || "site-1",
             siteName: req.siteName || "Skyrise 4B",
             reason: req.reason,
-            employeeName: req.reason ? (req.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || "Moses Andrew Salivio") : "Moses Andrew Salivio",
-            employeeAccount: req.reason ? (req.reason.match(/Account:\s*([^|]+)/)?.[1]?.trim() || "IT Staff") : "IT Staff",
+            employeeName: req.reason ? (req.reason.match(/Deploy to (?:Employee|Station):\s*([^|]+)/)?.[1]?.trim() || req.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || "Moses Andrew Salivio") : "Moses Andrew Salivio",
+            employeeAccount: req.reason ? (req.reason.match(/Account:\s*([^|]+)/)?.[1]?.trim() || req.reason.match(/Dept\/Area:\s*([^|]+)/)?.[1]?.trim() || "IT Staff") : "IT Staff",
             employeeEid: req.reason ? (req.reason.match(/EID:\s*([^|]+)/)?.[1]?.trim() || "EID-00049") : "EID-00049",
-            status: req.status || "ACTIVE",
+            floor: req.reason ? (req.reason.match(/Floor:\s*([^|]+)/)?.[1]?.trim() || "") : "",
+            deploymentType: req.reason ? (req.reason.includes("Deploy to Station:") ? "station" : "employee") : "employee",
+            status: (req.status === "RETURNED" || req.status === "COMPLETED") ? "RETURNED" : "ACTIVE",
             returnCondition: req.condition || "GOOD",
           }));
           setDeploymentsList(deploys);
@@ -257,10 +259,18 @@ export const DashboardOverview = ({
     ? rawRequestsList.filter((r: any) => !r.reason || !r.reason.includes("[ASSET DEPLOYMENT]"))
     : (data?.recentRequests || [])).filter((req: any) => {
       if (!selectedSiteId || selectedSiteId === "ALL") return true;
-      const targetSiteObj = sites.find(s => s.id === selectedSiteId);
+      const targetSiteObj = sites.find(s => s.id === selectedSiteId || s.name === selectedSiteId || s.prefix === selectedSiteId);
       const reqSiteId = req.siteId || req.requestedBySiteId || req.site?.id;
-      const reqSiteName = req.siteName || req.site?.name || req.site;
-      return reqSiteId === selectedSiteId || (targetSiteObj && reqSiteName === targetSiteObj.name);
+      const reqSiteName = req.siteName || req.site?.name || req.site || "";
+      const reqPurpose = req.purpose || req.reason || "";
+      if (reqSiteId === selectedSiteId) return true;
+      if (targetSiteObj) {
+        if (reqSiteId === targetSiteObj.id) return true;
+        if (reqSiteName.toLowerCase().includes(targetSiteObj.name.toLowerCase())) return true;
+        if (targetSiteObj.prefix && reqSiteName.toLowerCase().includes(targetSiteObj.prefix.toLowerCase())) return true;
+        if (reqPurpose.includes(targetSiteObj.id) || reqPurpose.toLowerCase().includes(targetSiteObj.name.toLowerCase())) return true;
+      }
+      return false;
     });
 
   const filteredRequests = recentRequests.filter((req: any) => {
@@ -281,10 +291,18 @@ export const DashboardOverview = ({
   // Filter deployments list by selected site
   const filteredDeployments = deploymentsList.filter((dep: any) => {
     if (!selectedSiteId || selectedSiteId === "ALL") return true;
-    const targetSiteObj = sites.find(s => s.id === selectedSiteId);
+    const targetSiteObj = sites.find(s => s.id === selectedSiteId || s.name === selectedSiteId || s.prefix === selectedSiteId);
     const depSiteId = dep.siteId || dep.requestedBySiteId;
-    const depSiteName = dep.siteName || dep.site;
-    return depSiteId === selectedSiteId || (targetSiteObj && depSiteName === targetSiteObj.name);
+    const depSiteName = dep.siteName || dep.site || "";
+    const depReason = dep.reason || "";
+    if (depSiteId === selectedSiteId) return true;
+    if (targetSiteObj) {
+      if (depSiteId === targetSiteObj.id) return true;
+      if (depSiteName.toLowerCase().includes(targetSiteObj.name.toLowerCase())) return true;
+      if (targetSiteObj.prefix && depSiteName.toLowerCase().includes(targetSiteObj.prefix.toLowerCase())) return true;
+      if (depReason.includes(targetSiteObj.id) || depReason.toLowerCase().includes(targetSiteObj.name.toLowerCase())) return true;
+    }
+    return false;
   });
 
   const displayDeployments = filteredDeployments;
@@ -599,9 +617,26 @@ export const DashboardOverview = ({
               }}
             >
               <option value="">All Sites</option>
-              {Array.from(new Set(recentRequests.map((r: any) => r.siteName || r.site))).map((siteName: any) => (
-                siteName ? <option key={siteName} value={siteName}>{siteName}</option> : null
-              ))}
+              {(() => {
+                const siteOptionsMap = new Map<string, string>();
+                if (Array.isArray(sites) && sites.length > 0) {
+                  sites.forEach((s: any) => {
+                    const id = s.id || s;
+                    const name = s.name || s;
+                    if (name) siteOptionsMap.set(id, name);
+                  });
+                }
+                recentRequests.forEach((r: any) => {
+                  const sId = r.siteId || r.requestedBySiteId || r.siteName || r.site;
+                  const sName = r.siteName || r.site || r.siteId;
+                  if (sId && sName && !siteOptionsMap.has(sId)) {
+                    siteOptionsMap.set(sId, sName);
+                  }
+                });
+                return Array.from(siteOptionsMap.entries()).map(([id, name]) => (
+                  <option key={id} value={name}>{name}</option>
+                ));
+              })()}
             </select>
             <select
               value={selectedTableStatus}
@@ -916,7 +951,15 @@ export const DashboardOverview = ({
                       )}
                     </td>
                     <td style={{ padding: "0.75rem 0.85rem" }}>
-                      <SiteBadge siteName={dep.siteName} size="sm" />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                        <SiteBadge siteName={dep.siteName} size="sm" />
+                        {dep.floor && (
+                          <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="6" x2="9" y2="6.01"></line><line x1="15" y1="6" x2="15" y2="6.01"></line><line x1="9" y1="10" x2="9" y2="10.01"></line><line x1="15" y1="10" x2="15" y2="10.01"></line><line x1="9" y1="14" x2="9" y2="14.01"></line><line x1="15" y1="14" x2="15" y2="14.01"></line><line x1="9" y1="18" x2="9" y2="18.01"></line><line x1="15" y1="18" x2="15" y2="18.01"></line></svg>
+                            {dep.floor}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: "0.75rem 0.85rem" }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
@@ -934,10 +977,10 @@ export const DashboardOverview = ({
                         borderRadius: "12px",
                         fontSize: "0.7rem",
                         fontWeight: 700,
-                        backgroundColor: dep.status === "RETURNED" ? "#f1f5f9" : "#dbeafe",
-                        color: dep.status === "RETURNED" ? "#64748b" : "#1d4ed8"
+                        backgroundColor: (dep.status === "RETURNED" || dep.status === "COMPLETED") ? "#d1fae5" : "#dbeafe",
+                        color: (dep.status === "RETURNED" || dep.status === "COMPLETED") ? "#065f46" : "#1d4ed8"
                       }}>
-                        {dep.status === "RETURNED" ? "RETURNED" : "ACTIVE"}
+                        {(dep.status === "RETURNED" || dep.status === "COMPLETED") ? "RETURNED" : "ACTIVE"}
                       </span>
                     </td>
                   </tr>

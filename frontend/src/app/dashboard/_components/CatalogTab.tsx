@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { CatalogItem, getCategoryIcon, RoleBadge, SiteBadge, EidBadge, AssetTagBadge, AssetTypeBadge } from "@/types/dashboard";
+import { createPortal } from "react-dom";
+import { CatalogItem, getCategoryIcon, RoleBadge, SiteBadge, EidBadge, AssetTagBadge, AssetTypeBadge, isCategoryConsumable } from "@/types/dashboard";
 import jsPDF from "jspdf";
 import { RequestTimeline } from "./RequestTimeline";
 import { getApiUrl } from "../../../utils/api";
@@ -117,6 +118,11 @@ export const CatalogTab = ({
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
 
   // Asset Deployments Sub-module states
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const [catalogSubTab, setCatalogSubTab] = useState<"inventory" | "deployments">(activeSubTab);
 
   useEffect(() => {
@@ -221,9 +227,11 @@ export const CatalogTab = ({
               siteId: req.siteId || req.requestedBySiteId || "site-1",
               siteName: req.siteName || "Cebu IT Park",
               reason: req.reason || `Deployed ${req.quantity || 1} x ${req.itemName || 'Asset'} to employee`,
-              employeeName: req.reason ? (req.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
-              employeeAccount: req.reason ? (req.reason.match(/Account:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
+              employeeName: req.reason ? (req.reason.match(/Deploy to (?:Employee|Station):\s*([^|]+)/)?.[1]?.trim() || req.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
+              employeeAccount: req.reason ? (req.reason.match(/Account:\s*([^|]+)/)?.[1]?.trim() || req.reason.match(/Dept\/Area:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
               employeeEid: req.reason ? (req.reason.match(/EID:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
+              floor: req.reason ? (req.reason.match(/Floor:\s*([^|]+)/)?.[1]?.trim() || "") : "",
+              deploymentType: req.reason ? (req.reason.includes("Deploy to Station:") ? "station" : "employee") : "employee",
               status: req.status || saved?.status || "ACTIVE",
               returnCondition: req.condition || saved?.returnCondition || "GOOD",
               missingCount: saved?.missingCount || req.missingCount || 0,
@@ -243,7 +251,20 @@ export const CatalogTab = ({
     // Fallback merge for mockDeployments (offline mode only)
     const mergedMocks = mockDeployments.map(dep => {
       const saved = savedReturns[dep.id];
-      return saved ? { ...dep, ...saved } : dep;
+      const name = dep.reason ? (dep.reason.match(/Deploy to (?:Employee|Station):\s*([^|]+)/)?.[1]?.trim() || dep.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || dep.employeeName || "N/A") : (dep.employeeName || "N/A");
+      const account = dep.reason ? (dep.reason.match(/Account:\s*([^|]+)/)?.[1]?.trim() || dep.reason.match(/Dept\/Area:\s*([^|]+)/)?.[1]?.trim() || dep.employeeAccount || "N/A") : (dep.employeeAccount || "N/A");
+      const eid = dep.reason ? (dep.reason.match(/EID:\s*([^|]+)/)?.[1]?.trim() || dep.employeeEid || "N/A") : (dep.employeeEid || "N/A");
+      const floor = dep.reason ? (dep.reason.match(/Floor:\s*([^|]+)/)?.[1]?.trim() || "") : "";
+      const type = dep.reason ? (dep.reason.includes("Deploy to Station:") ? "station" : "employee") : "employee";
+      return {
+        ...dep,
+        employeeName: name,
+        employeeAccount: account,
+        employeeEid: eid,
+        floor,
+        deploymentType: type,
+        ...(saved ? saved : {})
+      };
     });
     setDeploymentsList(mergedMocks);
   };
@@ -979,7 +1000,7 @@ export const CatalogTab = ({
               },
               {
                 title: "Consumables",
-                value: catalogItems.filter(it => it.category?.type === "CONSUMABLE").length,
+                value: catalogItems.filter(it => isCategoryConsumable(it.category)).length,
                 desc: "Non-serialized items",
                 trend: "↑ 5% from last month",
                 trendPositive: true,
@@ -996,7 +1017,7 @@ export const CatalogTab = ({
               },
               {
                 title: "Non-Consumables",
-                value: catalogItems.filter(it => it.category?.type === "NON_CONSUMABLE").length,
+                value: catalogItems.filter(it => !isCategoryConsumable(it.category)).length,
                 desc: "Serialized assets",
                 trend: "↑ 8% from last month",
                 trendPositive: true,
@@ -1233,18 +1254,18 @@ export const CatalogTab = ({
                   <option value="ALL">All Categories</option>
                   <option value="NON_CONSUMABLE">All Non-Consumables</option>
                   <option value="CONSUMABLE">All Consumables</option>
-                  {safeCategories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !(c.name || "").toLowerCase().includes("consumable"))).length > 0 && (
+                  {safeCategories.filter(c => !isCategoryConsumable(c)).length > 0 && (
                     <optgroup label="Non-Consumable">
-                      {safeCategories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !(c.name || "").toLowerCase().includes("consumable"))).map((c) => (
+                      {safeCategories.filter(c => !isCategoryConsumable(c)).map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}
                         </option>
                       ))}
                     </optgroup>
                   )}
-                  {safeCategories.filter(c => c.type === "CONSUMABLE" || (c.name || "").toLowerCase().includes("consumable")).length > 0 && (
+                  {safeCategories.filter(c => isCategoryConsumable(c)).length > 0 && (
                     <optgroup label="Consumable">
-                      {safeCategories.filter(c => c.type === "CONSUMABLE" || (c.name || "").toLowerCase().includes("consumable")).map((c) => (
+                      {safeCategories.filter(c => isCategoryConsumable(c)).map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}
                         </option>
@@ -2876,8 +2897,9 @@ export const CatalogTab = ({
               {selectedDeploymentIds.length > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#eff6ff', color: '#1e293b', padding: '0.85rem 1.25rem', borderRadius: 12, border: '1px solid #bfdbfe', boxShadow: '0 4px 14px rgba(37,99,235,0.08)', animation: 'slideFadeIn 0.3s ease-out', marginBottom: '0.75rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.78rem', fontWeight: 700, backgroundColor: '#ea580c', color: '#ffffff', padding: '0.3rem 0.65rem', borderRadius: '6px' }}>
-                      🚀 {selectedDeploymentIds.length} Deployment{selectedDeploymentIds.length > 1 ? 's' : ''} Selected
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, backgroundColor: '#ea580c', color: '#ffffff', padding: '0.3rem 0.65rem', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                      {selectedDeploymentIds.length} Deployment{selectedDeploymentIds.length > 1 ? 's' : ''} Selected
                     </span>
                     <span style={{ fontSize: '0.82rem', color: '#475569', fontWeight: 500 }}>Ready to return to stock</span>
                   </div>
@@ -2886,7 +2908,8 @@ export const CatalogTab = ({
                       onClick={() => setIsBulkDeploymentReturnModalOpen(true)}
                       style={{ backgroundColor: '#ea580c', color: '#ffffff', border: 'none', borderRadius: 8, padding: '0.45rem 0.95rem', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', boxShadow: '0 2px 6px rgba(234,88,12,0.3)', transition: 'all 0.2s ease' }}
                     >
-                      🔄 Bulk Return Assets
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                      Bulk Return Assets
                     </button>
                     <button
                       onClick={() => setSelectedDeploymentIds([])}
@@ -2915,8 +2938,8 @@ export const CatalogTab = ({
                         />
                       </th>
                       <th style={{ padding: "0.85rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: "#64748b", whiteSpace: "nowrap" }}>Deploy ID</th>
-                      <th style={{ padding: "0.85rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: "#64748b", whiteSpace: "nowrap", width: 140 }}>Group</th>
-                      <th style={{ padding: "0.85rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: "#64748b", whiteSpace: "nowrap" }}>Employee</th>
+                      <th style={{ padding: "0.85rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: "#64748b", whiteSpace: "nowrap", width: 140 }}>Deployment Type</th>
+                      <th style={{ padding: "0.85rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: "#64748b", whiteSpace: "nowrap" }}>Target (Employee/Station)</th>
                       <th style={{ padding: "0.85rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: "#64748b", whiteSpace: "nowrap" }}>Account / Dept</th>
                       <th style={{ padding: "0.85rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: "#64748b", whiteSpace: "nowrap" }}>EID</th>
                       <th style={{ padding: "0.85rem 1rem", fontSize: "0.68rem", fontWeight: 700, color: "#64748b", whiteSpace: "nowrap" }}>Asset / Tag</th>
@@ -3027,14 +3050,26 @@ export const CatalogTab = ({
                               border: `1px solid ${isGroup ? "#c7d2fe" : "#e2e8f0"}`,
                               whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: "4px"
                             }}>
-                              {isGroup ? `📦 Grouped (${group.items.length} Assets)` : "Single Asset"}
+                              {isGroup ? (
+                                <>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                                  Grouped ({group.items.length} Assets)
+                                </>
+                              ) : "Single Asset"}
                             </span>
                           </td>
 
-                          {/* Employee Name */}
+                          {/* Employee / Station Name */}
                           <td style={{ padding: "0.85rem 1rem", whiteSpace: "nowrap" }}>
-                            <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.85rem" }}>{dep.employeeName}</div>
-                          </td>
+                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                               <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.85rem" }}>{dep.employeeName}</div>
+                               {dep.deploymentType === 'station' && (
+                                 <span style={{ fontSize: '0.62rem', fontWeight: 800, backgroundColor: '#f1f5f9', color: '#475569', padding: '0.1rem 0.35rem', borderRadius: 4, border: '1px solid #e2e8f0' }}>
+                                   STATION
+                                 </span>
+                               )}
+                             </div>
+                           </td>
 
                           {/* Account */}
                           <td style={{ padding: "0.85rem 1rem", fontSize: "0.8rem", color: "#475569", whiteSpace: "nowrap" }}>
@@ -3101,15 +3136,23 @@ export const CatalogTab = ({
                                   : "1px solid #93c5fd",
                               }}>
                                 {dep.status === "RETURNED"
-                                  ? (dep.returnCondition === "DAMAGED" ? "⚠ DAMAGED" : dep.returnCondition === "MISSING" ? `✕ MISSING` : "RETURNED")
+                                  ? (dep.returnCondition === "DAMAGED" ? "DAMAGED" : dep.returnCondition === "MISSING" ? `MISSING` : "RETURNED")
                                   : "ACTIVE"}
                               </span>
                             )}
                           </td>
 
-                          {/* Site */}
+                          {/* Site & Floor */}
                           <td style={{ padding: "0.85rem 1rem", whiteSpace: "nowrap" }}>
-                            <SiteBadge siteName={dep.siteName} size="sm" />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                              <SiteBadge siteName={dep.siteName} size="sm" />
+                              {dep.floor && (
+                                <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="6" x2="9" y2="6.01"></line><line x1="15" y1="6" x2="15" y2="6.01"></line><line x1="9" y1="10" x2="9" y2="10.01"></line><line x1="15" y1="10" x2="15" y2="10.01"></line><line x1="9" y1="14" x2="9" y2="14.01"></line><line x1="15" y1="14" x2="15" y2="14.01"></line><line x1="9" y1="18" x2="9" y2="18.01"></line><line x1="15" y1="18" x2="15" y2="18.01"></line></svg>
+                                  {dep.floor}
+                                </span>
+                              )}
+                            </div>
                           </td>
 
                           {/* Deployed Date */}
@@ -3123,15 +3166,16 @@ export const CatalogTab = ({
                               onClick={(e) => { e.stopPropagation(); isGroup ? handleDownloadGroupReceipt(group) : handleDownloadDeploymentReceipt(dep); }}
                               title="Download PDF Receipt"
                               style={{
-                                padding: "0.3rem 0.6rem", borderRadius: "6px",
+                                padding: "0.3rem 0.65rem", borderRadius: "6px",
                                 border: "1px solid rgba(148,163,184,0.45)",
                                 background: "linear-gradient(135deg,#ffffff,#f1f5f9)",
                                 color: "#334155", fontSize: "0.74rem", fontWeight: 700,
-                                cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.2rem",
+                                cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "0.35rem",
                                 boxShadow: "0 1px 2px rgba(15,23,42,0.05)"
                               }}
                             >
-                              📄 PDF
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                              PDF
                             </button>
                           </td>
                         </tr>
@@ -3216,19 +3260,26 @@ export const CatalogTab = ({
         </div>
       )}
 
-      {/* Deployment Details Slide-Over Drawer */}
-      {isDeploymentDrawerOpen && selectedDeployment && (
+      {/* Deployment Details Pop-up Modal */}
+      {isMounted && isDeploymentDrawerOpen && selectedDeployment && createPortal(
         <div
           onClick={() => setIsDeploymentDrawerOpen(false)}
           style={{
             position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.4)',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(15, 23, 42, 0.5)',
             backdropFilter: 'blur(4px)',
-            zIndex: 9999,
+            zIndex: 99999,
             display: 'flex',
-            justifyContent: 'flex-end',
-            animation: 'fadeIn 0.2s ease-out'
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '1.25rem',
+            boxSizing: 'border-box'
           }}
         >
           <div
@@ -3236,12 +3287,15 @@ export const CatalogTab = ({
             style={{
               width: '100%',
               maxWidth: '540px',
-              height: '100%',
+              maxHeight: '82vh',
               backgroundColor: '#ffffff',
-              boxShadow: '-4px 0 24px rgba(0, 0, 0, 0.15)',
+              borderRadius: '16px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',
-              animation: 'slideLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+              border: '1px solid #e2e8f0',
+              boxSizing: 'border-box'
             }}
           >
             {/* Header */}
@@ -3423,7 +3477,8 @@ export const CatalogTab = ({
                           alignItems: 'center',
                           gap: '0.25rem'
                         }}>
-                          🏷️ {selectedDeployment.assetTag || 'AST-DEP'}
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+                          {selectedDeployment.assetTag || 'AST-DEP'}
                         </span>
                       </div>
                     </div>
@@ -3493,13 +3548,15 @@ export const CatalogTab = ({
                     boxShadow: '0 2px 6px rgba(37,99,235,0.2)'
                   }}
                 >
-                  📄 Download Deployment PDF Receipt
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                  Download Deployment PDF Receipt
                 </button>
               </div>
 
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Return Asset Confirmation Modal */}

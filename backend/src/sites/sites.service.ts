@@ -11,7 +11,7 @@ export class SitesService {
     });
   }
 
-  async create(data: { name: string; prefix: string; address?: string }) {
+  async create(data: { name: string; prefix: string; address?: string; floor?: string }) {
     // Check conflicts
     const existingName = await this.prisma.site.findUnique({
       where: { name: data.name },
@@ -32,11 +32,12 @@ export class SitesService {
         name: data.name,
         prefix: data.prefix.toUpperCase(),
         address: data.address || null,
+        floor: data.floor || null,
       },
     });
   }
 
-  async update(id: string, data: { name?: string; prefix?: string; address?: string }) {
+  async update(id: string, data: { name?: string; prefix?: string; address?: string; floor?: string }) {
     const site = await this.prisma.site.findUnique({ where: { id } });
     if (!site) {
       throw new NotFoundException("Site not found.");
@@ -66,6 +67,7 @@ export class SitesService {
         name: data.name,
         prefix: data.prefix ? data.prefix.toUpperCase() : undefined,
         address: data.address !== undefined ? (data.address || null) : undefined,
+        floor: data.floor !== undefined ? (data.floor || null) : undefined,
       },
     });
   }

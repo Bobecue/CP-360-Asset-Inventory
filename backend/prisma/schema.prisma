@@ -1,14 +1,468 @@
-datasource db {
-  provider = "postgresql"
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
+datasource db {
+  provider = "postgresql"
+}
+
+model Site {
+  id                String             @id @default(uuid())
+  name              String             @unique
+  prefix            String             @unique
+  address           String?
+  floor             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  createdByUserId   String?
+  isActive          Boolean            @default(true)
+  assets            Asset[]
+  categoryAuditLogs CategoryAuditLog[]
+  opexEntries       OpexEntry[]
+  purchaseOrders    PurchaseOrder[]
+  receivingReports  ReceivingReport[]
+  stockLevels       SiteStock[]
+  createdBy         User?              @relation("SiteCreator", fields: [createdByUserId], references: [id])
+  users             User[]
+
+  @@map("sites")
+}
+
+model User {
+  id                       String                  @id @default(uuid())
+  email                    String                  @unique
+  passwordHash             String
+  name                     String
+  employeeId               String?                 @unique
+  department               String?
+  role                     Role                    @default(EMPLOYEE)
+  isActive                 Boolean                 @default(true)
+  siteId                   String?
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+  assetEvents              AssetEvent[]
+  assetsAssigned           Asset[]                 @relation("AssetAssignment")
+  auditLogs                AuditLog[]
+  categoryAuditPerforms    CategoryAuditLog[]      @relation("CategoryAuditPerformer")
+  categoriesCreated        ExpenseCategory[]       @relation("CategoryCreator")
+  monthlyCloses            MonthlyClose[]          @relation("OpexLocker")
+  notifications            Notification[]
+  opexEntriesApproved      OpexEntry[]             @relation("OpexApprover")
+  opexEntriesEntered       OpexEntry[]             @relation("OpexEncoder")
+  posCreated               PurchaseOrder[]         @relation("PoCreator")
+  rrsReceived              ReceivingReport[]       @relation("RrReceiver")
+  requestEventsReceived    RequestEvent[]          @relation("ReceivedBy")
+  requestEvents            RequestEvent[]
+  requestsApproved         Request[]               @relation("Approver")
+  requestsOpsApproved      Request[]               @relation("OpsApproved")
+  requestsReceived         Request[]               @relation("Receiver")
+  requestsReleased         Request[]               @relation("Releaser")
+  requestsMade             Request[]               @relation("Requester")
+  requestsReturned         Request[]               @relation("Returnee")
+  requestsStaffApproved    Request[]               @relation("StaffApproved")
+  sitesCreated             Site[]                  @relation("SiteCreator")
+  attachmentsUploaded      TransactionAttachment[] @relation("AttachmentUploader")
+  transactionAuditPerforms TransactionAuditLog[]   @relation("TransactionAuditPerformer")
+  site                     Site?                   @relation(fields: [siteId], references: [id])
+
+  @@map("users")
+}
+
+model Supplier {
+  id             String          @id @default(uuid())
+  name           String          @unique
+  email          String?
+  phone          String?
+  address        String?
+  leadTimeDays   Int             @default(7)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  city           String?
+  contactPerson  String?
+  country        String?         @default("Philippines")
+  province       String?
+  supplierId     String?         @unique
+  assets         Asset[]
+  items          Item[]          @relation("ItemSupplier")
+  opexEntries    OpexEntry[]
+  purchaseOrders PurchaseOrder[]
+
+  @@map("suppliers")
+}
+
+model AssetCategory {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  prefix      String       @unique
+  type        CategoryType @default(NON_CONSUMABLE)
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  items       Item[]
+
+  @@map("asset_categories")
+}
+
+model Item {
+  id              String                @id @default(uuid())
+  name            String
+  sku             String?
+  description     String?
+  unitPrice       Decimal               @default(0.00) @db.Decimal(10, 2)
+  leadTimeDays    Int                   @default(7)
+  categoryId      String
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  reorderPoint    Int                   @default(5)
+  reorderQuantity Int                   @default(10)
+  supplierId      String?
+  assets          Asset[]
+  auditLogs       AuditLog[]
+  category        AssetCategory         @relation(fields: [categoryId], references: [id])
+  supplier        Supplier?             @relation("ItemSupplier", fields: [supplierId], references: [id])
+  poItems         PurchaseOrderItem[]
+  receivingItems  ReceivingReportItem[]
+  requests        Request[]
+  stockLevels     SiteStock[]
+
+  @@map("items")
+}
+
+model SiteStock {
+  id           String   @id @default(uuid())
+  siteId       String
+  itemId       String
+  quantity     Int      @default(0)
+  reorderPoint Int      @default(5)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  item         Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  site         Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, itemId])
+  @@map("site_stocks")
+}
+
+model Asset {
+  id                String           @id @default(uuid())
+  serialNumber      String           @unique
+  tagCode           String           @unique
+  barcode           String?          @unique
+  status            AssetStatus      @default(AVAILABLE)
+  condition         String?          @default("GOOD")
+  itemId            String
+  siteId            String
+  assignedToId      String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  receivingReportId String?
+  supplierId        String?
+  events            AssetEvent[]
+  assignedTo        User?            @relation("AssetAssignment", fields: [assignedToId], references: [id])
+  item              Item             @relation(fields: [itemId], references: [id])
+  receivingReport   ReceivingReport? @relation("RrAssets", fields: [receivingReportId], references: [id])
+  site              Site             @relation(fields: [siteId], references: [id])
+  supplier          Supplier?        @relation(fields: [supplierId], references: [id])
+  requests          Request[]
+
+  @@map("assets")
+}
+
+model PurchaseOrder {
+  id               String              @id @default(uuid())
+  poNumber         String              @unique
+  status           POStatus            @default(DRAFT)
+  supplierId       String
+  siteId           String
+  creatorId        String
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  items            PurchaseOrderItem[]
+  creator          User                @relation("PoCreator", fields: [creatorId], references: [id])
+  site             Site                @relation(fields: [siteId], references: [id])
+  supplier         Supplier            @relation(fields: [supplierId], references: [id])
+  receivingReports ReceivingReport[]
+
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id               String        @id @default(uuid())
+  purchaseOrderId  String
+  itemId           String
+  quantityOrdered  Int
+  quantityReceived Int           @default(0)
+  unitCost         Decimal       @db.Decimal(10, 2)
+  item             Item          @relation(fields: [itemId], references: [id])
+  purchaseOrder    PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  @@map("purchase_order_items")
+}
+
+model ReceivingReport {
+  id               String                @id @default(uuid())
+  rrNumber         String                @unique
+  deliveryNoteRef  String?
+  invoiceNumber    String?
+  invoiceFileUrl   String?
+  purchaseOrderId  String
+  siteId           String
+  receivedById     String
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  assetsIntroduced Asset[]               @relation("RrAssets")
+  receivedItems    ReceivingReportItem[]
+  purchaseOrder    PurchaseOrder         @relation(fields: [purchaseOrderId], references: [id])
+  receivedBy       User                  @relation("RrReceiver", fields: [receivedById], references: [id])
+  site             Site                  @relation(fields: [siteId], references: [id])
+
+  @@map("receiving_reports")
+}
+
+model ReceivingReportItem {
+  id                String          @id @default(uuid())
+  receivingReportId String
+  itemId            String
+  quantityReceived  Int
+  item              Item            @relation(fields: [itemId], references: [id])
+  receivingReport   ReceivingReport @relation(fields: [receivingReportId], references: [id], onDelete: Cascade)
+
+  @@map("receiving_report_items")
+}
+
+model Request {
+  id                String         @id @default(uuid())
+  status            RequestStatus  @default(PENDING_APPROVAL)
+  purpose           String?
+  comments          String?
+  itemId            String
+  requesterId       String
+  approverId        String?
+  releasedById      String?
+  releasedAt        DateTime?
+  returnedById      String?
+  returnedAt        DateTime?
+  assetId           String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  opsApprovedAt     DateTime?
+  opsApprovedById   String?
+  receivedAt        DateTime?
+  receivedById      String?
+  staffApprovedAt   DateTime?
+  staffApprovedById String?
+  assetEvents       AssetEvent[]
+  events            RequestEvent[]
+  approver          User?          @relation("Approver", fields: [approverId], references: [id])
+  asset             Asset?         @relation(fields: [assetId], references: [id])
+  item              Item           @relation(fields: [itemId], references: [id])
+  opsApproved       User?          @relation("OpsApproved", fields: [opsApprovedById], references: [id])
+  receivedBy        User?          @relation("Receiver", fields: [receivedById], references: [id])
+  releasedBy        User?          @relation("Releaser", fields: [releasedById], references: [id])
+  requester         User           @relation("Requester", fields: [requesterId], references: [id])
+  returnedBy        User?          @relation("Returnee", fields: [returnedById], references: [id])
+  staffApproved     User?          @relation("StaffApproved", fields: [staffApprovedById], references: [id])
+
+  @@map("requests")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  userId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  details   String?
+  ipAddress String?
+  userId    String?
+  createdAt DateTime @default(now())
+  itemId    String?
+  itemName  String?
+  itemSku   String?
+  item      Item?    @relation(fields: [itemId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model Department {
+  id          String      @id @default(uuid())
+  name        String      @unique
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  opexEntries OpexEntry[]
+
+  @@map("departments")
+}
+
+model RequestEvent {
+  id           String        @id @default(uuid())
+  requestId    String
+  status       RequestStatus
+  comment      String?
+  userId       String?
+  receivedById String?
+  createdAt    DateTime      @default(now())
+  receivedBy   User?         @relation("ReceivedBy", fields: [receivedById], references: [id])
+  request      Request       @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  user         User?         @relation(fields: [userId], references: [id])
+
+  @@map("request_events")
+}
+
+model AssetEvent {
+  id        String   @id @default(uuid())
+  assetId   String
+  action    String
+  details   String?
+  userId    String?
+  requestId String?
+  createdAt DateTime @default(now())
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  request   Request? @relation(fields: [requestId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@map("asset_events")
+}
+
+model ExpenseCategory {
+  id              String              @id @default(uuid())
+  name            String              @unique
+  type            ExpenseCategoryType @default(OPEX)
+  isActive        Boolean             @default(true)
+  createdByUserId String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  auditLogs       CategoryAuditLog[]
+  createdBy       User?               @relation("CategoryCreator", fields: [createdByUserId], references: [id])
+  opexEntries     OpexEntry[]
+
+  @@map("expense_categories")
+}
+
+model CategoryAuditLog {
+  id                String              @id @default(uuid())
+  categoryId        String?
+  siteId            String?
+  action            CategoryAuditAction
+  performedByUserId String
+  previousValue     String?
+  newValue          String?
+  createdAt         DateTime            @default(now())
+  category          ExpenseCategory?    @relation(fields: [categoryId], references: [id])
+  performedByUser   User                @relation("CategoryAuditPerformer", fields: [performedByUserId], references: [id])
+  site              Site?               @relation(fields: [siteId], references: [id])
+
+  @@map("category_audit_logs")
+}
+
+model OpexEntry {
+  id                String                  @id @default(uuid())
+  itemDescription   String
+  brand             String?
+  unitPrice         Decimal                 @db.Decimal(12, 2)
+  qty               Decimal                 @db.Decimal(12, 2)
+  unit              OpexUnit                @default(PC)
+  category          OpexCategory            @default(OFFICE_SUPPLIES)
+  total             Decimal                 @db.Decimal(12, 2)
+  status            OpexStatus              @default(PENDING)
+  sourceDocumentUrl String?
+  transactionDate   DateTime                @default(now())
+  rejectionReason   String?
+  isCapex           Boolean                 @default(false)
+  supplierId        String?
+  supplierName      String?
+  departmentId      String?
+  destinationName   String?
+  siteId            String?
+  enteredByUserId   String
+  approvedByUserId  String?
+  monthlyCloseId    String?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  expenseCategoryId String?
+  deletedAt         DateTime?
+  isDeleted         Boolean                 @default(false)
+  approvedByUser    User?                   @relation("OpexApprover", fields: [approvedByUserId], references: [id])
+  department        Department?             @relation(fields: [departmentId], references: [id])
+  enteredByUser     User                    @relation("OpexEncoder", fields: [enteredByUserId], references: [id])
+  expenseCategory   ExpenseCategory?        @relation(fields: [expenseCategoryId], references: [id])
+  monthlyClose      MonthlyClose?           @relation(fields: [monthlyCloseId], references: [id])
+  site              Site?                   @relation(fields: [siteId], references: [id])
+  supplier          Supplier?               @relation(fields: [supplierId], references: [id])
+  attachments       TransactionAttachment[]
+  auditLogs         TransactionAuditLog[]
+
+  @@index([isDeleted, transactionDate])
+  @@index([isDeleted, status])
+  @@index([isDeleted, isCapex])
+  @@index([isDeleted, siteId])
+  @@index([isDeleted, transactionDate, status, isCapex, siteId])
+  @@map("opex_entries")
+}
+
+model TransactionAuditLog {
+  id                String                 @id @default(uuid())
+  transactionId     String
+  action            TransactionAuditAction
+  performedByUserId String
+  performedByRole   String
+  fieldChanged      String?
+  previousValue     String?
+  newValue          String?
+  reason            String?
+  createdAt         DateTime               @default(now())
+  performedByUser   User                   @relation("TransactionAuditPerformer", fields: [performedByUserId], references: [id])
+  transaction       OpexEntry              @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@map("transaction_audit_logs")
+}
+
+model TransactionAttachment {
+  id               String    @id @default(uuid())
+  transactionId    String
+  fileUrl          String
+  originalFilename String
+  mimeType         String
+  fileSizeBytes    Int       @default(0)
+  uploadedByUserId String?
+  isDeleted        Boolean   @default(false)
+  isLegacyUrlOnly  Boolean   @default(false)
+  uploadedAt       DateTime  @default(now())
+  transaction      OpexEntry @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  uploadedByUser   User?     @relation("AttachmentUploader", fields: [uploadedByUserId], references: [id])
+
+  @@map("transaction_attachments")
+}
+
+model MonthlyClose {
+  id              String      @id @default(uuid())
+  year            Int
+  month           Int
+  yearMonth       String      @unique
+  lockedAt        DateTime    @default(now())
+  lockedByUserId  String
+  summarySnapshot Json
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  lockedByUser    User        @relation("OpexLocker", fields: [lockedByUserId], references: [id])
+  entries         OpexEntry[]
+
+  @@map("monthly_closes")
+}
+
 enum Role {
   SUPER_ADMIN
-  ADMIN          // Ops Manager
+  ADMIN
   INVENTORY_STAFF
   TEAM_LEADER
   EMPLOYEE
@@ -21,16 +475,16 @@ enum CategoryType {
 
 enum RequestStatus {
   PENDING_APPROVAL
-  PENDING_OPS_APPROVAL
   APPROVED
+  REJECTED
+  RELEASED
+  RETURNED
+  CANCELLED
+  PENDING_OPS_APPROVAL
   READY_FOR_PICKUP
   PENDING_PROCUREMENT
-  REJECTED
-  RELEASED       // Checked Out
   AWAITING_CONFIRMATION
   ITEM_RECEIVED
-  RETURNED       // Checked Back In
-  CANCELLED
 }
 
 enum AssetStatus {
@@ -46,415 +500,6 @@ enum POStatus {
   PARTIALLY_RECEIVED
   RECEIVED
   CANCELLED
-}
-
-model Site {
-  id              String           @id @default(uuid())
-  name            String           @unique
-  prefix          String           @unique // e.g. "CEB" for Cebu
-  address         String?
-  isActive        Boolean          @default(true)
-  createdByUserId String?
-  createdBy       User?            @relation("SiteCreator", fields: [createdByUserId], references: [id])
-  users           User[]
-  stockLevels     SiteStock[]
-  assets          Asset[]
-  purchaseOrders  PurchaseOrder[]
-  receivingReports ReceivingReport[]
-  opexEntries      OpexEntry[]
-  categoryAuditLogs CategoryAuditLog[]
-
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-
-  @@map("sites")
-}
-
-model User {
-  id                String            @id @default(uuid())
-  email             String            @unique
-  passwordHash      String
-  name              String
-  employeeId        String?           @unique // EID
-  department        String?
-  role              Role              @default(EMPLOYEE)
-  isActive          Boolean           @default(true)
-  
-  // Site scoping (Except Super Admin, users belong to a Site)
-  siteId            String?
-  site              Site?             @relation(fields: [siteId], references: [id])
-  
-  // Request relations
-  requestsMade      Request[]         @relation("Requester")
-  requestsApproved  Request[]         @relation("Approver")
-  requestsReleased  Request[]         @relation("Releaser")
-  requestsReturned  Request[]         @relation("Returnee")
-  requestsReceived  Request[]         @relation("Receiver")
-  requestsStaffApproved Request[]     @relation("StaffApproved")
-  requestsOpsApproved   Request[]     @relation("OpsApproved")
-  requestEventsReceived RequestEvent[] @relation("ReceivedBy")
-  
-  // Admin/Inventory relations
-  posCreated        PurchaseOrder[]   @relation("PoCreator")
-  rrsReceived       ReceivingReport[] @relation("RrReceiver")
-  assetsAssigned    Asset[]           @relation("AssetAssignment")
-  auditLogs         AuditLog[]
-  notifications     Notification[]
-  requestEvents     RequestEvent[]
-  assetEvents       AssetEvent[]
-
-  // OPEX relations
-  opexEntriesEntered OpexEntry[]      @relation("OpexEncoder")
-  opexEntriesApproved OpexEntry[]     @relation("OpexApprover")
-  monthlyCloses       MonthlyClose[]  @relation("OpexLocker")
-  categoriesCreated   ExpenseCategory[] @relation("CategoryCreator")
-  sitesCreated        Site[]            @relation("SiteCreator")
-  categoryAuditPerforms CategoryAuditLog[] @relation("CategoryAuditPerformer")
-  transactionAuditPerforms TransactionAuditLog[] @relation("TransactionAuditPerformer")
-  attachmentsUploaded TransactionAttachment[] @relation("AttachmentUploader")
-
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-
-  @@map("users")
-}
-
-model Supplier {
-  id             String          @id @default(uuid())
-  supplierId     String?         @unique // Custom/Auto Supplier Code/ID (e.g. SUP-0001)
-  name           String          @unique
-  contactPerson  String?
-  email          String?
-  phone          String?
-  address        String?
-  city           String?
-  province       String?
-  country        String?         @default("Philippines")
-  leadTimeDays   Int             @default(7) // Estimated lead time for stock arrivals
-  assets         Asset[]
-  items          Item[]          @relation("ItemSupplier")
-  purchaseOrders PurchaseOrder[]
-  opexEntries    OpexEntry[]
-
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-
-  @@map("suppliers")
-}
-
-model AssetCategory {
-  id          String       @id @default(uuid())
-  name        String       @unique
-  prefix      String       @unique // e.g. "CON" for office consumables, "EQP" for equipment
-  type        CategoryType @default(NON_CONSUMABLE)
-  description String?
-  items       Item[]
-
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-
-  @@map("asset_categories")
-}
-
-// Represents the general catalog item/product (e.g. MacBook Pro, Dell Monitor, Box of Pens)
-model Item {
-  id            String        @id @default(uuid())
-  name          String
-  sku           String?       // e.g. IT-MBP-14 for non-consumable items
-  description   String?
-  unitPrice     Decimal       @default(0.00) @db.Decimal(10, 2) // Track item cost/value
-  leadTimeDays  Int           @default(7) // Estimated lead time for this specific item type
-  reorderPoint  Int           @default(5)
-  reorderQuantity Int         @default(10)
-  
-  categoryId    String
-  category      AssetCategory @relation(fields: [categoryId], references: [id])
-
-  // Default supplier for this catalog item
-  supplierId    String?
-  supplier      Supplier?     @relation("ItemSupplier", fields: [supplierId], references: [id])
-
-  // Relations
-  stockLevels   SiteStock[]
-  assets        Asset[]
-  poItems       PurchaseOrderItem[]
-  requests      Request[]
-  auditLogs     AuditLog[]
-  receivingItems ReceivingReportItem[]
-
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  @@map("items")
-}
-
-// Track stock quantities, reorder points, and alerts per site
-model SiteStock {
-  id           String   @id @default(uuid())
-  siteId       String
-  site         Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  itemId       String
-  item         Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  
-  quantity     Int      @default(0)
-  reorderPoint Int      @default(5) // Triggers alert if quantity <= reorderPoint
-  
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@unique([siteId, itemId])
-  @@map("site_stocks")
-}
-
-// Individual physical instances of serialized catalog items (e.g. specific laptops, monitors)
-model Asset {
-  id           String      @id @default(uuid())
-  serialNumber String      @unique
-  tagCode      String      @unique // Auto-generated tag: e.g. CEB-CON-0042
-  barcode      String?     @unique
-  status       AssetStatus @default(AVAILABLE)
-  condition    String?     @default("GOOD")
-  
-  itemId       String
-  item         Item        @relation(fields: [itemId], references: [id])
-  
-  siteId       String
-  site         Site        @relation(fields: [siteId], references: [id])
-  
-  // Supplier relation
-  supplierId   String?
-  supplier     Supplier?   @relation(fields: [supplierId], references: [id])
-
-  // Assigned to which Employee
-  assignedToId String?
-  assignedTo   User?       @relation("AssetAssignment", fields: [assignedToId], references: [id])
-  
-  // Receiving tracking
-  receivingReportId String?
-  receivingReport   ReceivingReport? @relation("RrAssets", fields: [receivingReportId], references: [id])
-
-  requests     Request[]
-  events       AssetEvent[]
-
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-
-  @@map("assets")
-}
-
-model PurchaseOrder {
-  id           String              @id @default(uuid())
-  poNumber     String              @unique
-  status       POStatus            @default(DRAFT)
-  
-  supplierId   String
-  supplier     Supplier            @relation(fields: [supplierId], references: [id])
-  
-  siteId       String
-  site         Site                @relation(fields: [siteId], references: [id])
-  
-  creatorId    String
-  creator      User                @relation("PoCreator", fields: [creatorId], references: [id])
-  
-  items        PurchaseOrderItem[]
-  receivingReports ReceivingReport[]
-
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
-
-  @@map("purchase_orders")
-}
-
-model PurchaseOrderItem {
-  id              String        @id @default(uuid())
-  purchaseOrderId String
-  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  
-  itemId          String
-  item            Item          @relation(fields: [itemId], references: [id])
-  
-  quantityOrdered Int
-  quantityReceived Int          @default(0)
-  unitCost        Decimal       @db.Decimal(10, 2)
-
-  @@map("purchase_order_items")
-}
-
-model ReceivingReport {
-  id              String                @id @default(uuid())
-  rrNumber        String        @unique
-  deliveryNoteRef String?       // Invoice or delivery note ref
-  invoiceNumber   String?       // Supplier invoice number
-  invoiceFileUrl  String?       // Attached invoice file reference
-  
-  purchaseOrderId String
-  purchaseOrder   PurchaseOrder         @relation(fields: [purchaseOrderId], references: [id])
-  
-  siteId          String
-  site            Site                  @relation(fields: [siteId], references: [id])
-  
-  receivedById    String
-  receivedBy      User                  @relation("RrReceiver", fields: [receivedById], references: [id])
-  
-  // Relations
-  receivedItems   ReceivingReportItem[]
-  assetsIntroduced Asset[]              @relation("RrAssets")
-
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
-
-  @@map("receiving_reports")
-}
-
-model ReceivingReportItem {
-  id                String          @id @default(uuid())
-  receivingReportId String
-  receivingReport   ReceivingReport @relation(fields: [receivingReportId], references: [id], onDelete: Cascade)
-  
-  itemId            String
-  item              Item            @relation(fields: [itemId], references: [id])
-  
-  quantityReceived  Int
-
-  @@map("receiving_report_items")
-}
-model Request {
-  id           String        @id @default(uuid())
-  status       RequestStatus @default(PENDING_APPROVAL)
-  purpose      String?       // Reason/purpose for request
-  comments     String?       // Approver or fulfillment comments
-  
-  itemId       String
-  item         Item          @relation(fields: [itemId], references: [id])
-  
-  // Requester (Employee or Team Leader)
-  requesterId  String
-  requester    User          @relation("Requester", fields: [requesterId], references: [id])
-  
-  // Approver (Team Leader or Ops Manager)
-  approverId   String?
-  approver     User?         @relation("Approver", fields: [approverId], references: [id])
-  
-  // Staff Approver (Inventory Staff)
-  staffApprovedById String?
-  staffApproved     User?         @relation("StaffApproved", fields: [staffApprovedById], references: [id])
-  staffApprovedAt   DateTime?
-  
-  // Ops Approver (Ops Manager)
-  opsApprovedById   String?
-  opsApproved       User?         @relation("OpsApproved", fields: [opsApprovedById], references: [id])
-  opsApprovedAt     DateTime?
-  
-  // Release Handled By (Inventory Staff)
-  releasedById String?
-  releasedBy   User?         @relation("Releaser", fields: [releasedById], references: [id])
-  releasedAt   DateTime?
-  
-  // Return Handled By (Inventory Staff)
-  returnedById String?
-  returnedBy   User?         @relation("Returnee", fields: [returnedById], references: [id])
-  returnedAt   DateTime?
-
-  // Receiver (Requester confirming receipt)
-  receivedById String?
-  receivedBy   User?         @relation("Receiver", fields: [receivedById], references: [id])
-  receivedAt   DateTime?
-
-  // Fulfilled Asset
-  assetId      String?
-  asset        Asset?        @relation(fields: [assetId], references: [id])
-  
-  events       RequestEvent[]
-  assetEvents  AssetEvent[]
-
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-
-  @@map("requests")
-}
-
-model Notification {
-  id        String   @id @default(uuid())
-  title     String
-  message   String
-  isRead    Boolean  @default(false)
-  
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  createdAt DateTime @default(now())
-
-  @@map("notifications")
-}
-
-model AuditLog {
-  id        String   @id @default(uuid())
-  action    String
-  details   String?
-  ipAddress String?
-  
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  
-  itemId    String?
-  item      Item?    @relation(fields: [itemId], references: [id], onDelete: SetNull)
-  
-  itemName  String?
-  itemSku   String?
-  
-  createdAt DateTime @default(now())
-
-  @@map("audit_logs")
-}
-
-model Department {
-  id          String      @id @default(uuid())
-  name        String      @unique
-  opexEntries OpexEntry[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  @@map("departments")
-}
-
-model RequestEvent {
-  id        String        @id @default(uuid())
-  
-  requestId String
-  request   Request       @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  
-  status    RequestStatus
-  comment   String?
-  
-  userId    String?
-  user      User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  
-  receivedById  String?
-  receivedBy    User?         @relation("ReceivedBy", fields: [receivedById], references: [id], onDelete: SetNull)
-
-  createdAt DateTime      @default(now())
-
-  @@map("request_events")
-}
-
-model AssetEvent {
-  id        String        @id @default(uuid())
-  
-  assetId   String
-  asset     Asset         @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  
-  action    String        // e.g. "CHECKED_OUT", "RETURNED", "MAINTENANCE", "RETIRED"
-  details   String?
-  
-  userId    String?
-  user      User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  
-  requestId String?
-  request   Request?      @relation(fields: [requestId], references: [id], onDelete: SetNull)
-  
-  createdAt DateTime      @default(now())
-
-  @@map("asset_events")
 }
 
 enum OpexUnit {
@@ -500,97 +545,6 @@ enum CategoryAuditAction {
   REACTIVATED
 }
 
-model ExpenseCategory {
-  id              String               @id @default(uuid())
-  name            String               @unique // e.g. "MAINTENANCE_REPAIRS"
-  type            ExpenseCategoryType  @default(OPEX)
-  isActive        Boolean              @default(true)
-
-  createdByUserId String?
-  createdBy       User?                @relation("CategoryCreator", fields: [createdByUserId], references: [id])
-
-  opexEntries     OpexEntry[]
-  auditLogs       CategoryAuditLog[]
-
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
-
-  @@map("expense_categories")
-}
-
-model CategoryAuditLog {
-  id                String               @id @default(uuid())
-  categoryId        String?
-  category          ExpenseCategory?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  siteId            String?
-  site              Site?                @relation(fields: [siteId], references: [id], onDelete: SetNull)
-  action            CategoryAuditAction
-  performedByUserId String
-  performedByUser   User                 @relation("CategoryAuditPerformer", fields: [performedByUserId], references: [id])
-  previousValue     String?
-  newValue          String?
-
-  createdAt         DateTime             @default(now())
-
-  @@map("category_audit_logs")
-}
-
-model OpexEntry {
-  id                String           @id @default(uuid())
-  itemDescription   String
-  brand             String?
-  unitPrice         Decimal          @db.Decimal(12, 2)
-  qty               Decimal          @db.Decimal(12, 2)
-  unit              OpexUnit         @default(PC)
-  category          OpexCategory     @default(OFFICE_SUPPLIES)
-  total             Decimal          @db.Decimal(12, 2)
-  status            OpexStatus       @default(PENDING)
-  sourceDocumentUrl String?
-  transactionDate   DateTime         @default(now())
-  rejectionReason   String?
-  isCapex           Boolean          @default(false)
-
-  // Relations & Fallbacks
-  expenseCategoryId String?
-  expenseCategory   ExpenseCategory? @relation(fields: [expenseCategoryId], references: [id], onDelete: SetNull)
-
-  supplierId        String?
-  supplier          Supplier?        @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  supplierName      String?
-
-  departmentId      String?
-  department        Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  destinationName   String?
-
-  siteId            String?
-  site              Site?            @relation(fields: [siteId], references: [id], onDelete: SetNull)
-
-  enteredByUserId   String
-  enteredByUser     User             @relation("OpexEncoder", fields: [enteredByUserId], references: [id])
-
-  approvedByUserId  String?
-  approvedByUser    User?            @relation("OpexApprover", fields: [approvedByUserId], references: [id])
-
-  monthlyCloseId    String?
-  monthlyClose      MonthlyClose?    @relation(fields: [monthlyCloseId], references: [id], onDelete: SetNull)
-
-  isDeleted         Boolean          @default(false)
-  deletedAt         DateTime?
-
-  auditLogs         TransactionAuditLog[]
-  attachments       TransactionAttachment[]
-
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-
-  @@index([isDeleted, transactionDate])
-  @@index([isDeleted, status])
-  @@index([isDeleted, isCapex])
-  @@index([isDeleted, siteId])
-  @@index([isDeleted, transactionDate, status, isCapex, siteId])
-  @@map("opex_entries")
-}
-
 enum TransactionAuditAction {
   CREATED
   EDITED
@@ -602,65 +556,3 @@ enum TransactionAuditAction {
   ATTACHMENT_ADDED
   ATTACHMENT_REMOVED
 }
-
-model TransactionAuditLog {
-  id                String                 @id @default(uuid())
-  transactionId     String
-  transaction       OpexEntry              @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-
-  action            TransactionAuditAction
-  performedByUserId String
-  performedByUser   User                   @relation("TransactionAuditPerformer", fields: [performedByUserId], references: [id])
-  performedByRole   String                 // Role snapshot at action time
-
-  fieldChanged      String?                // e.g. "unitPrice", "category", "status"
-  previousValue     String?                // JSON string or string representation
-  newValue          String?                // JSON string or string representation
-  reason            String?                // Justification for edits or rejections
-
-  createdAt         DateTime               @default(now())
-
-  @@map("transaction_audit_logs")
-}
-
-model TransactionAttachment {
-  id                String                 @id @default(uuid())
-  transactionId     String
-  transaction       OpexEntry              @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-
-  fileUrl           String
-  originalFilename  String
-  mimeType          String
-  fileSizeBytes     Int                    @default(0)
-
-  uploadedByUserId  String?
-  uploadedByUser    User?                  @relation("AttachmentUploader", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
-
-  isDeleted         Boolean                @default(false)
-  isLegacyUrlOnly   Boolean                @default(false)
-
-  uploadedAt        DateTime               @default(now())
-
-  @@map("transaction_attachments")
-}
-
-model MonthlyClose {
-  id              String      @id @default(uuid())
-  year            Int
-  month           Int
-  yearMonth       String      @unique // e.g. "2026-07"
-  lockedAt        DateTime    @default(now())
-
-  lockedByUserId  String
-  lockedByUser    User        @relation("OpexLocker", fields: [lockedByUserId], references: [id])
-
-  summarySnapshot Json        // Immutable rollup & metadata snapshot
-
-  entries         OpexEntry[]
-
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-
-  @@map("monthly_closes")
-}
-

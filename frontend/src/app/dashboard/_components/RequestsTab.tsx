@@ -1603,8 +1603,8 @@ export function RequestsTab({
             onClick={(e) => e.stopPropagation()}
             style={{
               width: '100%',
-              maxWidth: '640px',
-              maxHeight: '88vh',
+              maxWidth: '540px',
+              maxHeight: '82vh',
               backgroundColor: '#ffffff',
               borderRadius: '16px',
               boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
@@ -1866,7 +1866,7 @@ export function RequestsTab({
                       <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', display: 'block' }}>Receiver</span>
                       <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', display: 'block', marginTop: '0.15rem' }}>
                         {selectedRequest.reason && selectedRequest.reason.includes("[ASSET DEPLOYMENT]")
-                          ? (selectedRequest.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || selectedRequest.requestedByName)
+                          ? (selectedRequest.reason.match(/Deploy to (?:Employee|Station):\s*([^|]+)/)?.[1]?.trim() || selectedRequest.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || selectedRequest.requestedByName)
                           : (selectedRequest.receiverName || selectedRequest.requestedByName)}
                       </span>
                       <span style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginTop: '0.1rem' }}>
@@ -1975,7 +1975,7 @@ export function RequestsTab({
                         assetSiteAddress={selectedRequest.assetSiteAddress || undefined}
                         receiverName={
                           selectedRequest.reason && selectedRequest.reason.includes("[ASSET DEPLOYMENT]")
-                            ? (selectedRequest.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || selectedRequest.requestedByName)
+                            ? (selectedRequest.reason.match(/Deploy to (?:Employee|Station):\s*([^|]+)/)?.[1]?.trim() || selectedRequest.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || selectedRequest.requestedByName)
                             : (selectedRequest.receiverName || selectedRequest.requestedByName)
                         }
                         receiverSiteName={

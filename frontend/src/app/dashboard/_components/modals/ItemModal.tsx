@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { CatalogItem } from "@/types/dashboard";
+import { CatalogItem, isCategoryConsumable } from "@/types/dashboard";
 
 interface ItemModalProps {
   itemModalOpen: boolean;
@@ -287,18 +287,18 @@ export const ItemModal = ({
                   }}
                 >
                   <option value="" disabled hidden>Select Category</option>
-                  {safeCategories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !(c.name || "").toLowerCase().includes("consumable"))).length > 0 && (
+                  {safeCategories.filter(c => !isCategoryConsumable(c)).length > 0 && (
                     <optgroup label="Non-Consumable">
-                      {safeCategories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !(c.name || "").toLowerCase().includes("consumable"))).map((c) => (
+                      {safeCategories.filter(c => !isCategoryConsumable(c)).map((c) => (
                         <option key={c.id} value={c.id} style={{ color: "#1e293b" }}>
                           {c.name}
                         </option>
                       ))}
                     </optgroup>
                   )}
-                  {safeCategories.filter(c => c.type === "CONSUMABLE" || (c.name || "").toLowerCase().includes("consumable")).length > 0 && (
+                  {safeCategories.filter(c => isCategoryConsumable(c)).length > 0 && (
                     <optgroup label="Consumable">
-                      {safeCategories.filter(c => c.type === "CONSUMABLE" || (c.name || "").toLowerCase().includes("consumable")).map((c) => (
+                      {safeCategories.filter(c => isCategoryConsumable(c)).map((c) => (
                         <option key={c.id} value={c.id} style={{ color: "#1e293b" }}>
                           {c.name}
                         </option>

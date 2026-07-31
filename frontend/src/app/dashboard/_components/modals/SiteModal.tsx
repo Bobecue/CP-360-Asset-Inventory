@@ -9,6 +9,8 @@ interface SiteModalProps {
   setSitePrefix: (v: string) => void;
   siteAddress: string;
   setSiteAddress: (v: string) => void;
+  siteFloor: string;
+  setSiteFloor: (v: string) => void;
   siteError: string | null;
   isSubmittingSite: boolean;
   onCancel: () => void;
@@ -24,6 +26,8 @@ export const SiteModal = ({
   setSitePrefix,
   siteAddress,
   setSiteAddress,
+  siteFloor,
+  setSiteFloor,
   siteError,
   isSubmittingSite,
   onCancel,
@@ -127,6 +131,25 @@ export const SiteModal = ({
                 placeholder="e.g. CEB"
                 value={sitePrefix}
                 onChange={(e) => setSitePrefix(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "0.45rem 0.65rem",
+                  borderRadius: 6,
+                  border: "1px solid #e2e8f0",
+                  fontSize: "0.8rem",
+                  color: "#1e293b",
+                  outline: "none",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+              <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Floor</label>
+              <input
+                type="text"
+                placeholder="e.g. 4th Floor"
+                value={siteFloor}
+                onChange={(e) => setSiteFloor(e.target.value)}
                 style={{
                   width: "100%",
                   padding: "0.45rem 0.65rem",

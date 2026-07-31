@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { CatalogItem } from "@/types/dashboard";
+import { CatalogItem, isCategoryConsumable } from "@/types/dashboard";
 
 // ── Count-Up Animation Hook for Premium Stats Numbers (matching Reports & Logs) ──
 function useCountUp(target: number, duration = 800, enabled = true) {
@@ -142,7 +142,7 @@ export const LowStockAlertsTab = ({
     // Fallback computation from catalogItems
     const computedAlerts: any[] = [];
     catalogItems.forEach((item) => {
-      const isConsumable = item.category?.type === "CONSUMABLE" || item.category?.name?.toLowerCase().includes("consumable");
+      const isConsumable = isCategoryConsumable(item.category);
       const itemCatType = isConsumable ? "CONSUMABLE" : "NON_CONSUMABLE";
 
       if (categoryFilter === "NON_CONSUMABLE" && itemCatType !== "NON_CONSUMABLE") return;
@@ -150,44 +150,73 @@ export const LowStockAlertsTab = ({
       if (categoryFilter !== "ALL" && categoryFilter !== "NON_CONSUMABLE" && categoryFilter !== "CONSUMABLE" && item.categoryId !== categoryFilter) return;
 
       const threshold = item.reorderPoint || (item.stockLevels?.[0]?.reorderPoint ?? 5);
-      let totalQty = 0;
+      const stockLevels = item.stockLevels && item.stockLevels.length > 0 ? item.stockLevels : [];
 
-      if (!isConsumable && item.assets && item.assets.length > 0) {
-        let relevantAssets = item.assets.filter((a: any) => a.status === "AVAILABLE" && a.condition !== "BAD" && a.condition !== "DAMAGED");
-        if (siteFilter !== "ALL") {
-          relevantAssets = relevantAssets.filter((a: any) => a.siteId === siteFilter);
-        }
-        totalQty = relevantAssets.length;
-      } else if (item.stockLevels && item.stockLevels.length > 0) {
-        let relevantStocks = item.stockLevels;
-        if (siteFilter !== "ALL") {
-          relevantStocks = relevantStocks.filter((s) => s.siteId === siteFilter);
-        }
-        totalQty = relevantStocks.reduce((sum, s) => sum + (s.quantity || 0), 0);
+      if (stockLevels.length > 0) {
+        stockLevels.forEach((s: any) => {
+          if (siteFilter !== "ALL" && s.siteId !== siteFilter) return;
+
+          const siteStock = s.quantity || 0;
+          const siteRP = s.reorderPoint || threshold;
+
+          if (siteStock <= siteRP) {
+            const isCritical = siteStock === 0 || siteStock <= Math.floor(siteRP / 2);
+            const severity = isCritical ? "CRITICAL" : "WARNING";
+
+            if (severityFilter === "ALL" || severityFilter === severity) {
+              computedAlerts.push({
+                id: `${item.id}-${s.siteId}`,
+                itemId: item.id,
+                siteId: s.siteId,
+                siteName: s.site?.name || "Selected Site",
+                name: item.name,
+                sku: item.sku,
+                unitPrice: item.unitPrice,
+                leadTimeDays: item.leadTimeDays,
+                reorderPoint: siteRP,
+                reorderQuantity: item.reorderQuantity || 10,
+                currentQuantity: siteStock,
+                severity,
+                category: item.category,
+                stockLevels: item.stockLevels,
+                daysBelowThreshold: 1,
+              });
+            }
+          }
+        });
       } else {
-        totalQty = item.quantity ?? 0;
-      }
+        let totalQty = 0;
+        if (!isConsumable && item.assets && item.assets.length > 0) {
+          let relAssets = item.assets.filter((a: any) => a.status === "AVAILABLE" && a.condition !== "BAD" && a.condition !== "DAMAGED");
+          if (siteFilter !== "ALL") {
+            relAssets = relAssets.filter((a: any) => a.siteId === siteFilter);
+          }
+          totalQty = relAssets.length;
+        } else {
+          totalQty = item.quantity ?? 0;
+        }
 
-      if (totalQty <= threshold) {
-        const isCritical = totalQty === 0 || totalQty <= Math.floor(threshold / 2);
-        const severity = isCritical ? "CRITICAL" : "WARNING";
+        if (totalQty <= threshold) {
+          const isCritical = totalQty === 0 || totalQty <= Math.floor(threshold / 2);
+          const severity = isCritical ? "CRITICAL" : "WARNING";
 
-        if (severityFilter === "ALL" || severityFilter === severity) {
-          computedAlerts.push({
-            id: item.id,
-            itemId: item.id,
-            name: item.name,
-            sku: item.sku,
-            unitPrice: item.unitPrice,
-            leadTimeDays: item.leadTimeDays,
-            reorderPoint: threshold,
-            reorderQuantity: item.reorderQuantity || 10,
-            currentQuantity: totalQty,
-            severity,
-            category: item.category,
-            stockLevels: item.stockLevels,
-            daysBelowThreshold: 1,
-          });
+          if (severityFilter === "ALL" || severityFilter === severity) {
+            computedAlerts.push({
+              id: `${item.id}-${siteFilter}`,
+              itemId: item.id,
+              name: item.name,
+              sku: item.sku,
+              unitPrice: item.unitPrice,
+              leadTimeDays: item.leadTimeDays,
+              reorderPoint: threshold,
+              reorderQuantity: item.reorderQuantity || 10,
+              currentQuantity: totalQty,
+              severity,
+              category: item.category,
+              stockLevels: item.stockLevels,
+              daysBelowThreshold: 1,
+            });
+          }
         }
       }
     });
@@ -488,18 +517,18 @@ export const LowStockAlertsTab = ({
               <option value="ALL">All Categories</option>
               <option value="NON_CONSUMABLE">💻 All Non-Consumables</option>
               <option value="CONSUMABLE">🟢 All Consumables</option>
-              {safeCategories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !(c.name || "").toLowerCase().includes("consumable"))).length > 0 && (
+              {safeCategories.filter(c => !isCategoryConsumable(c)).length > 0 && (
                 <optgroup label="💻 Non-Consumable">
-                  {safeCategories.filter(c => c.type === "NON_CONSUMABLE" || (c.type !== "CONSUMABLE" && !(c.name || "").toLowerCase().includes("consumable"))).map((c) => (
+                  {safeCategories.filter(c => !isCategoryConsumable(c)).map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
                   ))}
                 </optgroup>
               )}
-              {safeCategories.filter(c => c.type === "CONSUMABLE" || (c.name || "").toLowerCase().includes("consumable")).length > 0 && (
+              {safeCategories.filter(c => isCategoryConsumable(c)).length > 0 && (
                 <optgroup label="🟢 Consumable">
-                  {safeCategories.filter(c => c.type === "CONSUMABLE" || (c.name || "").toLowerCase().includes("consumable")).map((c) => (
+                  {safeCategories.filter(c => isCategoryConsumable(c)).map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>

@@ -208,9 +208,9 @@ export const mockItems: CatalogItem[] = [
 ];
 
 export const mockSites = [
-  { id: "e6ffecfe-2683-4374-b373-93a66b962161", name: "Skyrise 4B", prefix: "SK4", address: "Cebu IT Park, Skyrise 4B" },
-  { id: "69757c11-3849-40c2-9ca9-925a7056e932", name: "Skyrise Alpha", prefix: "SKA", address: "Cebu Business Park, Skyrise Alpha" },
-  { id: "24410602-efbc-4fd9-81f6-e7859db56bdd", name: "Skyrise Beta", prefix: "SKB", address: "Cebu Business Park, Skyrise Beta" },
+  { id: "e6ffecfe-2683-4374-b373-93a66b962161", name: "Skyrise 4B", prefix: "SK4", address: "Cebu IT Park, Skyrise 4B", floor: "10th, 11th floor" },
+  { id: "69757c11-3849-40c2-9ca9-925a7056e932", name: "Skyrise Alpha", prefix: "SKA", address: "Cebu Business Park, Skyrise Alpha", floor: "6th floor" },
+  { id: "24410602-efbc-4fd9-81f6-e7859db56bdd", name: "Skyrise Beta", prefix: "SKB", address: "Cebu Business Park, Skyrise Beta", floor: "10th, 12th floor" },
 ];
 
 export const mockDepartments = [
@@ -575,10 +575,24 @@ export const AssetTagBadge = ({
   );
 };
 
+export const isCategoryConsumable = (cat?: any): boolean => {
+  if (!cat) return false;
+  const typeStr = (typeof cat === "string" ? cat : cat.type || "").toUpperCase();
+  const nameStr = (typeof cat === "string" ? cat : cat.name || "").toLowerCase();
+
+  return (
+    typeStr === "CONSUMABLE" ||
+    typeStr === "OPEX" ||
+    nameStr.includes("consumable") ||
+    nameStr.includes("mouse") ||
+    nameStr.includes("mice") ||
+    nameStr.includes("keyboard") ||
+    nameStr.includes("cable")
+  );
+};
+
 export const AssetTypeBadge = ({ type, categoryName, size = "md" }: { type?: any; categoryName?: string; size?: "sm" | "md" | "lg" }) => {
-  const typeStr = typeof type === "string" ? type : type?.type || "";
-  const nameStr = categoryName || (typeof type === "object" ? type?.name : "") || "";
-  const isConsumable = typeStr === "CONSUMABLE" || nameStr.toLowerCase().includes("consumable");
+  const isConsumable = isCategoryConsumable({ type, name: categoryName });
   const label = isConsumable ? "Consumable" : "Non-Consumable";
 
   const sizeStyles = {

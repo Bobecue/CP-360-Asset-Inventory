@@ -1350,7 +1350,7 @@ export function RequestsTable({
                 </th>
               )}
               <th style={{ padding: '0.85rem 1rem', fontSize: '0.68rem', fontWeight: 700, color: '#64748b', textAlign: 'left', width: '125px', whiteSpace: 'nowrap' }}>Request ID</th>
-              <th style={{ padding: '0.85rem 1rem', fontSize: '0.68rem', fontWeight: 700, color: '#64748b', textAlign: 'left', width: '140px', whiteSpace: 'nowrap' }}>Group</th>
+              <th style={{ padding: '0.85rem 1rem', fontSize: '0.68rem', fontWeight: 700, color: '#64748b', textAlign: 'left', width: '140px', whiteSpace: 'nowrap' }}>Request Type</th>
               <th style={{ padding: '0.85rem 1rem', fontSize: '0.68rem', fontWeight: 700, color: '#64748b', textAlign: 'left', whiteSpace: 'nowrap' }}>Item Catalog</th>
               <th style={{ padding: '0.85rem 1rem', fontSize: '0.68rem', fontWeight: 700, color: '#64748b', textAlign: 'left', whiteSpace: 'nowrap' }}>Requested By</th>
               <th style={{ padding: '0.85rem 1rem', fontSize: '0.68rem', fontWeight: 700, color: '#64748b', textAlign: 'center', width: '70px', whiteSpace: 'nowrap' }}>Qty</th>
@@ -1458,7 +1458,7 @@ export function RequestsTable({
                         border: '1px solid #cbd5e1',
                         whiteSpace: 'nowrap'
                       }}>
-                        Group Request
+                        Single Request
                       </span>
                     </td>
                     <td style={{ padding: '0.85rem 1rem', fontSize: '0.8rem', fontWeight: 600, color: '#0f172a' }}>
@@ -1625,7 +1625,8 @@ export function RequestsTable({
                       alignItems: 'center',
                       gap: '4px'
                     }}>
-                      📦 Grouped ({group.items.length} Requests)
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                      Grouped ({group.items.length} Requests)
                     </span>
                   </td>
 
