@@ -32,7 +32,8 @@ interface BulkRequestModalProps {
   sites: Site[];
   currentUser?: any;
   initialMode?: 'deploy' | 'request';
-  onSubmit: (requests: { itemId: string; quantity: number }[], siteId: string, reason: string, urgency: UrgencyLevel) => Promise<boolean>;
+  sourceSiteId?: string;
+  onSubmit: (requests: { itemId: string; quantity: number }[], siteId: string, reason: string, urgency: UrgencyLevel, sourceSiteId?: string) => Promise<boolean>;
 }
 
 import { getCategoryIcon } from '@/types/dashboard';
@@ -50,7 +51,7 @@ const parseFloors = (floorStr?: string): string[] => {
     .filter(Boolean);
 };
 
-export function BulkRequestModal({ open, onClose, selectedItems, sites, currentUser, initialMode, onSubmit }: BulkRequestModalProps) {
+export function BulkRequestModal({ open, onClose, selectedItems, sites, currentUser, initialMode, sourceSiteId, onSubmit }: BulkRequestModalProps) {
   const canDeploy = !currentUser || currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'INVENTORY_STAFF' || currentUser?.role === 'OPS_MANAGER' || currentUser?.role === 'ADMIN';
   const [mode, setMode] = useState<'deploy' | 'request'>(initialMode || (canDeploy ? 'deploy' : 'request'));
   const isDeployMode = canDeploy && mode === 'deploy';
@@ -209,7 +210,7 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
             : `[ASSET DEPLOYMENT] Deploy to Station: ${stationName.trim()} | Dept/Area: ${stationDept.trim()} | Site: ${reqSiteId}${floorSuffix}${deploymentNotes.trim() ? ` | Notes: ${deploymentNotes.trim()}` : ''}`)
         : (deploymentNotes.trim() || 'Request for selected items');
 
-      const success = await onSubmit(requestsToSend, siteIdToSend, deploymentReason, 'NORMAL');
+      const success = await onSubmit(requestsToSend, siteIdToSend, deploymentReason, 'NORMAL', sourceSiteId);
       if (success) {
         setEmployeeName('');
         setEmployeeAccount('');

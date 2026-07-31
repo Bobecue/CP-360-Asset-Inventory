@@ -770,23 +770,40 @@ export const CatalogTab = ({
             const currentQty = item.quantity ?? 0;
             const newQty = currentQty + qtyReturnedToStock;
 
-            const targetSite = sites.find((s: any) => s.id === dep.siteId || s.name === dep.siteId || s.name === dep.siteLocation);
-            const targetSiteId = targetSite ? targetSite.id : (dep.siteId && dep.siteId !== "ALL" ? dep.siteId : undefined);
+            const deployedSiteObj = sites.find((s: any) => s.id === dep.siteId || s.name === dep.siteId || s.name === dep.siteLocation);
+            const deployedSiteId = deployedSiteObj ? deployedSiteObj.id : (dep.siteId && dep.siteId !== "ALL" ? dep.siteId : undefined);
+            const homeSiteId = dep.rawRequest?.sourceSiteId || dep.rawRequest?.asset?.siteId || dep.siteId;
+            const homeSiteObj = sites.find((s: any) => s.id === homeSiteId || s.name === homeSiteId);
+            const resolvedHomeSiteId = homeSiteObj ? homeSiteObj.id : (homeSiteId && homeSiteId !== "ALL" ? homeSiteId : deployedSiteId);
 
             let updatedStockLevels = item.stockLevels ? [...item.stockLevels] : [];
-            if (targetSiteId) {
-              const slIdx = updatedStockLevels.findIndex(sl => sl.siteId === targetSiteId);
-              if (slIdx >= 0) {
-                updatedStockLevels[slIdx] = {
-                  ...updatedStockLevels[slIdx],
-                  quantity: (updatedStockLevels[slIdx].quantity || 0) + qtyReturnedToStock
+            
+            // a. Deduct stock from current deployed site where asset was stationed
+            if (deployedSiteId) {
+              const depIdx = updatedStockLevels.findIndex(sl => sl.siteId === deployedSiteId);
+              if (depIdx >= 0) {
+                updatedStockLevels[depIdx] = {
+                  ...updatedStockLevels[depIdx],
+                  quantity: Math.max(0, (updatedStockLevels[depIdx].quantity || 0) - qtyReturnedToStock)
+                };
+              }
+            }
+
+            // b. Restock original home site where asset came from
+            if (resolvedHomeSiteId) {
+              const homeIdx = updatedStockLevels.findIndex(sl => sl.siteId === resolvedHomeSiteId);
+              if (homeIdx >= 0) {
+                updatedStockLevels[homeIdx] = {
+                  ...updatedStockLevels[homeIdx],
+                  quantity: (updatedStockLevels[homeIdx].quantity || 0) + qtyReturnedToStock
                 };
               } else {
                 updatedStockLevels.push({
-                  id: `ss-${Date.now()}`,
-                  siteId: targetSiteId,
+                  id: `ss-${Date.now()}-home`,
+                  siteId: resolvedHomeSiteId,
                   itemId: item.id,
-                  quantity: qtyReturnedToStock
+                  quantity: qtyReturnedToStock,
+                  reorderPoint: 5
                 } as any);
               }
             }
@@ -925,23 +942,40 @@ export const CatalogTab = ({
             if (!isTargetItem) return item;
 
             const newQty = (item.quantity ?? 0) + qtyReturnedToStock;
-            const targetSite = sites.find((s: any) => s.id === dep.siteId || s.name === dep.siteLocation);
-            const targetSiteId = targetSite ? targetSite.id : (dep.siteId && dep.siteId !== "ALL" ? dep.siteId : undefined);
+            const deployedSiteObj = sites.find((s: any) => s.id === dep.siteId || s.name === dep.siteLocation);
+            const deployedSiteId = deployedSiteObj ? deployedSiteObj.id : (dep.siteId && dep.siteId !== "ALL" ? dep.siteId : undefined);
+            const homeSiteId = dep.rawRequest?.sourceSiteId || dep.rawRequest?.asset?.siteId || dep.siteId;
+            const homeSiteObj = sites.find((s: any) => s.id === homeSiteId || s.name === homeSiteId);
+            const resolvedHomeSiteId = homeSiteObj ? homeSiteObj.id : (homeSiteId && homeSiteId !== "ALL" ? homeSiteId : deployedSiteId);
 
             let updatedStockLevels = item.stockLevels ? [...item.stockLevels] : [];
-            if (targetSiteId) {
-              const slIdx = updatedStockLevels.findIndex(sl => sl.siteId === targetSiteId);
-              if (slIdx >= 0) {
-                updatedStockLevels[slIdx] = {
-                  ...updatedStockLevels[slIdx],
-                  quantity: (updatedStockLevels[slIdx].quantity || 0) + qtyReturnedToStock
+
+            // a. Deduct stock from current deployed site
+            if (deployedSiteId) {
+              const depIdx = updatedStockLevels.findIndex(sl => sl.siteId === deployedSiteId);
+              if (depIdx >= 0) {
+                updatedStockLevels[depIdx] = {
+                  ...updatedStockLevels[depIdx],
+                  quantity: Math.max(0, (updatedStockLevels[depIdx].quantity || 0) - qtyReturnedToStock)
+                };
+              }
+            }
+
+            // b. Restock original home site where asset came from
+            if (resolvedHomeSiteId) {
+              const homeIdx = updatedStockLevels.findIndex(sl => sl.siteId === resolvedHomeSiteId);
+              if (homeIdx >= 0) {
+                updatedStockLevels[homeIdx] = {
+                  ...updatedStockLevels[homeIdx],
+                  quantity: (updatedStockLevels[homeIdx].quantity || 0) + qtyReturnedToStock
                 };
               } else {
                 updatedStockLevels.push({
-                  id: `ss-${Date.now()}`,
-                  siteId: targetSiteId,
+                  id: `ss-${Date.now()}-bulk-home`,
+                  siteId: resolvedHomeSiteId,
                   itemId: item.id,
-                  quantity: qtyReturnedToStock
+                  quantity: qtyReturnedToStock,
+                  reorderPoint: 5
                 } as any);
               }
             }

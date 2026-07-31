@@ -703,12 +703,18 @@ export default function DashboardPage() {
     requests: { itemId: string; quantity: number }[],
     siteId: string,
     reason: string,
-    urgency: string
+    urgency: string,
+    sourceSiteIdOverride?: string
   ): Promise<boolean> => {
     if (!currentUser) return false;
 
     let successCount = 0;
     const createdRequests = [];
+
+    // Determine the source site ID from parameter, or active site filter if set and not "ALL"
+    const effectiveSourceSiteId = (sourceSiteIdOverride && sourceSiteIdOverride !== 'ALL')
+      ? sourceSiteIdOverride
+      : (selectedSiteId && selectedSiteId !== 'ALL' ? selectedSiteId : undefined);
 
     for (const req of requests) {
       const selectedItem = catalogItems.find(i => i.id === req.itemId);
@@ -732,6 +738,7 @@ export default function DashboardPage() {
               reason: reason,
               urgency: urgency,
               siteId: siteId || undefined,
+              sourceSiteId: effectiveSourceSiteId,
             }),
           });
           if (res.ok) {
@@ -790,26 +797,59 @@ export default function DashboardPage() {
           }
         }
 
-        // Deduct inventory stock level and update deployed asset tags automatically for asset deployment
+        // Deduct inventory stock level from source site and add to destination site for asset deployment
         if (reason && reason.includes("[ASSET DEPLOYMENT]")) {
           setCatalogItems(prevItems => prevItems.map(item => {
             if (item.id === req.itemId) {
-              // Find source site with available stock (defaults to selected site or first site with stock/assets)
-              const availableStockLevel = (item.stockLevels || []).find(sl => sl.quantity >= req.quantity) 
-                || (item.stockLevels || []).find(sl => sl.quantity > 0);
-              const targetSiteId = availableStockLevel ? availableStockLevel.siteId : (siteId || selectedSiteId);
+              const srcSiteId = effectiveSourceSiteId || (
+                (item.stockLevels || []).find(sl => sl.quantity >= req.quantity)?.siteId ||
+                (item.stockLevels || []).find(sl => sl.quantity > 0)?.siteId ||
+                selectedSiteId
+              );
+              const destSiteId = siteId;
 
-              const updatedLevels = (item.stockLevels || []).map(sl => {
-                if (sl.siteId === targetSiteId) {
-                  return { ...sl, quantity: Math.max(0, sl.quantity - req.quantity) };
+              let updatedLevels = [...(item.stockLevels || [])];
+
+              // 1. Deduct from source site
+              const srcIndex = updatedLevels.findIndex(sl => sl.siteId === srcSiteId);
+              if (srcIndex >= 0) {
+                updatedLevels[srcIndex] = {
+                  ...updatedLevels[srcIndex],
+                  quantity: Math.max(0, updatedLevels[srcIndex].quantity - req.quantity)
+                };
+              } else if (srcSiteId && srcSiteId !== 'ALL') {
+                updatedLevels.push({
+                  id: `ss-${Date.now()}-src`,
+                  siteId: srcSiteId,
+                  itemId: item.id,
+                  quantity: 0,
+                  reorderPoint: 5,
+                });
+              }
+
+              // 2. Increase stock at destination site (if source != destination)
+              if (destSiteId && destSiteId !== srcSiteId) {
+                const destIndex = updatedLevels.findIndex(sl => sl.siteId === destSiteId);
+                if (destIndex >= 0) {
+                  updatedLevels[destIndex] = {
+                    ...updatedLevels[destIndex],
+                    quantity: updatedLevels[destIndex].quantity + req.quantity
+                  };
+                } else {
+                  updatedLevels.push({
+                    id: `ss-${Date.now()}-dest`,
+                    siteId: destSiteId,
+                    itemId: item.id,
+                    quantity: req.quantity,
+                    reorderPoint: 5,
+                  });
                 }
-                return sl;
-              });
+              }
 
-              // Mark deployed asset as ASSIGNED instead of removing it
+              // Mark deployed asset as ASSIGNED
               const updatedAssets = (item.assets || []).map((ast: any) => {
                 if (ast.tagCode === deployedAssetTag || ast.assetTag === deployedAssetTag || ast.id === deployedAssetId) {
-                  return { ...ast, status: "ASSIGNED" };
+                  return { ...ast, status: "ASSIGNED", siteId: destSiteId || ast.siteId };
                 }
                 return ast;
               });
@@ -2534,6 +2574,7 @@ export default function DashboardPage() {
             })}
           sites={sites}
           initialMode={bulkRequestInitialMode}
+          sourceSiteId={selectedSiteId}
           onSubmit={handleBulkRequestSubmit}
         />
       )}

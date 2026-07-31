@@ -26,8 +26,9 @@ interface NewRequestModalProps {
   onClose: () => void;
   inventoryItems: InventoryItem[];
   sites: Site[];
-  onSubmit: (itemId: string, quantity: number, siteId: string, reason: string) => Promise<boolean>;
+  onSubmit: (itemId: string, quantity: number, siteId: string, reason: string, sourceSiteId?: string) => Promise<boolean>;
   title?: string;
+  sourceSiteId?: string;
 }
 
 const getAccessoryType = (name: string) => {
@@ -63,7 +64,7 @@ export function formatItemDisplayName(name: string): string {
   return name;
 }
 
-export function NewRequestModal({ open, onClose, inventoryItems, sites, onSubmit, title = 'New Request' }: NewRequestModalProps) {
+export function NewRequestModal({ open, onClose, inventoryItems, sites, onSubmit, title = 'New Request', sourceSiteId }: NewRequestModalProps) {
   const [reqItemId, setReqItemId] = useState('');
   const [reqSpecificItemId, setReqSpecificItemId] = useState('');
   const [reqQuantity, setReqQuantity] = useState(1);
@@ -103,7 +104,7 @@ export function NewRequestModal({ open, onClose, inventoryItems, sites, onSubmit
       const finalItemId = reqItemId;
       const matchedSite = sites.find(s => s.name.toLowerCase() === reqSiteId.trim().toLowerCase());
       const siteIdToSend = matchedSite ? matchedSite.id : reqSiteId.trim();
-      const success = await onSubmit(finalItemId, reqQuantity, siteIdToSend, reqReason.trim());
+      const success = await onSubmit(finalItemId, reqQuantity, siteIdToSend, reqReason.trim(), sourceSiteId);
       if (success) {
         setReqItemId('');
         setReqSpecificItemId('');

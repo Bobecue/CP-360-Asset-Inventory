@@ -406,7 +406,25 @@ export class RequestsService implements OnModuleInit {
 
     // Determine origin site (where physical assets currently reside) for deployment stock deduction
     let sourceSiteId: string = siteObj.id;
-    if (assignedAssets.length > 0 && assignedAssets[0].siteId) {
+
+    if (dto.sourceSiteId && dto.sourceSiteId !== 'ALL') {
+      let candidateSourceSite = await this.prisma.site.findUnique({
+        where: { id: dto.sourceSiteId }
+      });
+      if (!candidateSourceSite) {
+        candidateSourceSite = await this.prisma.site.findFirst({
+          where: {
+            OR: [
+              { name: { equals: dto.sourceSiteId, mode: 'insensitive' } },
+              { prefix: { equals: dto.sourceSiteId, mode: 'insensitive' } }
+            ]
+          }
+        });
+      }
+      if (candidateSourceSite) {
+        sourceSiteId = candidateSourceSite.id;
+      }
+    } else if (assignedAssets.length > 0 && assignedAssets[0].siteId) {
       sourceSiteId = assignedAssets[0].siteId;
     }
 
@@ -426,16 +444,16 @@ export class RequestsService implements OnModuleInit {
 
     if (isDeployment) {
       const deployQty = dto.quantity || 1;
-      // Deduct stock from the ORIGIN / RELEASE site (where asset was taken from)
-      const stock = await this.prisma.siteStock.findFirst({
+      // 1. Deduct stock from the ORIGIN / RELEASE site (source site filtered by user)
+      const srcStock = await this.prisma.siteStock.findFirst({
         where: {
           siteId: sourceSiteId,
           itemId: item.id,
         }
       });
-      if (stock) {
+      if (srcStock) {
         await this.prisma.siteStock.update({
-          where: { id: stock.id },
+          where: { id: srcStock.id },
           data: { quantity: { decrement: deployQty } }
         });
       } else {
@@ -446,6 +464,30 @@ export class RequestsService implements OnModuleInit {
             quantity: 0 - deployQty
           }
         });
+      }
+
+      // 2. Increase stock at the DESTINATION site selected in deployment form (if source != destination)
+      if (siteObj.id !== sourceSiteId) {
+        const destStock = await this.prisma.siteStock.findFirst({
+          where: {
+            siteId: siteObj.id,
+            itemId: item.id,
+          }
+        });
+        if (destStock) {
+          await this.prisma.siteStock.update({
+            where: { id: destStock.id },
+            data: { quantity: { increment: deployQty } }
+          });
+        } else {
+          await this.prisma.siteStock.create({
+            data: {
+              siteId: siteObj.id,
+              itemId: item.id,
+              quantity: deployQty
+            }
+          });
+        }
       }
     }
 
@@ -1766,42 +1808,34 @@ export class RequestsService implements OnModuleInit {
     const commentLower = (returnComment || '').toLowerCase();
     const isDamaged = commentLower.includes('bad') || commentLower.includes('damaged') || commentLower.includes('missing');
 
-    // The returned asset should always return to where it came from (its physical site / sourceSiteId)
-    let rawSiteId: string | undefined = r.asset?.siteId || parsedPurpose.sourceSiteId || parsedPurpose.siteId;
+    // Determine current deployed site and original home/source site
+    let homeSiteId: string | undefined = parsedPurpose.sourceSiteId || r.asset?.siteId;
+    let deployedSiteId: string | undefined = parsedPurpose.siteId;
 
-    if (!rawSiteId && r.assetId) {
+    if (!homeSiteId && r.assetId) {
       const ast = await this.prisma.asset.findUnique({ where: { id: r.assetId } });
-      if (ast?.siteId) rawSiteId = ast.siteId;
+      if (ast?.siteId) homeSiteId = ast.siteId;
     }
+    if (!homeSiteId) homeSiteId = parsedPurpose.siteId || r.requester?.siteId;
+    if (!deployedSiteId) deployedSiteId = homeSiteId;
 
-    if (!rawSiteId && parsedPurpose.siteName) {
-      rawSiteId = parsedPurpose.siteName;
-    }
-    if (!rawSiteId && r.purpose) {
-      const match = r.purpose.match(/Site:\s*([^|]+)/i);
-      if (match && match[1]) {
-        rawSiteId = match[1].trim();
-      }
-    }
-
-    let targetSiteId: string | undefined = undefined;
-
-    if (rawSiteId) {
-      const siteObj = await this.prisma.site.findFirst({
+    // Resolve site IDs if site names or prefixes were provided
+    const resolveSite = async (raw?: string) => {
+      if (!raw) return undefined;
+      const s = await this.prisma.site.findFirst({
         where: {
           OR: [
-            { id: rawSiteId },
-            { name: { equals: rawSiteId, mode: 'insensitive' } },
-            { prefix: { equals: rawSiteId, mode: 'insensitive' } }
+            { id: raw },
+            { name: { equals: raw, mode: 'insensitive' } },
+            { prefix: { equals: raw, mode: 'insensitive' } }
           ]
         }
       });
-      if (siteObj) {
-        targetSiteId = siteObj.id;
-      } else {
-        targetSiteId = rawSiteId;
-      }
-    }
+      return s ? s.id : raw;
+    };
+
+    const homeSiteResolved = await resolveSite(homeSiteId);
+    const deployedSiteResolved = await resolveSite(deployedSiteId);
 
     const targetItemId = r.itemId || r.asset?.itemId;
     let totalQuantity = parsedPurpose.quantity || (r as any).quantity || 1;
@@ -1811,7 +1845,7 @@ export class RequestsService implements OnModuleInit {
     const itemsMissing = itemsMissingMatch ? parseInt(itemsMissingMatch[1], 10) : (commentLower.includes('missing') && !itemsMissingMatch ? 1 : 0);
     const effectiveReturnQty = Math.max(0, totalQuantity - itemsMissing);
 
-    // 1. Bring back the physical asset status
+    // 1. Bring back the physical asset status & reset asset location back to home site
     const tagsToRestore: string[] = [];
     if (parsedPurpose.assetTag) {
       parsedPurpose.assetTag.split(/,\s*/).forEach((t: string) => { if (t && t.trim()) tagsToRestore.push(t.trim()); });
@@ -1832,7 +1866,8 @@ export class RequestsService implements OnModuleInit {
         data: {
           status: isDamaged ? 'UNDER_MAINTENANCE' : 'AVAILABLE',
           condition: isDamaged ? 'DAMAGED' : 'GOOD',
-          assignedToId: null
+          assignedToId: null,
+          ...(homeSiteResolved ? { siteId: homeSiteResolved } : {})
         }
       });
     } else if (r.assetId) {
@@ -1841,7 +1876,8 @@ export class RequestsService implements OnModuleInit {
         data: {
           status: isDamaged ? 'UNDER_MAINTENANCE' : 'AVAILABLE',
           condition: isDamaged ? 'DAMAGED' : 'GOOD',
-          assignedToId: null
+          assignedToId: null,
+          ...(homeSiteResolved ? { siteId: homeSiteResolved } : {})
         }
       });
     } else if (targetItemId) {
@@ -1868,45 +1904,45 @@ export class RequestsService implements OnModuleInit {
           data: {
             status: isDamaged ? 'UNDER_MAINTENANCE' : 'AVAILABLE',
             condition: isDamaged ? 'DAMAGED' : 'GOOD',
-            assignedToId: null
+            assignedToId: null,
+            ...(homeSiteResolved ? { siteId: homeSiteResolved } : {})
           }
         });
       }
     }
 
-    // 2. Bring back stock into inventory (SiteStock for specific site only)
+    // 2. Stock updates for return:
+    // a. Deduct stock from the deployed site where asset was currently stationed
     if (targetItemId && effectiveReturnQty > 0) {
-      if (targetSiteId) {
-        const sourceStock = await this.prisma.siteStock.findFirst({
-          where: {
-            siteId: targetSiteId,
-            itemId: targetItemId
-          }
+      if (deployedSiteResolved) {
+        const deployedStock = await this.prisma.siteStock.findFirst({
+          where: { siteId: deployedSiteResolved, itemId: targetItemId }
         });
-
-        if (sourceStock) {
+        if (deployedStock) {
           await this.prisma.siteStock.update({
-            where: { id: sourceStock.id },
+            where: { id: deployedStock.id },
+            data: { quantity: { decrement: effectiveReturnQty } }
+          });
+        }
+      }
+
+      // b. Add stock back to the original home/source site where the asset came from
+      if (homeSiteResolved) {
+        const homeStock = await this.prisma.siteStock.findFirst({
+          where: { siteId: homeSiteResolved, itemId: targetItemId }
+        });
+        if (homeStock) {
+          await this.prisma.siteStock.update({
+            where: { id: homeStock.id },
             data: { quantity: { increment: effectiveReturnQty } }
           });
         } else {
           await this.prisma.siteStock.create({
             data: {
-              siteId: targetSiteId,
+              siteId: homeSiteResolved,
               itemId: targetItemId,
               quantity: effectiveReturnQty
             }
-          });
-        }
-      } else {
-        // Fall back to general stock update only if site cannot be determined
-        const fallbackStock = await this.prisma.siteStock.findFirst({
-          where: { itemId: targetItemId }
-        });
-        if (fallbackStock) {
-          await this.prisma.siteStock.update({
-            where: { id: fallbackStock.id },
-            data: { quantity: { increment: effectiveReturnQty } }
           });
         }
       }

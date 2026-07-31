@@ -324,7 +324,8 @@ export function RequestsTab({
     itemId: string,
     quantity: number,
     siteId: string,
-    reason: string
+    reason: string,
+    sourceSiteId?: string
   ): Promise<boolean> => {
     setIsSubmittingRequest(true);
     const selectedItem = catalogItems.find(i => i.id === itemId);
@@ -354,6 +355,7 @@ export function RequestsTab({
             reason,
             urgency: 'NORMAL',
             siteId: siteId || undefined,
+            sourceSiteId: sourceSiteId || undefined,
           }),
         });
         if (res.ok) {
