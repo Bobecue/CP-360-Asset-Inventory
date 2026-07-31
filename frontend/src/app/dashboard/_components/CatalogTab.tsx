@@ -137,6 +137,7 @@ export const CatalogTab = ({
   const [deploymentSiteFilter, setDeploymentSiteFilter] = useState("ALL");
   const [deploymentStatusFilter, setDeploymentStatusFilter] = useState("ALL");
   const [deploymentCategoryTypeFilter, setDeploymentCategoryTypeFilter] = useState("ALL");
+  const [deploymentTypeFilter, setDeploymentTypeFilter] = useState("ALL");
   const [expandedGroupKeys, setExpandedGroupKeys] = useState<Record<string, boolean>>({});
 
   const filteredIds = filteredItems.map((it) => it.id);
@@ -286,6 +287,9 @@ export const CatalogTab = ({
     const matchesCategoryType =
       deploymentCategoryTypeFilter === "ALL" ? true : categoryType === deploymentCategoryTypeFilter;
 
+    const matchesType =
+      deploymentTypeFilter === "ALL" ? true : dep.deploymentType === deploymentTypeFilter;
+
     const q = deploymentSearch.toLowerCase();
     const matchesSearch =
       !q ||
@@ -295,7 +299,7 @@ export const CatalogTab = ({
       (dep.itemName || "").toLowerCase().includes(q) ||
       (dep.assetTag || "").toLowerCase().includes(q) ||
       (dep.id || "").toLowerCase().includes(q);
-    return matchesSite && matchesStatus && matchesCategoryType && matchesSearch;
+    return matchesSite && matchesStatus && matchesCategoryType && matchesType && matchesSearch;
   });
 
   const toggleGroupExpand = (groupKey: string) => {
@@ -2869,6 +2873,28 @@ export const CatalogTab = ({
                   <option value="ALL">All Categories</option>
                   <option value="CONSUMABLE">Consumables</option>
                   <option value="NON_CONSUMABLE">Non-Consumables</option>
+                </select>
+              </div>
+
+              {/* Deployment Type / Target Selector */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "160px" }}>
+                <label style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Filter Target Type</label>
+                <select
+                  value={deploymentTypeFilter}
+                  onChange={(e) => setDeploymentTypeFilter(e.target.value)}
+                  style={{
+                    padding: "0.45rem 0.65rem",
+                    borderRadius: 6,
+                    border: "1px solid #e2e8f0",
+                    fontSize: "0.8rem",
+                    color: "#475569",
+                    backgroundColor: "#ffffff",
+                    outline: "none",
+                  }}
+                >
+                  <option value="ALL">All Target Types</option>
+                  <option value="employee">Employee Deployments</option>
+                  <option value="station">Station Deployments</option>
                 </select>
               </div>
             </div>

@@ -1636,37 +1636,67 @@ export class RequestsService implements OnModuleInit {
     const isDamaged = commentLower.includes('bad') || commentLower.includes('damaged') || commentLower.includes('missing');
 
     // Automatically update in the asset catalog (SiteStock level)
-    let destinationSiteId = parsedPurpose.siteId || r.requester?.siteId;
-    let sourceSiteId = parsedPurpose.sourceSiteId;
+    let rawSiteId = parsedPurpose.sourceSiteId || parsedPurpose.siteId || r.siteId || r.asset?.siteId || r.requester?.siteId;
+    let targetSiteId: string | undefined = undefined;
 
-    // Fall back for source site if not explicitly saved in purpose
-    if (!sourceSiteId) {
-      if (r.asset?.siteId && r.asset.siteId !== destinationSiteId) {
-        sourceSiteId = r.asset.siteId;
-      } else if (r.requester?.siteId) {
-        sourceSiteId = r.requester.siteId;
+    if (rawSiteId) {
+      const siteObj = await this.prisma.site.findFirst({
+        where: {
+          OR: [
+            { id: rawSiteId },
+            { name: { equals: rawSiteId, mode: 'insensitive' } },
+            { prefix: { equals: rawSiteId, mode: 'insensitive' } }
+          ]
+        }
+      });
+      if (siteObj) {
+        targetSiteId = siteObj.id;
       } else {
-        sourceSiteId = destinationSiteId;
+        targetSiteId = rawSiteId;
       }
     }
 
-    let quantity = parsedPurpose.quantity || 1;
+    const targetItemId = r.itemId || r.asset?.itemId;
+    let totalQuantity = parsedPurpose.quantity || r.quantity || 1;
 
-    // 1. Bring back the physical asset's site location to where it came from (sourceSiteId)
-    if (r.assetId) {
+    // Parse missing items count if specified in returnComment e.g. [MISSING: 1]
+    const itemsMissingMatch = returnComment ? returnComment.match(/\[MISSING:\s*(\d+)\]/i) : null;
+    const itemsMissing = itemsMissingMatch ? parseInt(itemsMissingMatch[1], 10) : (commentLower.includes('missing') && !itemsMissingMatch ? 1 : 0);
+    const effectiveReturnQty = Math.max(0, totalQuantity - itemsMissing);
+
+    // 1. Bring back the physical asset status
+    const tagsToRestore: string[] = [];
+    if (parsedPurpose.assetTag) {
+      parsedPurpose.assetTag.split(/,\s*/).forEach((t: string) => { if (t && t.trim()) tagsToRestore.push(t.trim()); });
+    }
+    if (Array.isArray(parsedPurpose.assetTags)) {
+      parsedPurpose.assetTags.forEach((t: string) => { if (t && t.trim()) tagsToRestore.push(t.trim()); });
+    }
+
+    if (tagsToRestore.length > 0) {
+      await this.prisma.asset.updateMany({
+        where: { tagCode: { in: tagsToRestore } },
+        data: {
+          status: isDamaged ? 'UNDER_MAINTENANCE' : 'AVAILABLE',
+          condition: isDamaged ? 'DAMAGED' : 'GOOD',
+          assignedToId: null,
+          ...(targetSiteId ? { siteId: targetSiteId } : {})
+        }
+      });
+    } else if (r.assetId) {
       await this.prisma.asset.update({
         where: { id: r.assetId },
         data: {
           status: isDamaged ? 'UNDER_MAINTENANCE' : 'AVAILABLE',
           condition: isDamaged ? 'DAMAGED' : 'GOOD',
           assignedToId: null,
-          siteId: sourceSiteId,
+          ...(targetSiteId ? { siteId: targetSiteId } : {})
         }
       });
-    } else if (r.itemId) {
+    } else if (targetItemId) {
       const assignedAsset = await this.prisma.asset.findFirst({
         where: {
-          itemId: r.itemId,
+          itemId: targetItemId,
           status: 'ASSIGNED',
           ...(r.requesterId ? { assignedToId: r.requesterId } : {})
         },
@@ -1679,51 +1709,39 @@ export class RequestsService implements OnModuleInit {
             status: isDamaged ? 'UNDER_MAINTENANCE' : 'AVAILABLE',
             condition: isDamaged ? 'DAMAGED' : 'GOOD',
             assignedToId: null,
-            siteId: sourceSiteId,
+            ...(targetSiteId ? { siteId: targetSiteId } : {})
           }
         });
       }
     }
 
-    // 2. Bring back the stock to where it came from (Source Site)
-    if (sourceSiteId) {
-      const sourceStock = await this.prisma.siteStock.findFirst({
+    // 2. Bring back stock into inventory (SiteStock)
+    if (targetItemId && effectiveReturnQty > 0) {
+      let sourceStock = targetSiteId ? await this.prisma.siteStock.findFirst({
         where: {
-          siteId: sourceSiteId,
-          itemId: r.itemId
+          siteId: targetSiteId,
+          itemId: targetItemId
         }
-      });
+      }) : null;
+
+      if (!sourceStock) {
+        sourceStock = await this.prisma.siteStock.findFirst({
+          where: { itemId: targetItemId }
+        });
+      }
 
       if (sourceStock) {
         await this.prisma.siteStock.update({
           where: { id: sourceStock.id },
-          data: { quantity: { increment: quantity } }
+          data: { quantity: { increment: effectiveReturnQty } }
         });
-      } else {
+      } else if (targetSiteId) {
         await this.prisma.siteStock.create({
           data: {
-            siteId: sourceSiteId,
-            itemId: r.itemId,
-            quantity: quantity
+            siteId: targetSiteId,
+            itemId: targetItemId,
+            quantity: effectiveReturnQty
           }
-        });
-      }
-    }
-
-    // 3. Deduct stock where it was released / received (Destination Site) if different from Source Site
-    if (destinationSiteId && destinationSiteId !== sourceSiteId && r.status === 'ITEM_RECEIVED') {
-      const destStock = await this.prisma.siteStock.findFirst({
-        where: {
-          siteId: destinationSiteId,
-          itemId: r.itemId
-        }
-      });
-
-      if (destStock) {
-        const newQty = Math.max(0, destStock.quantity - quantity);
-        await this.prisma.siteStock.update({
-          where: { id: destStock.id },
-          data: { quantity: newQty }
         });
       }
     }

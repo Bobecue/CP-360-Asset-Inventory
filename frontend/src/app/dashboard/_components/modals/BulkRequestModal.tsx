@@ -304,9 +304,9 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
         }
         const tagsStr = tagsList.join(', ');
 
-        doc.text(it.name.substring(0, 32), 22, y + 5.5);
-        doc.text(it.sku.substring(0, 20), 85, y + 5.5);
-        doc.text(tagsStr.substring(0, 28), 125, y + 5.5);
+        doc.text((it.name || 'N/A').substring(0, 32), 22, y + 5.5);
+        doc.text((it.sku || 'N/A').substring(0, 20), 85, y + 5.5);
+        doc.text((tagsStr || '').substring(0, 28), 125, y + 5.5);
         doc.text(String(qty), 175, y + 5.5);
         doc.line(20, y + 8, 190, y + 8);
         y += 8;
