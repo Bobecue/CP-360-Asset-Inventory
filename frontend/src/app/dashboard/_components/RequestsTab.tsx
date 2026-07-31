@@ -755,6 +755,7 @@ export function RequestsTab({
       }
       setRefreshTrigger(prev => prev + 1);
       if (onRefreshNotifications) onRefreshNotifications();
+      if (onRefreshCatalog) onRefreshCatalog();
     } finally {
       setIsSubmittingReview(false);
     }

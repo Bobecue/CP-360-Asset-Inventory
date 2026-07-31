@@ -794,11 +794,13 @@ export default function DashboardPage() {
         if (reason && reason.includes("[ASSET DEPLOYMENT]")) {
           setCatalogItems(prevItems => prevItems.map(item => {
             if (item.id === req.itemId) {
-              const targetSite = sites.find((s: any) => s.id === siteId || s.name === siteId || (s.name && siteId && s.name.trim().toLowerCase() === siteId.trim().toLowerCase()));
-              const targetSiteId = targetSite ? targetSite.id : (siteId || selectedSiteId);
+              // Find source site with available stock (defaults to selected site or first site with stock/assets)
+              const availableStockLevel = (item.stockLevels || []).find(sl => sl.quantity >= req.quantity) 
+                || (item.stockLevels || []).find(sl => sl.quantity > 0);
+              const targetSiteId = availableStockLevel ? availableStockLevel.siteId : (siteId || selectedSiteId);
 
               const updatedLevels = (item.stockLevels || []).map(sl => {
-                if (sl.siteId === targetSiteId || (targetSite && sl.siteId === targetSite.id)) {
+                if (sl.siteId === targetSiteId) {
                   return { ...sl, quantity: Math.max(0, sl.quantity - req.quantity) };
                 }
                 return sl;
@@ -1865,8 +1867,22 @@ export default function DashboardPage() {
     }
   };
 
-  const handleLogout = () => {
-    router.push("/login");
+  const handleLogout = async () => {
+    try {
+      const email = currentUser?.email || localStorage.getItem("currentUserEmail");
+      const userId = currentUser?.id;
+      if (email || userId) {
+        await fetch("http://localhost:3001/users/logout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, userId }),
+        }).catch((err) => console.warn("Failed to notify backend logout:", err));
+      }
+    } catch (e) {
+      console.warn("Logout request failed:", e);
+    } finally {
+      router.push("/login");
+    }
   };
 
   const renderActiveTab = () => {

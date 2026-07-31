@@ -18,6 +18,13 @@ export class UsersController {
     return this.usersService.login(body.email, body.passwordPlain);
   }
 
+  @Post("logout")
+  async logout(
+    @Body() body: { email?: string; userId?: string }
+  ) {
+    return this.usersService.logout(body.email, body.userId);
+  }
+
   @Post()
   async createUser(
     @Body()

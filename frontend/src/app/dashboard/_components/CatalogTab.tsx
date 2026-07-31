@@ -225,8 +225,8 @@ export const CatalogTab = ({
               requestedByName: req.requestedByName || "Inventory Staff",
               itemName: req.itemName || "Assigned Asset",
               assetTag: req.assetTag || req.asset?.tagCode || req.asset?.assetTag || (req.reason ? req.reason.match(/Asset Tag:\s*([^|]+)/)?.[1]?.trim() : undefined) || undefined,
-              siteId: req.siteId || req.requestedBySiteId || "site-1",
-              siteName: req.siteName || "Cebu IT Park",
+              siteId: req.siteId || req.requestedBySiteId || (req.siteName ? sites.find((s: any) => s.name === req.siteName)?.id : undefined),
+              siteName: req.siteName || req.requestedBySiteName || "N/A",
               reason: req.reason || `Deployed ${req.quantity || 1} x ${req.itemName || 'Asset'} to employee`,
               employeeName: req.reason ? (req.reason.match(/Deploy to (?:Employee|Station):\s*([^|]+)/)?.[1]?.trim() || req.reason.match(/Deploy to:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
               employeeAccount: req.reason ? (req.reason.match(/Account:\s*([^|]+)/)?.[1]?.trim() || req.reason.match(/Dept\/Area:\s*([^|]+)/)?.[1]?.trim() || "N/A") : "N/A",
@@ -771,14 +771,25 @@ export const CatalogTab = ({
             const newQty = currentQty + qtyReturnedToStock;
 
             const targetSite = sites.find((s: any) => s.id === dep.siteId || s.name === dep.siteId || s.name === dep.siteLocation);
-            const targetSiteId = targetSite ? targetSite.id : (dep.siteId || selectedSiteId);
+            const targetSiteId = targetSite ? targetSite.id : (dep.siteId && dep.siteId !== "ALL" ? dep.siteId : undefined);
 
-            const updatedStockLevels = item.stockLevels?.map((sl) => {
-              if (sl.siteId === targetSiteId || (targetSite && sl.siteId === targetSite.id)) {
-                return { ...sl, quantity: sl.quantity + qtyReturnedToStock };
+            let updatedStockLevels = item.stockLevels ? [...item.stockLevels] : [];
+            if (targetSiteId) {
+              const slIdx = updatedStockLevels.findIndex(sl => sl.siteId === targetSiteId);
+              if (slIdx >= 0) {
+                updatedStockLevels[slIdx] = {
+                  ...updatedStockLevels[slIdx],
+                  quantity: (updatedStockLevels[slIdx].quantity || 0) + qtyReturnedToStock
+                };
+              } else {
+                updatedStockLevels.push({
+                  id: `ss-${Date.now()}`,
+                  siteId: targetSiteId,
+                  itemId: item.id,
+                  quantity: qtyReturnedToStock
+                } as any);
               }
-              return sl;
-            });
+            }
 
             // For non-consumable assets: retrieve and restore asset tag & record back into available assets
             const catType = item.category?.type || dep.rawRequest?.item?.category?.type || (item.category?.name?.toLowerCase().includes("consumable") ? "CONSUMABLE" : "NON_CONSUMABLE");
@@ -915,10 +926,25 @@ export const CatalogTab = ({
 
             const newQty = (item.quantity ?? 0) + qtyReturnedToStock;
             const targetSite = sites.find((s: any) => s.id === dep.siteId || s.name === dep.siteLocation);
-            const targetSiteId = targetSite ? targetSite.id : dep.siteId;
-            const updatedStockLevels = item.stockLevels?.map((sl) =>
-              sl.siteId === targetSiteId ? { ...sl, quantity: sl.quantity + qtyReturnedToStock } : sl
-            );
+            const targetSiteId = targetSite ? targetSite.id : (dep.siteId && dep.siteId !== "ALL" ? dep.siteId : undefined);
+
+            let updatedStockLevels = item.stockLevels ? [...item.stockLevels] : [];
+            if (targetSiteId) {
+              const slIdx = updatedStockLevels.findIndex(sl => sl.siteId === targetSiteId);
+              if (slIdx >= 0) {
+                updatedStockLevels[slIdx] = {
+                  ...updatedStockLevels[slIdx],
+                  quantity: (updatedStockLevels[slIdx].quantity || 0) + qtyReturnedToStock
+                };
+              } else {
+                updatedStockLevels.push({
+                  id: `ss-${Date.now()}`,
+                  siteId: targetSiteId,
+                  itemId: item.id,
+                  quantity: qtyReturnedToStock
+                } as any);
+              }
+            }
 
             const catType = item.category?.type || "NON_CONSUMABLE";
             let updatedAssets = item.assets || [];

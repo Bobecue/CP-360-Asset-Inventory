@@ -118,6 +118,30 @@ export class UsersService {
     return userWithoutPassword;
   }
 
+  async logout(email?: string, userId?: string) {
+    let targetUser: any = null;
+    if (userId) {
+      targetUser = await this.prisma.user.findUnique({ where: { id: userId } });
+    } else if (email) {
+      targetUser = await this.prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    }
+
+    const nameOrEmail = targetUser ? (targetUser.name || targetUser.email) : (email || "User");
+    const roleStr = targetUser?.role ? ` (${targetUser.role})` : "";
+    const resolvedUserId = targetUser?.id || userId || null;
+
+    await this.prisma.auditLog.create({
+      data: {
+        action: "USER_LOGOUT",
+        details: `User ${nameOrEmail}${roleStr} logged out of the system`,
+        userId: resolvedUserId,
+        ipAddress: "127.0.0.1"
+      }
+    }).catch(err => console.warn("Failed to create logout audit log:", err));
+
+    return { success: true };
+  }
+
   async update(
     id: string,
     data: {

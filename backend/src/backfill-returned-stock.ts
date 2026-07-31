@@ -101,34 +101,42 @@ async function main() {
       });
     }
 
-    // Restore stock
-    let stock = targetSiteId ? await prisma.siteStock.findFirst({
-      where: { siteId: targetSiteId, itemId: targetItemId }
-    }) : null;
+    // Restore stock (specific site only)
+    if (targetSiteId) {
+      const stock = await prisma.siteStock.findFirst({
+        where: { siteId: targetSiteId, itemId: targetItemId }
+      });
 
-    if (!stock) {
-      stock = await prisma.siteStock.findFirst({
+      if (stock) {
+        await prisma.siteStock.update({
+          where: { id: stock.id },
+          data: { quantity: { increment: effectiveReturnQty } }
+        });
+        console.log(`[RESTORED] Request ${req.id} -> Item ${req.item?.name || targetItemId} (+${effectiveReturnQty} stock at site ${targetSiteId})`);
+        restoredCount++;
+      } else {
+        await prisma.siteStock.create({
+          data: {
+            siteId: targetSiteId,
+            itemId: targetItemId,
+            quantity: effectiveReturnQty
+          }
+        });
+        console.log(`[CREATED & RESTORED] Request ${req.id} -> Item ${req.item?.name || targetItemId} (${effectiveReturnQty} stock at site ${targetSiteId})`);
+        restoredCount++;
+      }
+    } else {
+      const fallbackStock = await prisma.siteStock.findFirst({
         where: { itemId: targetItemId }
       });
-    }
-
-    if (stock) {
-      await prisma.siteStock.update({
-        where: { id: stock.id },
-        data: { quantity: { increment: effectiveReturnQty } }
-      });
-      console.log(`[RESTORED] Request ${req.id} -> Item ${req.item?.name || targetItemId} (+${effectiveReturnQty} stock)`);
-      restoredCount++;
-    } else if (targetSiteId) {
-      await prisma.siteStock.create({
-        data: {
-          siteId: targetSiteId,
-          itemId: targetItemId,
-          quantity: effectiveReturnQty
-        }
-      });
-      console.log(`[CREATED & RESTORED] Request ${req.id} -> Item ${req.item?.name || targetItemId} (${effectiveReturnQty} stock)`);
-      restoredCount++;
+      if (fallbackStock) {
+        await prisma.siteStock.update({
+          where: { id: fallbackStock.id },
+          data: { quantity: { increment: effectiveReturnQty } }
+        });
+        console.log(`[RESTORED FALLBACK] Request ${req.id} -> Item ${req.item?.name || targetItemId} (+${effectiveReturnQty} stock)`);
+        restoredCount++;
+      }
     }
   }
 

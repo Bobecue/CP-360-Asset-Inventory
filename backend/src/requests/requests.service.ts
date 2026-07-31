@@ -284,7 +284,12 @@ export class RequestsService implements OnModuleInit {
     });
     if (!siteObj) {
       siteObj = await this.prisma.site.findFirst({
-        where: { name: { equals: dto.siteId, mode: 'insensitive' } }
+        where: {
+          OR: [
+            { name: { equals: dto.siteId, mode: 'insensitive' } },
+            { prefix: { equals: dto.siteId, mode: 'insensitive' } }
+          ]
+        }
       });
     }
     if (!siteObj) {
@@ -399,12 +404,19 @@ export class RequestsService implements OnModuleInit {
       }
     }
 
+    // Determine origin site (where physical assets currently reside) for deployment stock deduction
+    let sourceSiteId: string = siteObj.id;
+    if (assignedAssets.length > 0 && assignedAssets[0].siteId) {
+      sourceSiteId = assignedAssets[0].siteId;
+    }
+
     const purposeData: any = {
       reason: dto.reason,
       urgency: dto.urgency || 'NORMAL',
       quantity: targetQty,
       siteId: siteObj.id,
-      siteName: siteName
+      siteName: siteName,
+      sourceSiteId: sourceSiteId
     };
     if (assignedAssets.length > 0) {
       purposeData.assetTag = assignedAssets.map(a => a.tagCode).join(', ');
@@ -414,9 +426,10 @@ export class RequestsService implements OnModuleInit {
 
     if (isDeployment) {
       const deployQty = dto.quantity || 1;
+      // Deduct stock from the ORIGIN / RELEASE site (where asset was taken from)
       const stock = await this.prisma.siteStock.findFirst({
         where: {
-          siteId: siteObj.id,
+          siteId: sourceSiteId,
           itemId: item.id,
         }
       });
@@ -424,6 +437,14 @@ export class RequestsService implements OnModuleInit {
         await this.prisma.siteStock.update({
           where: { id: stock.id },
           data: { quantity: { decrement: deployQty } }
+        });
+      } else {
+        await this.prisma.siteStock.create({
+          data: {
+            siteId: sourceSiteId,
+            itemId: item.id,
+            quantity: 0 - deployQty
+          }
         });
       }
     }
@@ -1161,7 +1182,36 @@ export class RequestsService implements OnModuleInit {
         if (!req) continue;
 
         const isConsumable = req.item?.category?.type === 'CONSUMABLE';
+
+        // Determine the release site ID and quantity from purpose JSON
+        let releaseSiteId: string | undefined;
+        let relQty = 1;
+        try {
+          if (req.purpose && req.purpose.startsWith('{')) {
+            const parsed = JSON.parse(req.purpose);
+            releaseSiteId = parsed.siteId;
+            relQty = parsed.quantity || 1;
+          }
+        } catch { /* ignore */ }
+
         if (isConsumable) {
+          // Decrement stock for consumable items
+          if (releaseSiteId) {
+            const stock = await this.prisma.siteStock.findFirst({
+              where: { siteId: releaseSiteId, itemId: req.itemId }
+            });
+            if (stock) {
+              await this.prisma.siteStock.update({
+                where: { id: stock.id },
+                data: { quantity: { decrement: relQty } }
+              });
+            } else {
+              await this.prisma.siteStock.create({
+                data: { siteId: releaseSiteId, itemId: req.itemId, quantity: 0 - relQty }
+              });
+            }
+          }
+
           const updated = await this.prisma.request.update({
             where: { id },
             data: {
@@ -1197,11 +1247,45 @@ export class RequestsService implements OnModuleInit {
           const availableAsset = sortedAvailable[0] || null;
 
           let assignedAssetId = availableAsset?.id || null;
+          const effectiveSiteId = releaseSiteId || availableAsset?.siteId;
+
           if (availableAsset) {
             await this.prisma.asset.update({
               where: { id: availableAsset.id },
               data: { status: 'ASSIGNED' }
             });
+          }
+
+          // Decrement stock for non-consumable items
+          if (effectiveSiteId) {
+            const stock = await this.prisma.siteStock.findFirst({
+              where: { siteId: effectiveSiteId, itemId: req.itemId }
+            });
+            if (stock) {
+              await this.prisma.siteStock.update({
+                where: { id: stock.id },
+                data: { quantity: { decrement: relQty } }
+              });
+            } else {
+              await this.prisma.siteStock.create({
+                data: { siteId: effectiveSiteId, itemId: req.itemId, quantity: 0 - relQty }
+              });
+            }
+          }
+
+          // Store source site in purpose for correct return restocking later
+          if (effectiveSiteId) {
+            try {
+              let parsedPurpose: any = {};
+              if (req.purpose && req.purpose.startsWith('{')) {
+                parsedPurpose = JSON.parse(req.purpose);
+              }
+              parsedPurpose.sourceSiteId = effectiveSiteId;
+              await this.prisma.request.update({
+                where: { id },
+                data: { purpose: JSON.stringify(parsedPurpose) }
+              });
+            } catch { /* ignore */ }
           }
 
           const updated = await this.prisma.request.update({
@@ -1336,6 +1420,42 @@ export class RequestsService implements OnModuleInit {
     return await this.prisma.$transaction(async (tx) => {
       const isConsumable = req.item?.category?.type === 'CONSUMABLE';
       if (isConsumable) {
+        // Always use purpose.siteId as the deployment source site for stock deduction
+        let releaseSiteId: string | undefined;
+        try {
+          const purposeData = JSON.parse(req.purpose || '{}');
+          releaseSiteId = purposeData.siteId;
+        } catch { /* ignore parse errors */ }
+        // Do NOT fall back to requester.siteId — that's the requester's home site, not the stock site
+
+        if (releaseSiteId) {
+          let relQty = 1;
+          try {
+            if (req.purpose && req.purpose.startsWith('{')) {
+              const parsed = JSON.parse(req.purpose);
+              relQty = parsed.quantity || 1;
+            }
+          } catch {}
+
+          const stock = await tx.siteStock.findFirst({
+            where: { siteId: releaseSiteId, itemId: req.itemId }
+          });
+          if (stock) {
+            await tx.siteStock.update({
+              where: { id: stock.id },
+              data: { quantity: { decrement: relQty } }
+            });
+          } else {
+            await tx.siteStock.create({
+              data: {
+                siteId: releaseSiteId,
+                itemId: req.itemId,
+                quantity: 0 - relQty
+              }
+            });
+          }
+        }
+
         const updatedReq = await tx.request.update({
           where: { id },
           data: {
@@ -1465,13 +1585,16 @@ export class RequestsService implements OnModuleInit {
         data: { status: 'ASSIGNED', assignedToId: req.requesterId }
       });
 
-      let releaseSiteId = asset.siteId || req.requester?.siteId;
-      if (!releaseSiteId && req.purpose) {
-        try {
+      // Always use purpose.siteId as the authoritative deployment source site
+      let releaseSiteId: string | undefined;
+      try {
+        if (req.purpose && req.purpose.startsWith('{')) {
           const parsed = JSON.parse(req.purpose);
           releaseSiteId = parsed.siteId;
-        } catch {}
-      }
+        }
+      } catch {}
+      // Fallback to asset.siteId ONLY if purpose has no siteId (non-deployment requests)
+      if (!releaseSiteId) releaseSiteId = asset.siteId;
       if (releaseSiteId) {
         let relQty = 1;
         try {
@@ -1488,6 +1611,14 @@ export class RequestsService implements OnModuleInit {
           await tx.siteStock.update({
             where: { id: stock.id },
             data: { quantity: { decrement: relQty } }
+          });
+        } else if (releaseSiteId && req.itemId) {
+          await tx.siteStock.create({
+            data: {
+              siteId: releaseSiteId,
+              itemId: req.itemId,
+              quantity: 0 - relQty
+            }
           });
         }
       }
@@ -1635,8 +1766,24 @@ export class RequestsService implements OnModuleInit {
     const commentLower = (returnComment || '').toLowerCase();
     const isDamaged = commentLower.includes('bad') || commentLower.includes('damaged') || commentLower.includes('missing');
 
-    // Automatically update in the asset catalog (SiteStock level)
-    let rawSiteId = parsedPurpose.sourceSiteId || parsedPurpose.siteId || r.siteId || r.asset?.siteId || r.requester?.siteId;
+    // The returned asset should always return to where it came from (its physical site / sourceSiteId)
+    let rawSiteId: string | undefined = r.asset?.siteId || parsedPurpose.sourceSiteId || parsedPurpose.siteId;
+
+    if (!rawSiteId && r.assetId) {
+      const ast = await this.prisma.asset.findUnique({ where: { id: r.assetId } });
+      if (ast?.siteId) rawSiteId = ast.siteId;
+    }
+
+    if (!rawSiteId && parsedPurpose.siteName) {
+      rawSiteId = parsedPurpose.siteName;
+    }
+    if (!rawSiteId && r.purpose) {
+      const match = r.purpose.match(/Site:\s*([^|]+)/i);
+      if (match && match[1]) {
+        rawSiteId = match[1].trim();
+      }
+    }
+
     let targetSiteId: string | undefined = undefined;
 
     if (rawSiteId) {
@@ -1657,7 +1804,7 @@ export class RequestsService implements OnModuleInit {
     }
 
     const targetItemId = r.itemId || r.asset?.itemId;
-    let totalQuantity = parsedPurpose.quantity || r.quantity || 1;
+    let totalQuantity = parsedPurpose.quantity || (r as any).quantity || 1;
 
     // Parse missing items count if specified in returnComment e.g. [MISSING: 1]
     const itemsMissingMatch = returnComment ? returnComment.match(/\[MISSING:\s*(\d+)\]/i) : null;
@@ -1672,6 +1819,12 @@ export class RequestsService implements OnModuleInit {
     if (Array.isArray(parsedPurpose.assetTags)) {
       parsedPurpose.assetTags.forEach((t: string) => { if (t && t.trim()) tagsToRestore.push(t.trim()); });
     }
+    if (tagsToRestore.length === 0 && r.purpose) {
+      const match = r.purpose.match(/(?:Tag|Asset Tag):\s*([^|]+)/i);
+      if (match && match[1]) {
+        tagsToRestore.push(match[1].trim());
+      }
+    }
 
     if (tagsToRestore.length > 0) {
       await this.prisma.asset.updateMany({
@@ -1679,8 +1832,7 @@ export class RequestsService implements OnModuleInit {
         data: {
           status: isDamaged ? 'UNDER_MAINTENANCE' : 'AVAILABLE',
           condition: isDamaged ? 'DAMAGED' : 'GOOD',
-          assignedToId: null,
-          ...(targetSiteId ? { siteId: targetSiteId } : {})
+          assignedToId: null
         }
       });
     } else if (r.assetId) {
@@ -1689,12 +1841,11 @@ export class RequestsService implements OnModuleInit {
         data: {
           status: isDamaged ? 'UNDER_MAINTENANCE' : 'AVAILABLE',
           condition: isDamaged ? 'DAMAGED' : 'GOOD',
-          assignedToId: null,
-          ...(targetSiteId ? { siteId: targetSiteId } : {})
+          assignedToId: null
         }
       });
     } else if (targetItemId) {
-      const assignedAsset = await this.prisma.asset.findFirst({
+      let assignedAsset = await this.prisma.asset.findFirst({
         where: {
           itemId: targetItemId,
           status: 'ASSIGNED',
@@ -1702,47 +1853,62 @@ export class RequestsService implements OnModuleInit {
         },
         orderBy: { createdAt: 'desc' }
       });
+      if (!assignedAsset) {
+        assignedAsset = await this.prisma.asset.findFirst({
+          where: {
+            itemId: targetItemId,
+            status: 'ASSIGNED',
+          },
+          orderBy: { createdAt: 'desc' }
+        });
+      }
       if (assignedAsset) {
         await this.prisma.asset.update({
           where: { id: assignedAsset.id },
           data: {
             status: isDamaged ? 'UNDER_MAINTENANCE' : 'AVAILABLE',
             condition: isDamaged ? 'DAMAGED' : 'GOOD',
-            assignedToId: null,
-            ...(targetSiteId ? { siteId: targetSiteId } : {})
+            assignedToId: null
           }
         });
       }
     }
 
-    // 2. Bring back stock into inventory (SiteStock)
+    // 2. Bring back stock into inventory (SiteStock for specific site only)
     if (targetItemId && effectiveReturnQty > 0) {
-      let sourceStock = targetSiteId ? await this.prisma.siteStock.findFirst({
-        where: {
-          siteId: targetSiteId,
-          itemId: targetItemId
-        }
-      }) : null;
-
-      if (!sourceStock) {
-        sourceStock = await this.prisma.siteStock.findFirst({
-          where: { itemId: targetItemId }
-        });
-      }
-
-      if (sourceStock) {
-        await this.prisma.siteStock.update({
-          where: { id: sourceStock.id },
-          data: { quantity: { increment: effectiveReturnQty } }
-        });
-      } else if (targetSiteId) {
-        await this.prisma.siteStock.create({
-          data: {
+      if (targetSiteId) {
+        const sourceStock = await this.prisma.siteStock.findFirst({
+          where: {
             siteId: targetSiteId,
-            itemId: targetItemId,
-            quantity: effectiveReturnQty
+            itemId: targetItemId
           }
         });
+
+        if (sourceStock) {
+          await this.prisma.siteStock.update({
+            where: { id: sourceStock.id },
+            data: { quantity: { increment: effectiveReturnQty } }
+          });
+        } else {
+          await this.prisma.siteStock.create({
+            data: {
+              siteId: targetSiteId,
+              itemId: targetItemId,
+              quantity: effectiveReturnQty
+            }
+          });
+        }
+      } else {
+        // Fall back to general stock update only if site cannot be determined
+        const fallbackStock = await this.prisma.siteStock.findFirst({
+          where: { itemId: targetItemId }
+        });
+        if (fallbackStock) {
+          await this.prisma.siteStock.update({
+            where: { id: fallbackStock.id },
+            data: { quantity: { increment: effectiveReturnQty } }
+          });
+        }
       }
     }
 
