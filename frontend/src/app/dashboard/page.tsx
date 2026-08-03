@@ -47,13 +47,27 @@ import { CategoryModal } from "./_components/modals/CategoryModal";
 
 // Custom fetch monkey patch to dynamically route API calls to the correct hostname on port 3001
 if (typeof window !== "undefined" && !(window as any).__fetch_patched__) {
-  const originalFetch = window.fetch;
+  const originalFetch = window.fetch.bind(window);
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    if (typeof input === "string" && input.startsWith("http://localhost:3001")) {
-      const hostname = window.location.hostname;
-      input = input.replace("localhost", hostname);
+    let finalInput = input;
+    const hostname = window.location.hostname;
+    if (hostname && hostname !== "localhost") {
+      if (typeof finalInput === "string" && finalInput.includes("localhost:3001")) {
+        finalInput = finalInput.replace("localhost", hostname);
+      } else if (finalInput instanceof URL && finalInput.hostname === "localhost" && finalInput.port === "3001") {
+        const updatedUrl = new URL(finalInput.toString());
+        updatedUrl.hostname = hostname;
+        finalInput = updatedUrl;
+      } else if (typeof Request !== "undefined" && finalInput instanceof Request && finalInput.url.includes("localhost:3001")) {
+        finalInput = new Request(finalInput.url.replace("localhost", hostname), finalInput);
+      }
     }
-    return originalFetch(input, init);
+    try {
+      return await originalFetch(finalInput, init);
+    } catch (err) {
+      console.warn("Fetch failed, backend server might be offline:", finalInput, err);
+      throw err;
+    }
   };
   (window as any).__fetch_patched__ = true;
 }
