@@ -163,10 +163,10 @@ export const DashboardOverview = ({
         const res = await fetch(getApiUrl("sites"));
         if (res.ok) {
           const sitesData = await res.json();
-          setInternalSites(sitesData);
+          setInternalSites(Array.isArray(sitesData) ? sitesData : []);
         }
       } catch (err) {
-        console.error("Error fetching sites:", err);
+        console.warn("Error fetching sites from backend:", err);
       }
     };
     fetchSites();
