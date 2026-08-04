@@ -296,14 +296,14 @@ export function RequestsTable({
         group.requestedByName.toLowerCase().includes(searchLower) ||
         group.requestedByDepartment.toLowerCase().includes(searchLower) ||
         group.requestedByRole.toLowerCase().includes(searchLower) ||
-        group.items.some(r =>
+        group.items.some((r: any) =>
           (r.id || '').toLowerCase().includes(searchLower) ||
           r.itemName.toLowerCase().includes(searchLower) ||
           (r.assetTag && r.assetTag.toLowerCase().includes(searchLower))
         );
 
       // Check site match
-      const matchesSite = !siteFilter || group.items.some(r => r.siteId === siteFilter);
+      const matchesSite = !siteFilter || group.items.some((r: any) => r.siteId === siteFilter);
 
       // Check status match
       let matchesStatus = true;
@@ -318,26 +318,26 @@ export function RequestsTable({
       } else if (statusFilter === 'CLOSED') {
         matchesStatus = group.otherCount > 0;
       } else if (statusFilter !== 'ALL') {
-        matchesStatus = group.items.some(r => r.status === statusFilter);
+        matchesStatus = group.items.some((r: any) => r.status === statusFilter);
       }
 
       // Check category match
       let matchesCategoryType = true;
       if (categoryTypeFilter === 'CONSUMABLE') {
-        matchesCategoryType = group.items.some(r => r.itemCategory === 'Consumables');
+        matchesCategoryType = group.items.some((r: any) => r.itemCategory === 'Consumables');
       } else if (categoryTypeFilter === 'NON_CONSUMABLE') {
-        matchesCategoryType = group.items.some(r => r.itemCategory !== 'Consumables');
+        matchesCategoryType = group.items.some((r: any) => r.itemCategory !== 'Consumables');
       }
 
       // Check date match
       let matchesDate = true;
       if (dateFrom) {
-        matchesDate = matchesDate && group.items.some(r => new Date(r.createdAt) >= new Date(dateFrom));
+        matchesDate = matchesDate && group.items.some((r: any) => new Date(r.createdAt) >= new Date(dateFrom));
       }
       if (dateTo) {
         const toDate = new Date(dateTo);
         toDate.setHours(23, 59, 59, 999);
-        matchesDate = matchesDate && group.items.some(r => new Date(r.createdAt) <= toDate);
+        matchesDate = matchesDate && group.items.some((r: any) => new Date(r.createdAt) <= toDate);
       }
 
       return matchesSearch && matchesSite && matchesStatus && matchesCategoryType && matchesDate;
