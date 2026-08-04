@@ -323,6 +323,7 @@ export const DashboardOverview = ({
     const conf: Record<string, { bg: string; color: string; border: string; label: string }> = {
       PENDING:              { bg: "linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)", color: "#c2410c", border: "rgba(234,88,12,0.40)", label: "Pending Staff Approval" },
       PENDING_OPS_APPROVAL: { bg: "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)", color: "#6b21a8", border: "rgba(147,51,234,0.35)", label: "Pending Ops Approval" },
+      PENDING_PROCUREMENT:  { bg: "linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)", color: "#6d28d9", border: "rgba(109,40,217,0.35)", label: "Pending Procurement" },
       APPROVED:             { bg: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", color: "#1d4ed8", border: "rgba(59,130,246,0.35)", label: "Approved" },
       READY_FOR_PICKUP:     { bg: "linear-gradient(135deg, #ecfeff 0%, #cffafe 100%)", color: "#0e7490", border: "rgba(6,182,212,0.35)", label: "Ready for Pickup" },
       PROCESSING:           { bg: "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)", color: "#0369a1", border: "rgba(14,165,233,0.35)", label: "Processing" },

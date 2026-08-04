@@ -143,6 +143,15 @@ export const CatalogTab = ({
 
   const filteredIds = filteredItems.map((it) => it.id);
   const allSelected = filteredIds.length > 0 && filteredIds.every((id) => selectedItemIds.includes(id));
+  const selectedItemsObj = catalogItems.filter(it => selectedItemIds.includes(it.id));
+  const hasZeroOrNegativeStockSelected = selectedItemsObj.some(it => {
+    const qty = (selectedSiteId && selectedSiteId !== "ALL")
+      ? (it.stockLevels?.find(sl => sl.siteId === selectedSiteId)?.quantity ?? 0)
+      : (it.stockLevels && it.stockLevels.length > 0
+          ? it.stockLevels.reduce((sum, sl) => sum + (sl.quantity || 0), 0)
+          : (it.quantity || 0));
+    return qty <= 0;
+  });
   const normalizedRole = (currentUser?.role || "").toUpperCase().replace(/[\s\-]/g, "_");
   const canEditAddRemove = ["SUPER_ADMIN", "ADMIN", "OPS_MANAGER", "OPERATIONS_MANAGER", "INVENTORY_STAFF"].includes(normalizedRole);
   const canAdjustStock = canEditAddRemove;
@@ -1348,10 +1357,8 @@ export const CatalogTab = ({
           <div
             style={{
               display: "flex",
-              flexWrap: "wrap",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "1rem",
+              flexDirection: "column",
+              gap: "1.25rem",
               backgroundColor: "#FFFFFF",
               borderRadius: "16px",
               padding: "20px 24px",
@@ -1359,9 +1366,10 @@ export const CatalogTab = ({
               border: "1px solid #E5E7EB",
             }}
           >
-            <div style={{ display: "flex", flex: 1, flexWrap: "wrap", gap: "1rem", minWidth: "280px" }}>
+            {/* Filters Row */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", width: "100%" }}>
               {/* Search */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 1, minWidth: "240px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "2 1 240px", minWidth: "240px" }}>
                 <label style={{ fontSize: "12px", fontWeight: 600, color: "#6B7280" }}>Search Assets</label>
                 <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
                   <svg style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#9CA3AF" }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
@@ -1417,7 +1425,7 @@ export const CatalogTab = ({
               </div>
 
               {/* Site Scope Selector */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px", minWidth: "160px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 160px", minWidth: "160px" }}>
                 <label style={{ fontSize: "12px", fontWeight: 600, color: "#6B7280" }}>Viewing Site</label>
                 <select
                   value={selectedSiteId}
@@ -1445,7 +1453,7 @@ export const CatalogTab = ({
               </div>
 
               {/* Category Filter */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px", minWidth: "160px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 160px", minWidth: "160px" }}>
                 <label style={{ fontSize: "12px", fontWeight: 600, color: "#6B7280" }}>Category</label>
                 <select
                   value={catalogCategoryFilter}
@@ -1489,7 +1497,7 @@ export const CatalogTab = ({
               </div>
 
               {/* Stock Status Filter */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px", minWidth: "140px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 140px", minWidth: "140px" }}>
                 <label style={{ fontSize: "12px", fontWeight: 600, color: "#6B7280" }}>Stock Status</label>
                 <select
                   value={catalogStockFilter}
@@ -1515,7 +1523,7 @@ export const CatalogTab = ({
               </div>
 
               {/* Sort Order Selector */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px", minWidth: "150px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 150px", minWidth: "150px" }}>
                 <label style={{ fontSize: "12px", fontWeight: 600, color: "#6B7280" }}>Sort By</label>
                 <select
                   value={catalogSortKey}
@@ -1544,8 +1552,19 @@ export const CatalogTab = ({
               </div>
             </div>
 
-            {/* Action buttons (Add, CSV Export, Toggle View Mode) */}
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "auto" }}>
+            {/* Actions Row */}
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "12px",
+                borderTop: "1px solid #F3F4F6",
+                paddingTop: "16px",
+                width: "100%",
+              }}
+            >
               {/* List/Grid view toggle */}
               <div style={{
                 display: "inline-flex",
@@ -1600,92 +1619,95 @@ export const CatalogTab = ({
                 </button>
               </div>
 
-              <button
-                onClick={onExportCSV}
-                style={{
-                  height: "42px",
-                  padding: "0 16px",
-                  borderRadius: "10px",
-                  border: "1px solid #E5E7EB",
-                  background: "#FFFFFF",
-                  color: "#374151",
-                  fontSize: "14px",
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                  transition: "all 0.15s ease",
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F9FAFB"}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#FFFFFF"}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-                Export CSV
-              </button>
-
-              {canEditAddRemove && (
+              {/* Action Buttons Group */}
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <button
-                  onClick={() => setIsImportModalOpen(true)}
+                  onClick={onExportCSV}
                   style={{
                     height: "42px",
                     padding: "0 16px",
                     borderRadius: "10px",
-                    border: "1px solid #C7D2FE",
-                    background: "#EEF2FF",
-                    color: "#4338CA",
+                    border: "1px solid #E5E7EB",
+                    background: "#FFFFFF",
+                    color: "#374151",
                     fontSize: "14px",
-                    fontWeight: 600,
+                    fontWeight: 500,
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
                     gap: "8px",
-                    boxShadow: "0 1px 2px rgba(99,102,241,0.1)",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
                     transition: "all 0.15s ease",
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#E0E7FF"}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#EEF2FF"}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F9FAFB"}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#FFFFFF"}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
-                  Import Excel
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                  Export CSV
                 </button>
-              )}
 
-              {canEditAddRemove && (
-                <button
-                  onClick={onOpenAddModal}
-                  style={{
-                    height: "42px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    backgroundColor: "#6366F1",
-                    color: "#FFFFFF",
-                    border: "none",
-                    borderRadius: "10px",
-                    padding: "0 18px",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    boxShadow: "0 2px 8px rgba(99, 102, 241, 0.25)",
-                    transition: "all 0.2s ease-in-out",
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)";
-                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#4F46E5";
-                    (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 14px rgba(99, 102, 241, 0.35)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#6366F1";
-                    (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 2px 8px rgba(99, 102, 241, 0.25)";
-                  }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                  Add Asset
-                </button>
-              )}
+                {canEditAddRemove && (
+                  <button
+                    onClick={() => setIsImportModalOpen(true)}
+                    style={{
+                      height: "42px",
+                      padding: "0 16px",
+                      borderRadius: "10px",
+                      border: "1px solid #C7D2FE",
+                      background: "#EEF2FF",
+                      color: "#4338CA",
+                      fontSize: "14px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      boxShadow: "0 1px 2px rgba(99,102,241,0.1)",
+                      transition: "all 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#E0E7FF"}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#EEF2FF"}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                    Import Excel
+                  </button>
+                )}
+
+                {canEditAddRemove && (
+                  <button
+                    onClick={onOpenAddModal}
+                    style={{
+                      height: "42px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      backgroundColor: "#6366F1",
+                      color: "#FFFFFF",
+                      border: "none",
+                      borderRadius: "10px",
+                      padding: "0 18px",
+                      fontSize: "14px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      boxShadow: "0 2px 8px rgba(99, 102, 241, 0.25)",
+                      transition: "all 0.2s ease-in-out",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)";
+                      (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#4F46E5";
+                      (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 14px rgba(99, 102, 241, 0.35)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
+                      (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#6366F1";
+                      (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 2px 8px rgba(99, 102, 241, 0.25)";
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                    Add Asset
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1920,33 +1942,48 @@ export const CatalogTab = ({
                         Request Asset
                       </button>
 
+                      {/* Warning if 0/negative stock items are selected */}
+                      {hasZeroOrNegativeStockSelected && (
+                        <span style={{ fontSize: "0.75rem", color: "#dc2626", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "0.25rem", marginRight: "0.5rem" }}>
+                          ⚠️ Contains 0 or Negative Stock Assets
+                        </span>
+                      )}
+
                       {/* Deploy Asset button — only for privileged roles */}
                       {(currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "INVENTORY_STAFF" || currentUser?.role === "OPS_MANAGER" || currentUser?.role === "ADMIN") && (
                         <button
-                          onClick={() => onOpenBulkRequestModal('deploy')}
+                          disabled={hasZeroOrNegativeStockSelected}
+                          onClick={() => !hasZeroOrNegativeStockSelected && onOpenBulkRequestModal('deploy')}
                           className="btn-hover-effect"
                           style={{
                             display: "inline-flex",
                             alignItems: "center",
                             gap: "0.45rem",
-                            background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+                            background: hasZeroOrNegativeStockSelected 
+                              ? "#cbd5e1" 
+                              : "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
                             border: "none",
                             borderRadius: "8px",
-                            color: "#ffffff",
+                            color: hasZeroOrNegativeStockSelected ? "#64748b" : "#ffffff",
                             fontSize: "0.82rem",
                             fontWeight: 600,
                             padding: "0.45rem 1rem",
-                            cursor: "pointer",
-                            boxShadow: "0 2px 6px rgba(37, 99, 235, 0.25)",
+                            cursor: hasZeroOrNegativeStockSelected ? "not-allowed" : "pointer",
+                            boxShadow: hasZeroOrNegativeStockSelected ? "none" : "0 2px 6px rgba(37, 99, 235, 0.25)",
                             transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                            opacity: hasZeroOrNegativeStockSelected ? 0.7 : 1,
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = "translateY(-1px)";
-                            e.currentTarget.style.boxShadow = "0 4px 12px rgba(37, 99, 235, 0.35)";
+                            if (!hasZeroOrNegativeStockSelected) {
+                              e.currentTarget.style.transform = "translateY(-1px)";
+                              e.currentTarget.style.boxShadow = "0 4px 12px rgba(37, 99, 235, 0.35)";
+                            }
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = "translateY(0)";
-                            e.currentTarget.style.boxShadow = "0 2px 6px rgba(37, 99, 235, 0.25)";
+                            if (!hasZeroOrNegativeStockSelected) {
+                              e.currentTarget.style.transform = "translateY(0)";
+                              e.currentTarget.style.boxShadow = "0 2px 6px rgba(37, 99, 235, 0.25)";
+                            }
                           }}
                         >
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -2391,27 +2428,44 @@ export const CatalogTab = ({
                         Request Asset
                       </button>
 
+                      {/* Warning if 0/negative stock items are selected */}
+                      {hasZeroOrNegativeStockSelected && (
+                        <span style={{ fontSize: "0.72rem", color: "#dc2626", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "0.2rem", marginRight: "0.4rem" }}>
+                          ⚠️ Contains 0 or Negative Stock Assets
+                        </span>
+                      )}
+
                       {/* Deploy Asset button — only for privileged roles */}
                       {(currentUser?.role === "SUPER_ADMIN" || currentUser?.role === "INVENTORY_STAFF" || currentUser?.role === "OPS_MANAGER" || currentUser?.role === "ADMIN") && (
                         <button
-                          onClick={() => onOpenBulkRequestModal('deploy')}
+                          disabled={hasZeroOrNegativeStockSelected}
+                          onClick={() => !hasZeroOrNegativeStockSelected && onOpenBulkRequestModal('deploy')}
                           style={{
                             display: "flex",
                             alignItems: "center",
                             gap: "0.4rem",
-                            backgroundColor: "#210cae",
+                            backgroundColor: hasZeroOrNegativeStockSelected ? "#cbd5e1" : "#210cae",
                             border: "none",
                             borderRadius: "7px",
-                            color: "#ffffff",
+                            color: hasZeroOrNegativeStockSelected ? "#64748b" : "#ffffff",
                             fontSize: "0.78rem",
                             fontWeight: 600,
                             padding: "0.45rem 0.9rem",
-                            cursor: "pointer",
-                            boxShadow: "0 2px 5px rgba(33,12,174,0.2)",
+                            cursor: hasZeroOrNegativeStockSelected ? "not-allowed" : "pointer",
+                            boxShadow: hasZeroOrNegativeStockSelected ? "none" : "0 2px 5px rgba(33,12,174,0.2)",
                             transition: "all 0.15s ease",
+                            opacity: hasZeroOrNegativeStockSelected ? 0.7 : 1,
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#1a098c"}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#210cae"}
+                          onMouseEnter={(e) => {
+                            if (!hasZeroOrNegativeStockSelected) {
+                              e.currentTarget.style.backgroundColor = "#1a098c";
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!hasZeroOrNegativeStockSelected) {
+                              e.currentTarget.style.backgroundColor = "#210cae";
+                            }
+                          }}
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
                           Deploy Asset

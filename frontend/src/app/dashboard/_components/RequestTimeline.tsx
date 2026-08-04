@@ -396,7 +396,9 @@ export function RequestTimeline({
       return nodes;
     }
 
-    const hasInitialPending = ascHistory.some(evt => mapStatus(evt.status) === 'PENDING_APPROVAL');
+    const hasInitialPending = ascHistory.some(evt => 
+      mapStatus(evt.status) === 'PENDING_APPROVAL' || mapStatus(evt.status) === 'PENDING_PROCUREMENT'
+    );
     if (!hasInitialPending) {
       const firstTimestamp = ascHistory.length > 0 ? ascHistory[0].timestamp : new Date().toISOString();
       ascHistory.unshift({
@@ -420,6 +422,19 @@ export function RequestTimeline({
           timestamp: evt.timestamp,
           boxText: 'Submitted for Inventory Staff review',
           bottomHtml: <span>Requested by: <strong>{evt.byName || requestedByName}</strong> &middot; Waiting for: <strong>Inv. Staff</strong> <Badge type="inv">Inv. Staff</Badge></span>
+        });
+      }
+
+      if (s === 'PENDING_PROCUREMENT') {
+        nodes.push({
+          type: 'pending_procurement',
+          title: 'PENDING PROCUREMENT',
+          titleColor: '#6d28d9',
+          iconColor: '#6d28d9',
+          iconSvg: getPendingIcon(),
+          timestamp: evt.timestamp,
+          boxText: evt.comment || 'No stock available at target site. Automatically routed to Pending Procurement.',
+          bottomHtml: <span>Requested by: <strong>{evt.byName || requestedByName}</strong> &middot; Status: <strong style={{ color: '#6d28d9' }}>Pending Procurement</strong></span>
         });
       }
 

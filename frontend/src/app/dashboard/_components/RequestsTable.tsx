@@ -178,40 +178,57 @@ export function RequestsTable({
     return allRequests.filter(r => !(r.reason && r.reason.includes('[ASSET DEPLOYMENT]')));
   }, [allRequests]);
 
-  // 1. Group ALL request orders by custodian first into complete groups
+  // 1. Group request orders chronologically (made at the same time by same custodian)
   const allGroupedRequests = useMemo(() => {
-    const map = new Map<string, {
-      key: string;
-      requestedByName: string;
-      requestedById: string;
-      requestedByRole: string;
-      requestedByDepartment: string;
-      siteName: string;
-      latestCreatedAt: string;
-      groupRequestId: string;
-      items: RequestEntry[];
-      pendingCount: number;
-      pendingOpsCount: number;
-      pendingStaffCount: number;
-      approvedCount: number;
-      readyCount: number;
-      releasedCount: number;
-      itemReceivedCount: number;
-      returnedCount: number;
-      rejectedCount: number;
-      cancelledCount: number;
-      otherCount: number;
-    }>();
+    const groups: any[] = [];
+    const sorted = [...requestOrdersOnly].sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 
-    requestOrdersOnly.forEach((req: RequestEntry) => {
-      const nameKey = (req.requestedByName || "N/A").trim().toLowerCase();
-      const idKey = (req.requestedById || "N/A").trim().toLowerCase();
-      const deptKey = (req.requestedByDepartment || "N/A").trim().toLowerCase();
-      const key = `${idKey}___${nameKey}___${deptKey}`;
+    sorted.forEach((req: RequestEntry) => {
+      const reqTime = new Date(req.createdAt).getTime();
+      
+      // Find an existing group for this user where the time difference is less than 15 seconds
+      const group = groups.find(g => 
+        g.requestedById === req.requestedById && 
+        Math.abs(new Date(g.latestCreatedAt).getTime() - reqTime) < 15000
+      );
 
-      if (!map.has(key)) {
-        map.set(key, {
-          key,
+      if (group) {
+        group.items.push(req);
+        
+        if (req.status === 'PENDING_OPS_APPROVAL') {
+          group.pendingOpsCount++;
+          group.pendingCount++;
+        } else if (['PENDING', 'PENDING_APPROVAL'].includes(req.status)) {
+          group.pendingStaffCount++;
+          group.pendingCount++;
+        } else if (req.status === 'PENDING_PROCUREMENT') {
+          group.pendingProcurementCount++;
+        } else if (req.status === 'APPROVED') {
+          group.approvedCount++;
+        } else if (['READY_FOR_PICKUP'].includes(req.status)) {
+          group.readyCount++;
+        } else if (['RELEASED', 'AWAITING_CONFIRMATION'].includes(req.status)) {
+          group.releasedCount++;
+        } else if (req.status === 'ITEM_RECEIVED') {
+          group.itemReceivedCount++;
+        } else if (req.status === 'RETURNED') {
+          group.returnedCount++;
+        } else if (req.status === 'REJECTED') {
+          group.rejectedCount++;
+        } else if (req.status === 'CANCELLED') {
+          group.cancelledCount++;
+        } else {
+          group.otherCount++;
+        }
+        
+        if (new Date(req.createdAt) > new Date(group.latestCreatedAt)) {
+          group.latestCreatedAt = req.createdAt;
+        }
+      } else {
+        const newGroup = {
+          key: `${req.id}___${req.requestedById}___${req.createdAt}`,
           requestedByName: req.requestedByName || "N/A",
           requestedById: req.requestedById || "N/A",
           requestedByRole: req.requestedByRole || "STAFF",
@@ -219,11 +236,12 @@ export function RequestsTable({
           siteName: req.siteName || "Cebu IT Park",
           latestCreatedAt: req.createdAt,
           groupRequestId: getFormattedRequestId(req),
-          items: [],
+          items: [req],
           pendingCount: 0,
           pendingOpsCount: 0,
           pendingStaffCount: 0,
           approvedCount: 0,
+          pendingProcurementCount: 0,
           readyCount: 0,
           releasedCount: 0,
           itemReceivedCount: 0,
@@ -231,42 +249,39 @@ export function RequestsTable({
           rejectedCount: 0,
           cancelledCount: 0,
           otherCount: 0,
-        });
-      }
+        };
 
-      const group = map.get(key)!;
-      group.items.push(req);
+        if (req.status === 'PENDING_OPS_APPROVAL') {
+          newGroup.pendingOpsCount++;
+          newGroup.pendingCount++;
+        } else if (['PENDING', 'PENDING_APPROVAL'].includes(req.status)) {
+          newGroup.pendingStaffCount++;
+          newGroup.pendingCount++;
+        } else if (req.status === 'PENDING_PROCUREMENT') {
+          newGroup.pendingProcurementCount++;
+        } else if (req.status === 'APPROVED') {
+          newGroup.approvedCount++;
+        } else if (['READY_FOR_PICKUP'].includes(req.status)) {
+          newGroup.readyCount++;
+        } else if (['RELEASED', 'AWAITING_CONFIRMATION'].includes(req.status)) {
+          newGroup.releasedCount++;
+        } else if (req.status === 'ITEM_RECEIVED') {
+          newGroup.itemReceivedCount++;
+        } else if (req.status === 'RETURNED') {
+          newGroup.returnedCount++;
+        } else if (req.status === 'REJECTED') {
+          newGroup.rejectedCount++;
+        } else if (req.status === 'CANCELLED') {
+          newGroup.cancelledCount++;
+        } else {
+          newGroup.otherCount++;
+        }
 
-      if (req.status === 'PENDING_OPS_APPROVAL') {
-        group.pendingOpsCount++;
-        group.pendingCount++;
-      } else if (['PENDING', 'PENDING_APPROVAL'].includes(req.status)) {
-        group.pendingStaffCount++;
-        group.pendingCount++;
-      } else if (['APPROVED', 'PENDING_PROCUREMENT'].includes(req.status)) {
-        group.approvedCount++;
-      } else if (['READY_FOR_PICKUP'].includes(req.status)) {
-        group.readyCount++;
-      } else if (['RELEASED', 'AWAITING_CONFIRMATION'].includes(req.status)) {
-        group.releasedCount++;
-      } else if (req.status === 'ITEM_RECEIVED') {
-        group.itemReceivedCount++;
-      } else if (req.status === 'RETURNED') {
-        group.returnedCount++;
-      } else if (req.status === 'REJECTED') {
-        group.rejectedCount++;
-      } else if (req.status === 'CANCELLED') {
-        group.cancelledCount++;
-      } else {
-        group.otherCount++;
-      }
-
-      if (new Date(req.createdAt) > new Date(group.latestCreatedAt)) {
-        group.latestCreatedAt = req.createdAt;
+        groups.push(newGroup);
       }
     });
 
-    return Array.from(map.values());
+    return groups;
   }, [requestOrdersOnly]);
 
   // 2. Filter groups based on search, site, status, category, date filters
@@ -1155,10 +1170,11 @@ export function RequestsTable({
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             {(() => {
               const eligibleApproveReqs = selectedRequests.filter(
-                r => ['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL'].includes(r.status as string) && r.requestedById !== currentUserId
+                r => ['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL'].includes(r.status as string) && 
+                     (r.requestedById !== currentUserId || currentUserRole === 'SUPER_ADMIN')
               );
               const eligiblePrepareReqs = selectedRequests.filter(
-                r => ['APPROVED', 'PENDING_PROCUREMENT'].includes(r.status as string)
+                r => ['APPROVED'].includes(r.status as string)
               );
               const eligibleReleaseReqs = selectedRequests.filter(
                 r => ['READY_FOR_PICKUP'].includes(r.status as string)
@@ -1412,8 +1428,9 @@ export function RequestsTable({
                   >
                     {canApprove && (
                       <td onClick={(e) => e.stopPropagation()} style={{ width: '40px', padding: '0.85rem 0.5rem', textAlign: 'center' }}>
-                        {['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'APPROVED', 'READY_FOR_PICKUP', 'PENDING_PROCUREMENT', 'AWAITING_CONFIRMATION', 'RELEASED', 'ITEM_RECEIVED'].includes(req.status as string) &&
-                         !(['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL'].includes(req.status as string) && req.requestedById === currentUserId) ? (
+                        {['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'APPROVED', 'READY_FOR_PICKUP', 'AWAITING_CONFIRMATION', 'RELEASED', 'ITEM_RECEIVED'].includes(req.status as string) &&
+                         req.status !== 'PENDING_PROCUREMENT' &&
+                         (currentUserRole === 'SUPER_ADMIN' || !(['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL'].includes(req.status as string) && req.requestedById === currentUserId)) ? (
                           <input
                             type="checkbox"
                             checked={selectedReqIds.includes(req.id)}
@@ -1566,8 +1583,8 @@ export function RequestsTable({
                     <td onClick={(e) => e.stopPropagation()} style={{ width: '40px', padding: '0.85rem 0.5rem', textAlign: 'center' }}>
                       {(() => {
                         const selectableGroupReqIds = group.items
-                          .filter((r: any) => !['RETURNED', 'REJECTED', 'CANCELLED'].includes(r.status as string))
-                          .filter((r: any) => !(['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL'].includes(r.status as string) && r.requestedById === currentUserId))
+                          .filter((r: any) => !['RETURNED', 'REJECTED', 'CANCELLED', 'PENDING_PROCUREMENT'].includes(r.status as string))
+                          .filter((r: any) => currentUserRole === 'SUPER_ADMIN' || !(['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL'].includes(r.status as string) && r.requestedById === currentUserId))
                           .map((r: any) => r.id);
 
                         if (selectableGroupReqIds.length === 0) {
@@ -1670,8 +1687,9 @@ export function RequestsTable({
                     <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
                       {group.pendingOpsCount > 0 && <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.15rem 0.45rem', borderRadius: '9999px', backgroundColor: '#faf5ff', color: '#6b21a8', border: '1px solid #e9d5ff' }}>{group.pendingOpsCount} PENDING OPS APPROVAL</span>}
                       {group.pendingStaffCount > 0 && <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.15rem 0.45rem', borderRadius: '9999px', backgroundColor: '#fff7ed', color: '#c2410c', border: '1px solid #ffedd5' }}>{group.pendingStaffCount} PENDING STAFF APPROVAL</span>}
+                      {group.pendingProcurementCount > 0 && <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.15rem 0.45rem', borderRadius: '9999px', backgroundColor: '#f5f3ff', color: '#6d28d9', border: '1px solid #c4b5fd' }}>{group.pendingProcurementCount} PENDING PROCUREMENT</span>}
                       {group.approvedCount > 0 && <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.15rem 0.45rem', borderRadius: '9999px', backgroundColor: '#f0fdf4', color: '#15803d', border: '1px solid #dcfce7' }}>{group.approvedCount} APPROVED</span>}
-                      {group.readyCount > 0 && <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.15rem 0.45rem', borderRadius: '9999px', backgroundColor: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe' }}>{group.readyCount} READY FOR PICKUP</span>}
+                      {group.readyCount > 0 && <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.15rem 0.45rem', borderRadius: '9999px', backgroundColor: '#ecfeff', color: '#0e7490', border: '1px solid #67e8f9' }}>{group.readyCount} READY FOR PICKUP</span>}
                       {group.releasedCount > 0 && <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.15rem 0.45rem', borderRadius: '9999px', backgroundColor: '#eff6ff', color: '#1d4ed8', border: '1px solid #dbeafe' }}>{group.releasedCount} RELEASED</span>}
                       {group.itemReceivedCount > 0 && <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.15rem 0.45rem', borderRadius: '9999px', backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #6ee7b7' }}>{group.itemReceivedCount} ITEM RECEIVED</span>}
                       {group.returnedCount > 0 && <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.15rem 0.45rem', borderRadius: '9999px', backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #6ee7b7' }}>{group.returnedCount} RETURNED</span>}

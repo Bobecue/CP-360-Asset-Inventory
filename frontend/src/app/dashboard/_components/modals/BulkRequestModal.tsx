@@ -135,10 +135,12 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
   const selectedSiteObj = sites.find(s => s.name === reqSiteId || s.id === reqSiteId);
   const availableFloors = parseFloors(selectedSiteObj?.floor);
 
+  const hasZeroStockItemForDeploy = isDeployMode && selectedItems.some(item => item.stock <= 0);
+
   const isDeployDisabled = isDeployMode && (
     (deploymentType === 'employee' 
       ? (!employeeName.trim() || !employeeAccount.trim() || !employeeEid.trim())
-      : (!stationName.trim() || !stationDept.trim())) || !hasSignature
+      : (!stationName.trim() || !stationDept.trim())) || !hasSignature || hasZeroStockItemForDeploy
   );
   const isSubmitDisabled = isSubmitting || selectedItems.length === 0 || !reqSiteId.trim() || isDeployDisabled;
 
@@ -202,6 +204,18 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
     setReqFormError(null);
 
     if (isDeployMode) {
+      const zeroStockItem = selectedItems.find(item => item.stock <= 0);
+      if (zeroStockItem) {
+        setReqFormError(`Cannot deploy "${zeroStockItem.name}" because it has 0 stock.`);
+        return;
+      }
+      
+      const exceededStockItem = selectedItems.find(item => (quantities[item.id] || 1) > item.stock);
+      if (exceededStockItem) {
+        setReqFormError(`Cannot deploy "${exceededStockItem.name}". Requested quantity exceeds available stock (${exceededStockItem.stock}).`);
+        return;
+      }
+
       if (deploymentType === 'employee') {
         if (!employeeEid.trim()) {
           setReqFormError("Employee EID is required.");
@@ -539,8 +553,16 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', border: '1px solid #e2e8f0', borderRadius: 8, padding: '0.75rem', backgroundColor: '#f8fafc' }}>
                 {selectedItems.map(item => {
                   const qty = quantities[item.id] || 1;
-                  const effectiveStock = item.stock;
-                  const isExceeded = qty > effectiveStock;
+                  const activeSiteId = sourceSiteId;
+                  const siteStockObj = activeSiteId && activeSiteId !== 'ALL'
+                    ? item.stockLevels?.find(sl => sl.siteId === activeSiteId)
+                    : null;
+                  const relevantStock = activeSiteId && activeSiteId !== 'ALL'
+                    ? (siteStockObj ? siteStockObj.quantity : 0)
+                    : item.stock;
+
+                  const effectiveStock = isDeployMode ? relevantStock : item.stock;
+                  const isExceeded = qty > relevantStock;
 
                   const itemCat = (item.category || '').toLowerCase();
                   const itemNameLower = (item.name || '').toLowerCase();
@@ -601,12 +623,23 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
                           </span>
                           <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                             <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{item.name}</span>
-                            <span style={{ fontSize: '0.68rem', color: '#64748b' }}>Stock: {effectiveStock} | SKU: {item.sku}</span>
-                            {isExceeded && (
-                              <span style={{ fontSize: '0.65rem', color: '#E85D00', fontWeight: 600 }}>
-                                ⚠ Exceeds stock (deployment will be flagged)
+                            <span style={{ fontSize: '0.68rem', color: '#64748b' }}>
+                              Stock: {isDeployMode ? relevantStock : item.stock} | SKU: {item.sku}
+                              {!isDeployMode && relevantStock <= 0 && (
+                                <span style={{ marginLeft: '0.5rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', color: '#DC2626', fontWeight: 700, fontSize: '0.65rem' }}>
+                                  Pending for Procurement
+                                </span>
+                              )}
+                            </span>
+                            {isDeployMode && relevantStock <= 0 ? (
+                              <span style={{ fontSize: '0.65rem', color: '#dc2626', fontWeight: 600 }}>
+                                ❌ Out of stock (cannot deploy)
                               </span>
-                            )}
+                            ) : isExceeded ? (
+                              <span style={{ fontSize: '0.65rem', color: '#E85D00', fontWeight: 600 }}>
+                                ⚠ Exceeds stock (request/deployment will be flagged)
+                              </span>
+                            ) : null}
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -614,9 +647,10 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
                           <input
                             type="number"
                             min="1"
-                            value={qty}
+                            disabled={isDeployMode && effectiveStock <= 0}
+                            value={isDeployMode && effectiveStock <= 0 ? 0 : qty}
                             onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 1)}
-                            style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.8rem', outline: 'none', color: '#0f172a', width: '65px', textAlign: 'center' }}
+                            style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.8rem', outline: 'none', color: '#0f172a', width: '65px', textAlign: 'center', backgroundColor: isDeployMode && effectiveStock <= 0 ? '#f1f5f9' : '#ffffff' }}
                           />
                         </div>
                       </div>

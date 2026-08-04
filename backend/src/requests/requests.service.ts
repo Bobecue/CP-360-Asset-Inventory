@@ -275,6 +275,34 @@ export class RequestsService implements OnModuleInit {
       throw new NotFoundException('No requester user found in database.');
     }
 
+    // Auto-cancel previous pending requests/transfers for the same item by the same requester
+    const existingPendingRequests = await this.prisma.request.findMany({
+      where: {
+        requesterId: requester.id,
+        itemId: item.id,
+        status: {
+          in: ['PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'PENDING_PROCUREMENT']
+        }
+      }
+    });
+
+    for (const oldReq of existingPendingRequests) {
+      await this.prisma.request.update({
+        where: { id: oldReq.id },
+        data: {
+          status: 'CANCELLED',
+          comments: 'Automatically cancelled due to a newer request or deployment submitted for the same asset.',
+          events: {
+            create: {
+              status: 'CANCELLED',
+              comment: 'Automatically cancelled due to a newer request or deployment submitted for the same asset.',
+              userId: requester.id
+            }
+          }
+        }
+      });
+    }
+
     if (!dto.siteId) {
       throw new BadRequestException('Site is required.');
     }
@@ -298,7 +326,7 @@ export class RequestsService implements OnModuleInit {
     const siteName = siteObj.name;
 
     const isDeployment = dto.reason && dto.reason.includes('[ASSET DEPLOYMENT]');
-    const initialStatus = isDeployment ? 'RELEASED' : 'PENDING_APPROVAL';
+    let initialStatus: 'RELEASED' | 'PENDING_APPROVAL' | 'PENDING_PROCUREMENT' = isDeployment ? 'RELEASED' : 'PENDING_APPROVAL';
 
     let releasedByUserId = undefined;
     if (isDeployment) {
@@ -428,6 +456,19 @@ export class RequestsService implements OnModuleInit {
       sourceSiteId = assignedAssets[0].siteId;
     }
 
+    if (!isDeployment) {
+      const sourceSiteStock = await this.prisma.siteStock.findFirst({
+        where: {
+          siteId: sourceSiteId,
+          itemId: item.id
+        }
+      });
+      const stockQty = sourceSiteStock ? sourceSiteStock.quantity : 0;
+      if (stockQty <= 0) {
+        initialStatus = 'PENDING_PROCUREMENT';
+      }
+    }
+
     const purposeData: any = {
       reason: dto.reason,
       urgency: dto.urgency || 'NORMAL',
@@ -451,6 +492,12 @@ export class RequestsService implements OnModuleInit {
           itemId: item.id,
         }
       });
+      
+      const availableStock = srcStock ? srcStock.quantity : 0;
+      if (availableStock < deployQty) {
+        throw new BadRequestException(`Cannot deploy "${item.name}". Insufficient stock at source site (Available: ${availableStock}, Requested: ${deployQty}).`);
+      }
+
       if (srcStock) {
         await this.prisma.siteStock.update({
           where: { id: srcStock.id },
@@ -505,7 +552,9 @@ export class RequestsService implements OnModuleInit {
           create: {
             status: initialStatus,
             userId: requester.id,
-            comment: isDeployment ? '[ASSET DEPLOYMENT] Deployed directly by staff/admin' : undefined
+            comment: isDeployment 
+              ? '[ASSET DEPLOYMENT] Deployed directly by staff/admin' 
+              : (initialStatus === 'PENDING_PROCUREMENT' ? 'No stock available at target site. Automatically routed to Pending Procurement.' : undefined)
           }
         }
       },
@@ -531,25 +580,95 @@ export class RequestsService implements OnModuleInit {
   async fixMisclassifiedProcurementRequests() {
     try {
       const procRequests = await this.prisma.request.findMany({
-        where: { status: 'PENDING_PROCUREMENT' }
+        where: { status: 'PENDING_PROCUREMENT' },
+        include: { requester: true }
       });
 
       for (const req of procRequests) {
-        await this.prisma.request.update({
-          where: { id: req.id },
-          data: {
-            status: 'APPROVED',
-            comments: 'Stock confirmed available in system inventory.'
+        let sourceSiteId = req.requester?.siteId;
+        try {
+          const parsed = JSON.parse(req.purpose || '{}');
+          if (parsed.sourceSiteId) {
+            sourceSiteId = parsed.sourceSiteId;
           }
-        });
+        } catch {}
+
+        if (sourceSiteId) {
+          const siteStock = await this.prisma.siteStock.findFirst({
+            where: {
+              siteId: sourceSiteId,
+              itemId: req.itemId
+            }
+          });
+          const stockQty = siteStock ? siteStock.quantity : 0;
+          if (stockQty > 0) {
+            await this.prisma.request.update({
+              where: { id: req.id },
+              data: {
+                status: 'APPROVED',
+                comments: 'Stock confirmed available in system inventory.'
+              }
+            });
+          }
+        }
       }
     } catch (err) {
       console.error('Error auto-correcting misclassified procurement requests:', err);
     }
   }
 
+  async updateExistingZeroStockRequestsToProcurement() {
+    try {
+      const activeRequests = await this.prisma.request.findMany({
+        where: {
+          status: { in: ['APPROVED', 'PENDING_APPROVAL'] }
+        },
+        include: { requester: true }
+      });
+
+      for (const req of activeRequests) {
+        let sourceSiteId = req.requester?.siteId;
+        try {
+          const parsed = JSON.parse(req.purpose || '{}');
+          if (parsed.sourceSiteId) {
+            sourceSiteId = parsed.sourceSiteId;
+          }
+        } catch {}
+
+        if (sourceSiteId) {
+          const siteStock = await this.prisma.siteStock.findFirst({
+            where: {
+              siteId: sourceSiteId,
+              itemId: req.itemId
+            }
+          });
+          const stockQty = siteStock ? siteStock.quantity : 0;
+          if (stockQty <= 0) {
+            await this.prisma.request.update({
+              where: { id: req.id },
+              data: {
+                status: 'PENDING_PROCUREMENT',
+                comments: 'Automatically updated to Pending Procurement due to zero stock at the source site.',
+                events: {
+                  create: {
+                    status: 'PENDING_PROCUREMENT',
+                    comment: 'Automatically updated to Pending Procurement due to zero stock at the source site.',
+                    userId: req.requesterId
+                  }
+                }
+              }
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error updating existing zero stock requests to procurement:', err);
+    }
+  }
+
   async findAll(q: any, user: string) {
     await this.fixMisclassifiedProcurementRequests();
+    await this.updateExistingZeroStockRequestsToProcurement();
     const dbRequests = await this.prisma.request.findMany({
       include: this.requestInclude,
       orderBy: { createdAt: 'desc' }
@@ -1826,27 +1945,29 @@ export class RequestsService implements OnModuleInit {
     // Determine current deployed site and original home/source site
     let homeSiteId: string | undefined = parsedPurpose.sourceSiteId;
 
-    // Try to resolve homeSiteId from the prefix of the first tag code
-    let tagForPrefix = tagsToRestore[0] || r.asset?.tagCode;
-    if (!tagForPrefix && r.assetId) {
-      const ast = await this.prisma.asset.findUnique({ where: { id: r.assetId } });
-      if (ast?.tagCode) tagForPrefix = ast.tagCode;
-    }
+    if (!homeSiteId) {
+      // Try to resolve homeSiteId from the prefix of the first tag code
+      let tagForPrefix = tagsToRestore[0] || r.asset?.tagCode;
+      if (!tagForPrefix && r.assetId) {
+        const ast = await this.prisma.asset.findUnique({ where: { id: r.assetId } });
+        if (ast?.tagCode) tagForPrefix = ast.tagCode;
+      }
 
-    if (tagForPrefix) {
-      const parts = tagForPrefix.split('-');
-      if (parts.length >= 3) {
-        const prefix = parts[0];
-        const site = await this.prisma.site.findFirst({
-          where: { prefix: { equals: prefix, mode: 'insensitive' } }
-        });
-        if (site) {
-          homeSiteId = site.id;
+      if (tagForPrefix) {
+        const parts = tagForPrefix.split('-');
+        if (parts.length >= 3) {
+          const prefix = parts[0];
+          const site = await this.prisma.site.findFirst({
+            where: { prefix: { equals: prefix, mode: 'insensitive' } }
+          });
+          if (site) {
+            homeSiteId = site.id;
+          }
         }
       }
     }
 
-    if (!homeSiteId) homeSiteId = parsedPurpose.sourceSiteId || r.asset?.siteId;
+    if (!homeSiteId) homeSiteId = r.asset?.siteId;
     if (!homeSiteId && r.assetId) {
       const ast = await this.prisma.asset.findUnique({ where: { id: r.assetId } });
       if (ast?.siteId) homeSiteId = ast.siteId;
