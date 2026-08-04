@@ -264,11 +264,9 @@ export const CatalogTab = ({
             categoryId: payload.categoryId,
             category: selectedCategory || null,
             supplierId: payload.supplierId,
-            supplier: safeSuppliers.find(s => s.id === payload.supplierId) || null,
+            supplier: payload.supplierId ? { id: payload.supplierId, name: itemData.supplierName || "None" } : null,
             stockLevels: mockStocks,
             assets: mockAssets.length > 0 ? mockAssets : undefined,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
           };
 
           newItemsToAppend.push(newItem);
