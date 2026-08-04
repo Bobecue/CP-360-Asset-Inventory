@@ -1411,13 +1411,16 @@ export default function DashboardPage() {
 
     const effectiveSiteId = (itemSiteId && itemSiteId !== "ALL") ? itemSiteId : (sites[0]?.id || "ALL");
 
+    const validCategory = categories.find(c => c.id === itemCategoryId || c.name === itemCategoryId) || categories[0];
+    const finalCategoryId = validCategory?.id || itemCategoryId || (categories[0]?.id || "");
+
     const payload: any = {
       name: (itemName || "").trim(),
       sku: finalSku || undefined,
       description: (itemDescription || "").trim() || null,
       unitPrice: priceNum,
       leadTimeDays: leadTimeNum,
-      categoryId: itemCategoryId,
+      categoryId: finalCategoryId,
       supplierId: itemSupplierId || undefined,
     };
 
@@ -1954,6 +1957,10 @@ export default function DashboardPage() {
         return (
           <UsersTab
             users={users}
+            setUsers={setUsers}
+            sites={sites}
+            departments={departments}
+            onUpdateUsers={fetchUsers}
             isLoadingUsers={isLoadingUsers}
             isUsingMockData={isUsingMockData}
             userSearch={userSearch}

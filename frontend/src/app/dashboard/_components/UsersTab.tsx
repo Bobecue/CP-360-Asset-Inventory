@@ -1,6 +1,6 @@
-"use client";
-
+import React, { useState } from "react";
 import { User, RoleBadge, SiteBadge, EidBadge, getDepartmentIcon } from "@/types/dashboard";
+import { ImportUserModal } from "./modals/ImportUserModal";
 
 interface UsersTabProps {
   users: User[];
@@ -11,6 +11,10 @@ interface UsersTabProps {
   userRoleFilter: string;
   setUserRoleFilter: (s: string) => void;
   filteredUsers: User[];
+  sites?: any[];
+  departments?: any[];
+  setUsers?: React.Dispatch<React.SetStateAction<User[]>>;
+  onUpdateUsers?: () => void;
   onOpenAddModal: () => void;
   onOpenEditModal: (user: User) => void;
   onToggleUserActive: (user: User) => void;
@@ -25,10 +29,92 @@ export const UsersTab = ({
   userRoleFilter,
   setUserRoleFilter,
   filteredUsers,
+  sites = [],
+  departments = [],
+  setUsers,
+  onUpdateUsers,
   onOpenAddModal,
   onOpenEditModal,
   onToggleUserActive,
 }: UsersTabProps) => {
+  const [isImportUserModalOpen, setIsImportUserModalOpen] = useState(false);
+
+  const handleBatchImportUsersSuccess = async (importedUsers: any[]) => {
+    let successCount = 0;
+    const newUsersToAppend: User[] = [];
+    const errorsEncountered: string[] = [];
+
+    for (const userData of importedUsers) {
+      const selectedSite = sites.find(s => s.id === userData.siteId || s.name.toLowerCase() === userData.siteName?.toLowerCase()) || sites[0];
+
+      const payload = {
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        name: userData.name,
+        email: userData.email,
+        password: "Password123!",
+        role: userData.role || "EMPLOYEE",
+        employeeId: userData.employeeId || undefined,
+        department: userData.department || "IT Department",
+        siteId: selectedSite?.id || sites[0]?.id || "site-1",
+      };
+
+      try {
+        if (!isUsingMockData) {
+          const res = await fetch("http://localhost:3001/users", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          });
+          if (res.ok) {
+            const createdUser = await res.json();
+            newUsersToAppend.push(createdUser);
+            successCount++;
+          } else {
+            const errJson = await res.json().catch(() => ({}));
+            const msg = errJson.message || `Server status ${res.status}`;
+            errorsEncountered.push(`User "${payload.email}": ${msg}`);
+          }
+        } else {
+          // Client side mock insertion
+          const newUserId = `mock-user-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+          const newUser: User = {
+            id: newUserId,
+            name: payload.name,
+            email: payload.email,
+            role: payload.role as any,
+            employeeId: payload.employeeId || `EID-${Math.floor(1000 + Math.random() * 9000)}`,
+            department: payload.department,
+            siteId: payload.siteId,
+            site: selectedSite || null,
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+
+          newUsersToAppend.push(newUser);
+          successCount++;
+        }
+      } catch (e: any) {
+        console.error("Failed to insert imported user:", e);
+        errorsEncountered.push(`User "${payload.email}": ${e.message || "Network failure"}`);
+      }
+    }
+
+    if (errorsEncountered.length > 0 && successCount === 0) {
+      throw new Error(errorsEncountered.join(" | "));
+    }
+
+    if (setUsers && newUsersToAppend.length > 0) {
+      setUsers((prev) => [...newUsersToAppend, ...prev]);
+    }
+
+    if (onUpdateUsers) {
+      await onUpdateUsers();
+    }
+  };
   return (
     <div className="animate-module-flip" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
       
@@ -181,35 +267,65 @@ export const UsersTab = ({
           </select>
         </div>
 
-        <button
-          onClick={onOpenAddModal}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.4rem",
-            background: "linear-gradient(135deg, #210cae 0%, #4dc9e6 100%)",
-            color: "#ffffff",
-            border: "none",
-            borderRadius: 8,
-            padding: "0.55rem 1.1rem",
-            fontSize: "0.82rem",
-            fontWeight: 600,
-            cursor: "pointer",
-            boxShadow: "0 2px 6px rgba(33,12,174,0.15)",
-            transition: "transform 0.15s, box-shadow 0.2s",
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)";
-            (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 12px rgba(33,12,174,0.25)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-            (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 2px 6px rgba(33,12,174,0.15)";
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-          Add User
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <button
+            onClick={() => setIsImportUserModalOpen(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              backgroundColor: "#EEF2FF",
+              color: "#210cae",
+              border: "1px solid #C7D2FE",
+              borderRadius: 8,
+              padding: "0.55rem 1.1rem",
+              fontSize: "0.82rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              boxShadow: "0 1px 3px rgba(33,12,174,0.08)",
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#E0E7FF";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "#EEF2FF";
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+            Import Excel
+          </button>
+
+          <button
+            onClick={onOpenAddModal}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              background: "linear-gradient(135deg, #210cae 0%, #4dc9e6 100%)",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: 8,
+              padding: "0.55rem 1.1rem",
+              fontSize: "0.82rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              boxShadow: "0 2px 6px rgba(33,12,174,0.15)",
+              transition: "transform 0.15s, box-shadow 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)";
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 12px rgba(33,12,174,0.25)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 2px 6px rgba(33,12,174,0.15)";
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+            Add User
+          </button>
+        </div>
       </div>
 
       {/* Users Table Card */}
@@ -432,6 +548,14 @@ export const UsersTab = ({
         )}
       </div>
 
+      {/* Excel User Import Modal */}
+      <ImportUserModal
+        isOpen={isImportUserModalOpen}
+        onClose={() => setIsImportUserModalOpen(false)}
+        sites={sites}
+        departments={departments}
+        onImportSuccess={handleBatchImportUsersSuccess}
+      />
     </div>
   );
 };

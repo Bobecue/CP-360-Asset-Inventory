@@ -53,6 +53,7 @@ export interface Supplier {
   province?: string | null;
   country?: string | null;
   leadTimeDays?: number;
+  isActive?: boolean;
   assets?: any[];
   items?: any[];
   _count?: {

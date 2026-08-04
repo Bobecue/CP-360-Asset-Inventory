@@ -58,6 +58,7 @@ export class SuppliersController {
       province?: string;
       country?: string;
       leadTimeDays?: number;
+      isActive?: boolean;
     }
   ) {
     const data = await this.suppliersService.update(id, body);

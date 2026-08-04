@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import jsPDF from 'jspdf';
 
 type UrgencyLevel = 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
@@ -75,6 +75,59 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
   const [selectedFloor, setSelectedFloor] = useState('');
   const [deploymentNotes, setDeploymentNotes] = useState('');
 
+  // E-Signature States
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasSignature, setHasSignature] = useState(false);
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    
+    ctx.beginPath();
+    ctx.moveTo(clientX - rect.left, clientY - rect.top);
+    setIsDrawing(true);
+    setHasSignature(true);
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineTo(clientX - rect.left, clientY - rect.top);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+  };
+
+  const clearSignature = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHasSignature(false);
+  };
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reqFormError, setReqFormError] = useState<string | null>(null);
   const [liveTagsMap, setLiveTagsMap] = useState<Record<string, { availableTags: string[]; allExistingTags: string[] }>>({});
@@ -83,9 +136,9 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
   const availableFloors = parseFloors(selectedSiteObj?.floor);
 
   const isDeployDisabled = isDeployMode && (
-    deploymentType === 'employee' 
+    (deploymentType === 'employee' 
       ? (!employeeName.trim() || !employeeAccount.trim() || !employeeEid.trim())
-      : (!stationName.trim() || !stationDept.trim())
+      : (!stationName.trim() || !stationDept.trim())) || !hasSignature
   );
   const isSubmitDisabled = isSubmitting || selectedItems.length === 0 || !reqSiteId.trim() || isDeployDisabled;
 
@@ -187,6 +240,10 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
         setReqFormError("Floor selection is required.");
         return;
       }
+      if (!hasSignature) {
+        setReqFormError("E-signature is required for asset deployment.");
+        return;
+      }
     }
     if (!reqSiteId.trim() && !isDeployMode) {
       setReqFormError("Target Site is required.");
@@ -220,6 +277,7 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
         setReqSiteId('');
         setSelectedFloor('');
         setDeploymentNotes('');
+        clearSignature();
         onClose();
       }
     } catch (err) {
@@ -314,8 +372,8 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
       });
 
       // Signatures Area
-      y += 20;
-      if (y > 250) {
+      y += 15;
+      if (y > 230) {
         doc.addPage();
         y = 30;
       }
@@ -323,7 +381,17 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
       doc.setFontSize(10);
       doc.text('ACKNOWLEDGEMENT & SIGNATURES', 20, y);
 
-      y += 15;
+      // Embed signature image if drawn
+      if (canvasRef.current && hasSignature) {
+        try {
+          const sigDataUrl = canvasRef.current.toDataURL('image/png');
+          doc.addImage(sigDataUrl, 'PNG', 20, y + 3, 55, 18);
+        } catch (e) {
+          console.warn('Failed to embed signature in PDF:', e);
+        }
+      }
+
+      y += 24;
       doc.line(20, y, 85, y);
       doc.line(110, y, 175, y);
 
@@ -819,13 +887,84 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
               <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>{isDeployMode ? "Deployment Notes (Optional)" : "Reason / Purpose (Optional)"}</label>
               <textarea
-                rows={3}
+                rows={2}
                 placeholder={isDeployMode ? "Additional notes for this asset deployment..." : "Specify reason for requesting these assets..."}
                 value={deploymentNotes}
                 onChange={(e) => setDeploymentNotes(e.target.value)}
                 style={{ padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', color: '#0f172a', fontFamily: 'inherit', resize: 'vertical' }}
               />
             </div>
+
+            {/* E-Signature Canvas */}
+            {isDeployMode && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>
+                    E-Signature (Recipient / Employee) *
+                  </label>
+                  {hasSignature && (
+                    <button
+                      type="button"
+                      onClick={clearSignature}
+                      style={{
+                        fontSize: '0.72rem',
+                        color: '#dc2626',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        textDecoration: 'underline'
+                      }}
+                    >
+                      Clear Signature
+                    </button>
+                  )}
+                </div>
+                <div style={{
+                  border: reqFormError && !hasSignature ? '1.5px solid #ef4444' : '1px solid #cbd5e1',
+                  borderRadius: 8,
+                  backgroundColor: '#ffffff',
+                  overflow: 'hidden',
+                  position: 'relative',
+                  touchAction: 'none'
+                }}>
+                  <canvas
+                    ref={canvasRef}
+                    width={500}
+                    height={110}
+                    onMouseDown={startDrawing}
+                    onMouseMove={draw}
+                    onMouseUp={stopDrawing}
+                    onMouseLeave={stopDrawing}
+                    onTouchStart={startDrawing}
+                    onTouchMove={draw}
+                    onTouchEnd={stopDrawing}
+                    style={{
+                      width: '100%',
+                      height: '110px',
+                      display: 'block',
+                      cursor: 'crosshair',
+                      backgroundColor: '#f8fafc'
+                    }}
+                  />
+                  {!hasSignature && (
+                    <div style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      pointerEvents: 'none',
+                      color: '#94a3b8',
+                      fontSize: '0.8rem',
+                      fontStyle: 'italic'
+                    }}>
+                      Sign here using mouse or touch...
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

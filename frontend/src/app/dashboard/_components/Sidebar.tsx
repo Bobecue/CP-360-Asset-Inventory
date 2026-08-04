@@ -18,7 +18,6 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
   const isSuperAdmin = normalizedRole === "SUPER_ADMIN";
   const isOpsAdmin = normalizedRole === "ADMIN" || normalizedRole === "OPS_MANAGER" || normalizedRole === "OPERATIONS_MANAGER";
   const isInventoryStaff = normalizedRole === "INVENTORY_STAFF";
-  const isTeamLeader = normalizedRole === "TEAM_LEADER";
   const canAccessSuppliers = isSuperAdmin || isOpsAdmin || isInventoryStaff;
 
   const name = currentUser?.name || 'User';
@@ -79,7 +78,7 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
             <line x1="2" y1="12" x2="22" y2="12" />
           </svg>
         ) },
-        { id: "opex", label: "Transaction Tracker", visible: isSuperAdmin || isOpsAdmin || isInventoryStaff || isTeamLeader, icon: (
+        { id: "opex", label: "Transaction Tracker", visible: isSuperAdmin || isOpsAdmin || isInventoryStaff, icon: (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="12" y1="1" x2="12" y2="23" />
             <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />

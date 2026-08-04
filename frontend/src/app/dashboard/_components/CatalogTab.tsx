@@ -4,6 +4,7 @@ import { CatalogItem, getCategoryIcon, RoleBadge, SiteBadge, EidBadge, AssetTagB
 import jsPDF from "jspdf";
 import { RequestTimeline } from "./RequestTimeline";
 import { getApiUrl } from "../../../utils/api";
+import { ImportAssetModal } from "./modals/ImportAssetModal";
 
 // ── Count-Up Animation Hook for Premium Stats Numbers (matching Reports & Logs) ──
 function useCountUp(target: number, duration = 800, enabled = true) {
@@ -165,6 +166,132 @@ export const CatalogTab = ({
   const [bulkReturnCondition, setBulkReturnCondition] = useState<"GOOD" | "DAMAGED" | "MISSING">("GOOD");
   const [bulkReturnNotes, setBulkReturnNotes] = useState("");
   const [isSubmittingBulkReturn, setIsSubmittingBulkReturn] = useState(false);
+
+  // Excel Asset Import modal state
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  const handleBatchImportSuccess = async (importedItems: any[]) => {
+    let successCount = 0;
+    const newItemsToAppend: CatalogItem[] = [];
+    const errorsEncountered: string[] = [];
+
+    for (const itemData of importedItems) {
+      const categoryNameRaw = (itemData.categoryName || "").toString().trim().toLowerCase();
+      const selectedCategory = safeCategories.find(c =>
+        c.id === itemData.categoryId ||
+        c.name.toLowerCase() === categoryNameRaw ||
+        c.prefix?.toLowerCase() === categoryNameRaw ||
+        (categoryNameRaw.includes("cable") && c.name.toLowerCase().includes("cable")) ||
+        (categoryNameRaw.includes("headset") && c.name.toLowerCase().includes("headset"))
+      ) || safeCategories[0];
+
+      const selectedSite = sites.find(s => s.id === itemData.siteId || s.name.toLowerCase() === itemData.siteName.toLowerCase()) || sites[0];
+
+      const payload = {
+        name: itemData.brandName,
+        sku: itemData.assetId || undefined,
+        description: itemData.description || undefined,
+        unitPrice: itemData.unitPrice,
+        leadTimeDays: itemData.leadTimeDays || 7,
+        categoryId: selectedCategory?.id || itemData.categoryName || itemData.categoryId,
+        siteId: selectedSite?.id || sites[0]?.id || "site-1",
+        quantity: itemData.quantity,
+        supplierId: itemData.supplierId || undefined,
+      };
+
+      try {
+        if (!isUsingMockData) {
+          const res = await fetch(getApiUrl("/items"), {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-user-id": currentUser?.id || "user-admin",
+            },
+            body: JSON.stringify(payload),
+          });
+          if (res.ok) {
+            const createdItem = await res.json();
+            const formattedItem = {
+              ...createdItem,
+              unitPrice: typeof createdItem.unitPrice === 'string' ? parseFloat(createdItem.unitPrice) : createdItem.unitPrice,
+            };
+            newItemsToAppend.push(formattedItem);
+            successCount++;
+          } else {
+            const errJson = await res.json().catch(() => ({}));
+            const msg = errJson.message || `Server status ${res.status}`;
+            errorsEncountered.push(`Item "${payload.name}": ${msg}`);
+          }
+        } else {
+          // Client side fallback insertion
+          const isConsumable = selectedCategory?.type === "CONSUMABLE";
+          const newItemId = `mock-imported-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+          const mockStocks = sites.map((s, idx) => ({
+            id: `mock-stock-${Date.now()}-${idx}`,
+            siteId: s.id,
+            itemId: newItemId,
+            quantity: s.id === (selectedSite?.id || sites[0]?.id) ? payload.quantity : 0,
+            reorderPoint: 5,
+          }));
+
+          const mockAssets: any[] = [];
+          if (!isConsumable) {
+            const actualSitePrefix = (selectedSite?.prefix || "SYS").toUpperCase();
+            const actualCategoryPrefix = (selectedCategory?.prefix || "AST").toUpperCase();
+            const assetTagPrefix = `${actualSitePrefix}-${actualCategoryPrefix}-`;
+
+            for (let i = 0; i < payload.quantity; i++) {
+              const tagCode = payload.sku ? (payload.quantity > 1 ? `${payload.sku}-${i + 1}` : payload.sku) : `${assetTagPrefix}${Math.floor(1000 + Math.random() * 9000)}`;
+              mockAssets.push({
+                id: `mock-asset-${Date.now()}-${i}`,
+                tagCode,
+                serialNumber: `SN-${tagCode}`,
+                status: "AVAILABLE",
+                condition: "GOOD",
+                siteId: selectedSite?.id || sites[0]?.id || "site-1",
+                itemId: newItemId,
+              });
+            }
+          }
+
+          const newItem: CatalogItem = {
+            id: newItemId,
+            name: payload.name,
+            sku: payload.sku || `AST-${selectedCategory?.prefix || "AST"}-${Math.floor(1000 + Math.random() * 9000)}`,
+            description: payload.description || "",
+            unitPrice: payload.unitPrice,
+            leadTimeDays: payload.leadTimeDays,
+            categoryId: payload.categoryId,
+            category: selectedCategory || null,
+            supplierId: payload.supplierId,
+            supplier: safeSuppliers.find(s => s.id === payload.supplierId) || null,
+            stockLevels: mockStocks,
+            assets: mockAssets.length > 0 ? mockAssets : undefined,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+
+          newItemsToAppend.push(newItem);
+          successCount++;
+        }
+      } catch (e: any) {
+        console.error("Failed to insert imported item:", e);
+        errorsEncountered.push(`Item "${payload.name}": ${e.message || "Network failure"}`);
+      }
+    }
+
+    if (errorsEncountered.length > 0 && successCount === 0) {
+      throw new Error(errorsEncountered.join(" | "));
+    }
+
+    if (setCatalogItems && newItemsToAppend.length > 0) {
+      setCatalogItems((prev) => [...newItemsToAppend, ...prev]);
+    }
+
+    if (onUpdateCatalog) {
+      await onUpdateCatalog();
+    }
+  };
 
   // Show selection circles ONLY when explicit multi-select mode is active
   const showCircles = isMultiSelectMode;
@@ -1475,6 +1602,33 @@ export const CatalogTab = ({
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
                 Export CSV
               </button>
+
+              {canEditAddRemove && (
+                <button
+                  onClick={() => setIsImportModalOpen(true)}
+                  style={{
+                    height: "42px",
+                    padding: "0 16px",
+                    borderRadius: "10px",
+                    border: "1px solid #C7D2FE",
+                    background: "#EEF2FF",
+                    color: "#4338CA",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    boxShadow: "0 1px 2px rgba(99,102,241,0.1)",
+                    transition: "all 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#E0E7FF"}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#EEF2FF"}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                  Import Excel
+                </button>
+              )}
 
               {canEditAddRemove && (
                 <button
@@ -3948,6 +4102,17 @@ export const CatalogTab = ({
           </div>
         </div>
       )}
+
+      {/* Excel Asset Import Modal */}
+      <ImportAssetModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        sites={sites}
+        categories={categories}
+        suppliers={[]}
+        catalogItems={catalogItems}
+        onImportSuccess={handleBatchImportSuccess}
+      />
 
       {/* Dynamic Keyframes & Transition Animations Matching Reports & Logs */}
       <style dangerouslySetInnerHTML={{ __html: `

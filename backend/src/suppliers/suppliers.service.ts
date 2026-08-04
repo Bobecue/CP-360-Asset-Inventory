@@ -6,13 +6,27 @@ export class SuppliersService {
   constructor(private readonly prisma: PrismaService) {}
 
   private async generateSupplierId(): Promise<string> {
-    const count = await this.prisma.supplier.count();
-    let num = count + 1;
-    let code = `SUP-${String(num).padStart(4, "0")}`;
+    const allSuppliers = await this.prisma.supplier.findMany({
+      select: { supplierId: true },
+    });
+    let maxNum = 0;
+    for (const sup of allSuppliers) {
+      if (sup.supplierId) {
+        const match = sup.supplierId.match(/(\d+)/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (!isNaN(num) && num > maxNum) {
+            maxNum = num;
+          }
+        }
+      }
+    }
+    let nextNum = maxNum + 1;
+    let code = `SUP-${String(nextNum).padStart(3, "0")}`;
     let exists = await this.prisma.supplier.findFirst({ where: { supplierId: code } });
     while (exists) {
-      num++;
-      code = `SUP-${String(num).padStart(4, "0")}`;
+      nextNum++;
+      code = `SUP-${String(nextNum).padStart(3, "0")}`;
       exists = await this.prisma.supplier.findFirst({ where: { supplierId: code } });
     }
     return code;
@@ -176,6 +190,7 @@ export class SuppliersService {
       province?: string;
       country?: string;
       leadTimeDays?: number;
+      isActive?: boolean;
     }
   ) {
     const existing = await this.prisma.supplier.findUnique({ where: { id } });
@@ -214,6 +229,7 @@ export class SuppliersService {
         province: data.province !== undefined ? (data.province ? data.province.trim() : null) : existing.province,
         country: data.country !== undefined ? (data.country ? data.country.trim() : null) : existing.country,
         leadTimeDays: data.leadTimeDays !== undefined ? Number(data.leadTimeDays) : existing.leadTimeDays,
+        isActive: data.isActive !== undefined ? Boolean(data.isActive) : existing.isActive,
       },
     });
 
@@ -223,33 +239,22 @@ export class SuppliersService {
   async remove(id: string) {
     const existing = await this.prisma.supplier.findUnique({
       where: { id },
-      include: {
-        _count: {
-          select: { purchaseOrders: true, assets: true },
-        },
-      },
     });
 
     if (!existing) {
       throw new NotFoundException(`Supplier with ID ${id} not found.`);
     }
 
-    if (existing._count.purchaseOrders > 0) {
-      throw new BadRequestException(
-        `Cannot delete supplier because it is associated with ${existing._count.purchaseOrders} purchase order(s).`
-      );
-    }
+    const updated = await this.prisma.supplier.update({
+      where: { id },
+      data: { isActive: !existing.isActive },
+    });
 
-    // Unlink assets from supplier before delete if any
-    if (existing._count.assets > 0) {
-      await this.prisma.asset.updateMany({
-        where: { supplierId: id },
-        data: { supplierId: null },
-      });
-    }
-
-    await this.prisma.supplier.delete({ where: { id } });
-    return { message: "Supplier deleted successfully", statusCode: 200 };
+    return {
+      message: `Supplier ${updated.isActive ? "activated" : "inactivated"} successfully`,
+      statusCode: 200,
+      data: updated,
+    };
   }
 
   async assignAssets(supplierId: string, assetIds: string[]) {

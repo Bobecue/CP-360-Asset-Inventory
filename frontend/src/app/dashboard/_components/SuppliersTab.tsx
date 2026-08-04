@@ -12,6 +12,7 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusTabFilter, setStatusTabFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
 
   // Modals & Drawers
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -86,8 +87,26 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
     setEditingSupplier(null);
   };
 
+  const getNextSupplierId = (suppliersList: Supplier[]) => {
+    let maxNum = 0;
+    suppliersList.forEach((s) => {
+      if (s.supplierId) {
+        const match = s.supplierId.match(/(\d+)/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (!isNaN(num) && num > maxNum) {
+            maxNum = num;
+          }
+        }
+      }
+    });
+    const nextNum = maxNum + 1;
+    return `SUP-${String(nextNum).padStart(3, "0")}`;
+  };
+
   const handleOpenAdd = () => {
     resetForm();
+    setFormSupplierId(getNextSupplierId(suppliers));
     setIsAddModalOpen(true);
   };
 
@@ -174,22 +193,31 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
     }
   };
 
-  const handleDeleteSupplier = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete supplier "${name}"?`)) return;
+  const handleToggleSupplierStatus = async (supplier: Supplier) => {
+    const isCurrentlyActive = supplier.isActive !== false;
+    const actionText = isCurrentlyActive ? "inactivate" : "activate";
+    if (!confirm(`Are you sure you want to ${actionText} supplier "${supplier.name}"?`)) return;
 
     try {
-      const res = await fetch(getApiUrl(`/suppliers/${id}`), {
-        method: "DELETE",
+      const res = await fetch(getApiUrl(`/suppliers/${supplier.id}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !isCurrentlyActive }),
       });
       const json = await res.json();
       if (!res.ok) {
-        alert(json.message || "Failed to delete supplier.");
+        alert(json.message || `Failed to ${actionText} supplier.`);
         return;
       }
-      fetchSuppliers();
+      await fetchSuppliers();
+      if (isCurrentlyActive) {
+        setStatusTabFilter("INACTIVE");
+      } else {
+        setStatusTabFilter("ACTIVE");
+      }
     } catch (err) {
       console.error(err);
-      alert("An error occurred while deleting the supplier.");
+      alert(`An error occurred while trying to ${actionText} the supplier.`);
     }
   };
 
@@ -250,6 +278,10 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
 
   // Filtered suppliers
   const filteredSuppliers = suppliers.filter((s) => {
+    const isActive = s.isActive !== false;
+    if (statusTabFilter === "ACTIVE" && !isActive) return false;
+    if (statusTabFilter === "INACTIVE" && isActive) return false;
+
     if (!searchTerm || searchTerm.trim() === "") return true;
     const q = searchTerm.toLowerCase().trim();
     return (
@@ -331,6 +363,40 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
             {suppliers.length}
           </div>
         </div>
+      </div>
+
+      {/* Status Filter Tabs */}
+      <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-700/60 pb-3">
+        <button
+          onClick={() => setStatusTabFilter("ALL")}
+          className={`px-4 py-2 text-xs font-semibold rounded-xl transition-all ${
+            statusTabFilter === "ALL"
+              ? "bg-indigo-600 text-white shadow-sm"
+              : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+          }`}
+        >
+          All Vendors ({suppliers.length})
+        </button>
+        <button
+          onClick={() => setStatusTabFilter("ACTIVE")}
+          className={`px-4 py-2 text-xs font-semibold rounded-xl transition-all ${
+            statusTabFilter === "ACTIVE"
+              ? "bg-emerald-600 text-white shadow-sm"
+              : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+          }`}
+        >
+          Active ({suppliers.filter((s) => s.isActive !== false).length})
+        </button>
+        <button
+          onClick={() => setStatusTabFilter("INACTIVE")}
+          className={`px-4 py-2 text-xs font-semibold rounded-xl transition-all ${
+            statusTabFilter === "INACTIVE"
+              ? "bg-rose-600 text-white shadow-sm"
+              : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+          }`}
+        >
+          Inactive ({suppliers.filter((s) => s.isActive === false).length})
+        </button>
       </div>
 
       {/* Main Table / Grid */}
@@ -433,10 +499,15 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
                     </td>
                     <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">
                       <div className="glitter-supplier-name-badge inline-flex items-center gap-2 px-2 py-1 rounded-lg">
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-xs font-bold flex items-center justify-center shadow-sm shrink-0">
+                        <div className={`w-7 h-7 rounded-lg text-white text-xs font-bold flex items-center justify-center shadow-sm shrink-0 ${s.isActive === false ? "bg-gray-400 dark:bg-gray-600" : "bg-gradient-to-br from-indigo-500 to-purple-600"}`}>
                           {s.name.charAt(0).toUpperCase()}
                         </div>
-                        <span>{s.name}</span>
+                        <span className={s.isActive === false ? "text-gray-400 dark:text-gray-500" : ""}>{s.name}</span>
+                        {s.isActive === false && (
+                          <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-red-100 text-red-700 dark:bg-red-950/80 dark:text-red-300 border border-red-200 dark:border-red-800">
+                            Inactive
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-xs">
@@ -516,13 +587,23 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
                           </svg>
                         </button>
                         <button
-                          onClick={() => handleDeleteSupplier(s.id, s.name)}
-                          title="Delete Supplier"
-                          className="glitter-action-btn p-1.5 text-red-600 hover:text-red-800 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition-colors"
+                          onClick={() => handleToggleSupplierStatus(s)}
+                          title={s.isActive === false ? "Activate Supplier" : "Inactivate Supplier"}
+                          className={`glitter-action-btn p-1.5 rounded-lg transition-colors ${
+                            s.isActive === false
+                              ? "text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/50"
+                              : "text-amber-600 hover:text-amber-800 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/50"
+                          }`}
                         >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                          {s.isActive === false ? (
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                            </svg>
+                          )}
                         </button>
                       </div>
                     </td>
@@ -609,20 +690,22 @@ export const SuppliersTab = ({ currentUser }: SuppliersTabProps) => {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                     <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>
-                      Supplier ID (Optional / Auto)
+                      Supplier ID (Auto)
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. SUP-0001"
+                      placeholder="Auto-generated"
                       value={formSupplierId}
-                      onChange={(e) => setFormSupplierId(e.target.value)}
+                      readOnly
                       style={{
                         width: "100%",
                         padding: "0.45rem 0.65rem",
                         borderRadius: 6,
-                        border: "1px solid #e2e8f0",
+                        border: "1px solid #cbd5e1",
                         fontSize: "0.8rem",
-                        color: "#1e293b",
+                        color: "#475569",
+                        backgroundColor: "#f1f5f9",
+                        cursor: "not-allowed",
                         outline: "none",
                       }}
                     />

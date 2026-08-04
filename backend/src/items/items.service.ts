@@ -168,11 +168,18 @@ export class ItemsService {
           OR: [
             { name: { equals: data.categoryId, mode: "insensitive" } },
             { prefix: { equals: data.categoryId, mode: "insensitive" } },
+            { name: { contains: data.categoryId, mode: "insensitive" } },
           ],
         },
       });
       if (category) {
         data.categoryId = category.id;
+      } else {
+        // Fallback to first existing category if category ID is unassigned
+        category = await this.prisma.assetCategory.findFirst();
+        if (category) {
+          data.categoryId = category.id;
+        }
       }
     }
     if (!category) {
@@ -364,11 +371,18 @@ export class ItemsService {
             OR: [
               { name: { equals: data.categoryId, mode: "insensitive" } },
               { prefix: { equals: data.categoryId, mode: "insensitive" } },
+              { name: { contains: data.categoryId, mode: "insensitive" } },
             ],
           },
         });
         if (category) {
           data.categoryId = category.id;
+        } else {
+          // Fallback to existing item's category or default category
+          category = (await this.prisma.assetCategory.findUnique({ where: { id: item.categoryId } })) || (await this.prisma.assetCategory.findFirst());
+          if (category) {
+            data.categoryId = category.id;
+          }
         }
       }
       if (!category) {
