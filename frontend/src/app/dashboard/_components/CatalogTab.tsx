@@ -899,7 +899,19 @@ export const CatalogTab = ({
 
             const deployedSiteObj = sites.find((s: any) => s.id === dep.siteId || s.name === dep.siteId || s.name === dep.siteLocation);
             const deployedSiteId = deployedSiteObj ? deployedSiteObj.id : (dep.siteId && dep.siteId !== "ALL" ? dep.siteId : undefined);
-            const homeSiteId = dep.rawRequest?.sourceSiteId || dep.rawRequest?.asset?.siteId || dep.siteId;
+
+            const tagForPrefix = dep.assetTag || dep.rawRequest?.assetTag || dep.rawRequest?.asset?.tagCode || dep.rawRequest?.asset?.assetTag;
+            let homeSiteIdFromTag: string | undefined = undefined;
+            if (tagForPrefix) {
+              const parts = tagForPrefix.split('-');
+              if (parts.length >= 3) {
+                const prefix = parts[0];
+                const siteObj = sites.find((s: any) => (s.prefix || "").toLowerCase() === prefix.toLowerCase());
+                if (siteObj) homeSiteIdFromTag = siteObj.id;
+              }
+            }
+
+            const homeSiteId = dep.rawRequest?.sourceSiteId || homeSiteIdFromTag || dep.rawRequest?.asset?.siteId || dep.siteId;
             const homeSiteObj = sites.find((s: any) => s.id === homeSiteId || s.name === homeSiteId);
             const resolvedHomeSiteId = homeSiteObj ? homeSiteObj.id : (homeSiteId && homeSiteId !== "ALL" ? homeSiteId : deployedSiteId);
 
@@ -1071,7 +1083,19 @@ export const CatalogTab = ({
             const newQty = (item.quantity ?? 0) + qtyReturnedToStock;
             const deployedSiteObj = sites.find((s: any) => s.id === dep.siteId || s.name === dep.siteLocation);
             const deployedSiteId = deployedSiteObj ? deployedSiteObj.id : (dep.siteId && dep.siteId !== "ALL" ? dep.siteId : undefined);
-            const homeSiteId = dep.rawRequest?.sourceSiteId || dep.rawRequest?.asset?.siteId || dep.siteId;
+
+            const tagForPrefix = dep.assetTag || dep.rawRequest?.assetTag || dep.rawRequest?.asset?.tagCode;
+            let homeSiteIdFromTag: string | undefined = undefined;
+            if (tagForPrefix) {
+              const parts = tagForPrefix.split('-');
+              if (parts.length >= 3) {
+                const prefix = parts[0];
+                const siteObj = sites.find((s: any) => (s.prefix || "").toLowerCase() === prefix.toLowerCase());
+                if (siteObj) homeSiteIdFromTag = siteObj.id;
+              }
+            }
+
+            const homeSiteId = dep.rawRequest?.sourceSiteId || homeSiteIdFromTag || dep.rawRequest?.asset?.siteId || dep.siteId;
             const homeSiteObj = sites.find((s: any) => s.id === homeSiteId || s.name === homeSiteId);
             const resolvedHomeSiteId = homeSiteObj ? homeSiteObj.id : (homeSiteId && homeSiteId !== "ALL" ? homeSiteId : deployedSiteId);
 

@@ -33,7 +33,30 @@ async function main() {
       if (req.purpose) parsedPurpose = JSON.parse(req.purpose);
     } catch {}
 
-    const rawSiteId = parsedPurpose.sourceSiteId || parsedPurpose.siteId || req.requester?.siteId;
+    const tagsToRestore: string[] = [];
+    if (parsedPurpose.assetTag) {
+      parsedPurpose.assetTag.split(/,\s*/).forEach((t: string) => { if (t && t.trim()) tagsToRestore.push(t.trim()); });
+    }
+    if (Array.isArray(parsedPurpose.assetTags)) {
+      parsedPurpose.assetTags.forEach((t: string) => { if (t && t.trim()) tagsToRestore.push(t.trim()); });
+    }
+
+    let homeSiteIdFromTag: string | undefined = undefined;
+    const tagForPrefix = tagsToRestore[0] || req.asset?.tagCode;
+    if (tagForPrefix) {
+      const parts = tagForPrefix.split('-');
+      if (parts.length >= 3) {
+        const prefix = parts[0];
+        const siteObj = await prisma.site.findFirst({
+          where: { prefix: { equals: prefix, mode: 'insensitive' } }
+        });
+        if (siteObj) {
+          homeSiteIdFromTag = siteObj.id;
+        }
+      }
+    }
+
+    const rawSiteId = parsedPurpose.sourceSiteId || homeSiteIdFromTag || req.requester?.siteId || parsedPurpose.siteId;
     let targetSiteId: string | undefined = undefined;
 
     if (rawSiteId) {
@@ -70,14 +93,7 @@ async function main() {
       continue;
     }
 
-    // Restore physical asset status if present
-    const tagsToRestore: string[] = [];
-    if (parsedPurpose.assetTag) {
-      parsedPurpose.assetTag.split(/,\s*/).forEach((t: string) => { if (t && t.trim()) tagsToRestore.push(t.trim()); });
-    }
-    if (Array.isArray(parsedPurpose.assetTags)) {
-      parsedPurpose.assetTags.forEach((t: string) => { if (t && t.trim()) tagsToRestore.push(t.trim()); });
-    }
+
 
     if (tagsToRestore.length > 0) {
       await prisma.asset.updateMany({

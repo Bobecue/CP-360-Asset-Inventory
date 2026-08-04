@@ -1808,15 +1808,52 @@ export class RequestsService implements OnModuleInit {
     const commentLower = (returnComment || '').toLowerCase();
     const isDamaged = commentLower.includes('bad') || commentLower.includes('damaged') || commentLower.includes('missing');
 
-    // Determine current deployed site and original home/source site
-    let homeSiteId: string | undefined = parsedPurpose.sourceSiteId || r.asset?.siteId;
-    let deployedSiteId: string | undefined = parsedPurpose.siteId;
+    // 1. Extract asset tags that need to be restored
+    const tagsToRestore: string[] = [];
+    if (parsedPurpose.assetTag) {
+      parsedPurpose.assetTag.split(/,\s*/).forEach((t: string) => { if (t && t.trim()) tagsToRestore.push(t.trim()); });
+    }
+    if (Array.isArray(parsedPurpose.assetTags)) {
+      parsedPurpose.assetTags.forEach((t: string) => { if (t && t.trim()) tagsToRestore.push(t.trim()); });
+    }
+    if (tagsToRestore.length === 0 && r.purpose) {
+      const match = r.purpose.match(/(?:Tag|Asset Tag):\s*([^|]+)/i);
+      if (match && match[1]) {
+        tagsToRestore.push(match[1].trim());
+      }
+    }
 
+    // Determine current deployed site and original home/source site
+    let homeSiteId: string | undefined = parsedPurpose.sourceSiteId;
+
+    // Try to resolve homeSiteId from the prefix of the first tag code
+    let tagForPrefix = tagsToRestore[0] || r.asset?.tagCode;
+    if (!tagForPrefix && r.assetId) {
+      const ast = await this.prisma.asset.findUnique({ where: { id: r.assetId } });
+      if (ast?.tagCode) tagForPrefix = ast.tagCode;
+    }
+
+    if (tagForPrefix) {
+      const parts = tagForPrefix.split('-');
+      if (parts.length >= 3) {
+        const prefix = parts[0];
+        const site = await this.prisma.site.findFirst({
+          where: { prefix: { equals: prefix, mode: 'insensitive' } }
+        });
+        if (site) {
+          homeSiteId = site.id;
+        }
+      }
+    }
+
+    if (!homeSiteId) homeSiteId = parsedPurpose.sourceSiteId || r.asset?.siteId;
     if (!homeSiteId && r.assetId) {
       const ast = await this.prisma.asset.findUnique({ where: { id: r.assetId } });
       if (ast?.siteId) homeSiteId = ast.siteId;
     }
     if (!homeSiteId) homeSiteId = parsedPurpose.siteId || r.requester?.siteId;
+
+    let deployedSiteId: string | undefined = parsedPurpose.siteId;
     if (!deployedSiteId) deployedSiteId = homeSiteId;
 
     // Resolve site IDs if site names or prefixes were provided
@@ -1844,21 +1881,6 @@ export class RequestsService implements OnModuleInit {
     const itemsMissingMatch = returnComment ? returnComment.match(/\[MISSING:\s*(\d+)\]/i) : null;
     const itemsMissing = itemsMissingMatch ? parseInt(itemsMissingMatch[1], 10) : (commentLower.includes('missing') && !itemsMissingMatch ? 1 : 0);
     const effectiveReturnQty = Math.max(0, totalQuantity - itemsMissing);
-
-    // 1. Bring back the physical asset status & reset asset location back to home site
-    const tagsToRestore: string[] = [];
-    if (parsedPurpose.assetTag) {
-      parsedPurpose.assetTag.split(/,\s*/).forEach((t: string) => { if (t && t.trim()) tagsToRestore.push(t.trim()); });
-    }
-    if (Array.isArray(parsedPurpose.assetTags)) {
-      parsedPurpose.assetTags.forEach((t: string) => { if (t && t.trim()) tagsToRestore.push(t.trim()); });
-    }
-    if (tagsToRestore.length === 0 && r.purpose) {
-      const match = r.purpose.match(/(?:Tag|Asset Tag):\s*([^|]+)/i);
-      if (match && match[1]) {
-        tagsToRestore.push(match[1].trim());
-      }
-    }
 
     if (tagsToRestore.length > 0) {
       await this.prisma.asset.updateMany({

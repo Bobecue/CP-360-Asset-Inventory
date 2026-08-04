@@ -141,6 +141,39 @@ export class ItemsService {
     });
   }
 
+  private async resolveAssetCategory(categoryId: string) {
+    if (!categoryId) return null;
+    
+    // 1. Try to find by UUID directly in AssetCategory
+    let category = await this.prisma.assetCategory.findUnique({
+      where: { id: categoryId },
+    });
+    if (category) return category;
+
+    // 2. Try to find if it is an ExpenseCategory ID
+    const expCat = await this.prisma.expenseCategory.findUnique({
+      where: { id: categoryId },
+    });
+    if (expCat) {
+      category = await this.prisma.assetCategory.findFirst({
+        where: { name: { equals: expCat.name, mode: "insensitive" } },
+      });
+      if (category) return category;
+    }
+
+    // 3. Fallback to matching by name/prefix
+    category = await this.prisma.assetCategory.findFirst({
+      where: {
+        OR: [
+          { name: { equals: categoryId, mode: "insensitive" } },
+          { prefix: { equals: categoryId, mode: "insensitive" } },
+          { name: { contains: categoryId, mode: "insensitive" } },
+        ],
+      },
+    });
+    return category;
+  }
+
   async create(
     data: {
       name: string;
@@ -159,32 +192,15 @@ export class ItemsService {
     if (!data.categoryId) {
       throw new BadRequestException("Category is required.");
     }
-    let category = await this.prisma.assetCategory.findUnique({
-      where: { id: data.categoryId },
-    });
+    let category = await this.resolveAssetCategory(data.categoryId);
     if (!category) {
-      category = await this.prisma.assetCategory.findFirst({
-        where: {
-          OR: [
-            { name: { equals: data.categoryId, mode: "insensitive" } },
-            { prefix: { equals: data.categoryId, mode: "insensitive" } },
-            { name: { contains: data.categoryId, mode: "insensitive" } },
-          ],
-        },
-      });
-      if (category) {
-        data.categoryId = category.id;
-      } else {
-        // Fallback to first existing category if category ID is unassigned
-        category = await this.prisma.assetCategory.findFirst();
-        if (category) {
-          data.categoryId = category.id;
-        }
-      }
+      // Fallback to first existing category if category ID is unassigned
+      category = await this.prisma.assetCategory.findFirst();
     }
     if (!category) {
       throw new NotFoundException("Category not found.");
     }
+    data.categoryId = category.id;
 
     const isConsumable = category.type === "CONSUMABLE";
     const qty = (data.quantity !== undefined && data.quantity > 0) ? data.quantity : 1;
@@ -362,32 +378,15 @@ export class ItemsService {
     }
 
     if (data.categoryId) {
-      let category = await this.prisma.assetCategory.findUnique({
-        where: { id: data.categoryId },
-      });
+      let category = await this.resolveAssetCategory(data.categoryId);
       if (!category) {
-        category = await this.prisma.assetCategory.findFirst({
-          where: {
-            OR: [
-              { name: { equals: data.categoryId, mode: "insensitive" } },
-              { prefix: { equals: data.categoryId, mode: "insensitive" } },
-              { name: { contains: data.categoryId, mode: "insensitive" } },
-            ],
-          },
-        });
-        if (category) {
-          data.categoryId = category.id;
-        } else {
-          // Fallback to existing item's category or default category
-          category = (await this.prisma.assetCategory.findUnique({ where: { id: item.categoryId } })) || (await this.prisma.assetCategory.findFirst());
-          if (category) {
-            data.categoryId = category.id;
-          }
-        }
+        // Fallback to existing item's category or default category
+        category = (await this.prisma.assetCategory.findUnique({ where: { id: item.categoryId } })) || (await this.prisma.assetCategory.findFirst());
       }
       if (!category) {
         throw new NotFoundException("Category not found.");
       }
+      data.categoryId = category.id;
     }
 
     if (data.sku) {
