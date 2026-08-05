@@ -16,7 +16,7 @@ describe('OpexService Unit Tests', () => {
     create: jest.fn().mockResolvedValue({ id: 'log-1' }),
   };
 
-  const mockPrismaService = {
+  const mockPrismaService: any = {
     user: {
       findFirst: jest.fn(),
     },
@@ -35,7 +35,7 @@ describe('OpexService Unit Tests', () => {
     transactionAttachment: {
       count: jest.fn().mockResolvedValue(1),
     },
-    $transaction: jest.fn((cb) => cb(mockPrismaService)),
+    $transaction: jest.fn((cb: any) => cb(mockPrismaService)),
   };
 
   beforeEach(async () => {
@@ -56,7 +56,7 @@ describe('OpexService Unit Tests', () => {
     it('should compute total as unitPrice * qty server-side', async () => {
       mockPrismaService.user.findFirst.mockResolvedValue(mockEncoder);
       mockPrismaService.monthlyClose.findUnique.mockResolvedValue(null);
-      mockPrismaService.opexEntry.create.mockImplementation((args) => args.data);
+      mockPrismaService.opexEntry.create.mockImplementation((args: any) => args.data);
 
       const result: any = await service.create(
         {

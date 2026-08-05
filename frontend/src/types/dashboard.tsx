@@ -30,6 +30,7 @@ export interface User {
   role: "SUPER_ADMIN" | "ADMIN" | "INVENTORY_STAFF" | "TEAM_LEADER" | "EMPLOYEE";
   isActive: boolean;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface SiteStock {
