@@ -24,6 +24,7 @@ export interface User {
   email: string;
   name: string;
   employeeId?: string | null;
+  accountType?: string | null;
   department?: string | null;
   siteId?: string | null;
   site?: { id: string; name: string; prefix: string } | null;

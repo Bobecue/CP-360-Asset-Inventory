@@ -100,7 +100,7 @@ interface RequestsTabProps {
   onRefreshCatalog?: () => void;
 }
 
-const REQUESTS_CACHE_V = 'v8';
+const REQUESTS_CACHE_V = 'v10';
 
 export function RequestsTab({
   currentUser,
@@ -403,6 +403,12 @@ export function RequestsTab({
     const reqToUpdate = allRequests.find(r => r.id === id);
     const currentStatus = reqToUpdate?.status;
 
+    if (reqToUpdate && reqToUpdate.requestedById === currentUser.id && ['PENDING_OPS_APPROVAL', 'APPROVED'].includes(newStatus)) {
+      showAlert('Self-request: You cannot approve your own request.', 'Approval Blocked');
+      setIsSubmittingReview(false);
+      return;
+    }
+
     try {
       let updatedRequest: RequestEntry | null = null;
       try {
@@ -547,6 +553,17 @@ export function RequestsTab({
   // Bulk Approve Requests
   const handleBulkApprove = async (selectedIds: string[], comment?: string) => {
     setIsSubmittingReview(true);
+    const eligibleIds = selectedIds.filter(id => {
+      const req = allRequests.find(r => r.id === id);
+      return req && req.requestedById !== currentUser.id;
+    });
+
+    if (eligibleIds.length === 0) {
+      showAlert('Self-request: You cannot approve your own request.', 'Approval Blocked');
+      setIsSubmittingReview(false);
+      return;
+    }
+
     try {
       let updatedList: any[] = [];
       const approvalComment = comment || 'Approved from Request Orders module';
@@ -555,7 +572,7 @@ export function RequestsTab({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            ids: selectedIds,
+            ids: eligibleIds,
             approverEmail: currentUser.email,
             comment: approvalComment
           })
@@ -704,6 +721,111 @@ export function RequestsTab({
         for (const id of selectedIds) {
           await handleReviewRequest(id, 'REJECTED', cancelComment);
         }
+      }
+
+      setRefreshTrigger(prev => prev + 1);
+      if (onRefreshCatalog) onRefreshCatalog();
+      if (onRefreshNotifications) onRefreshNotifications();
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
+  // Bulk Confirm Receipt
+  const handleBulkConfirmReceipt = async (selectedIds: string[]) => {
+    setIsSubmittingReview(true);
+    try {
+      let updatedList: any[] = [];
+      try {
+        const response = await fetch('http://localhost:3001/requests/bulk-confirm-receipt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-user': currentUser.email },
+          body: JSON.stringify({
+            ids: selectedIds,
+            userEmail: currentUser.email
+          })
+        });
+        if (response.ok) {
+          const json = await response.json();
+          updatedList = json.data || [];
+        }
+      } catch (err) {
+        console.warn('Backend bulk confirm receipt error, fallback loop:', err);
+      }
+
+      if (updatedList.length > 0) {
+        const updatedMap = new Map(updatedList.map(item => [item.id, item]));
+        setAllRequests(prev => prev.map(r => updatedMap.get(r.id) || r));
+      } else {
+        const nowStr = new Date().toISOString();
+        setAllRequests(prev => prev.map(r => {
+          if (selectedIds.includes(r.id)) {
+            return {
+              ...r,
+              status: 'ITEM_RECEIVED' as RequestStatus,
+              history: [
+                ...(r.history || []),
+                { status: 'ITEM_RECEIVED', comment: 'Receipt confirmed by requester', timestamp: nowStr, byName: currentUser.name }
+              ]
+            };
+          }
+          return r;
+        }));
+      }
+
+      setRefreshTrigger(prev => prev + 1);
+      if (onRefreshCatalog) onRefreshCatalog();
+      if (onRefreshNotifications) onRefreshNotifications();
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
+  // Bulk Return
+  const handleBulkReturn = async (selectedIds: string[], comment?: string, itemsMap?: Record<string, string>) => {
+    setIsSubmittingReview(true);
+    try {
+      let updatedList: any[] = [];
+      try {
+        const response = await fetch('http://localhost:3001/requests/bulk-return', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-user': currentUser.email },
+          body: JSON.stringify({
+            ids: selectedIds,
+            returnerEmail: currentUser.email,
+            comment,
+            itemsMap
+          })
+        });
+        if (response.ok) {
+          const json = await response.json();
+          updatedList = json.data || [];
+        }
+      } catch (err) {
+        console.warn('Backend bulk return error, fallback loop:', err);
+      }
+
+      if (updatedList.length > 0) {
+        const updatedMap = new Map(updatedList.map(item => [item.id, item]));
+        setAllRequests(prev => prev.map(r => updatedMap.get(r.id) || r));
+      } else {
+        const nowStr = new Date().toISOString();
+        setAllRequests(prev => prev.map(r => {
+          if (selectedIds.includes(r.id)) {
+            const itemComment = (itemsMap && itemsMap[r.id]) ? itemsMap[r.id] : (comment || 'Returned to inventory');
+            return {
+              ...r,
+              status: 'RETURNED' as RequestStatus,
+              returnedAt: nowStr,
+              returnComment: itemComment,
+              history: [
+                ...(r.history || []),
+                { status: 'RETURNED', comment: itemComment, timestamp: nowStr, byName: currentUser.name }
+              ]
+            };
+          }
+          return r;
+        }));
       }
 
       setRefreshTrigger(prev => prev + 1);
@@ -1535,6 +1657,8 @@ export function RequestsTab({
               onBulkPreparePickup={handleBulkPreparePickup}
               onBulkRelease={handleBulkRelease}
               onBulkCancel={handleBulkCancel}
+              onBulkConfirmReceipt={handleBulkConfirmReceipt}
+              onBulkReturn={handleBulkReturn}
               onExport={handleExportPDF}
               onReturn={handleOpenReturnFromTable}
               onRowClick={(req) => {

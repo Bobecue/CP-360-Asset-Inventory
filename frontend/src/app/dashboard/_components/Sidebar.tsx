@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import { RoleBadge, EidBadge } from "@/types/dashboard";
 
 interface SidebarProps {
   activeTab: string;
@@ -526,10 +525,7 @@ export const Sidebar = ({ activeTab, isSidebarOpen, onTabChange, onLogout, curre
             </div>
             <div style={{ display: "flex", flexDirection: "column", minWidth: 0, gap: "0.2rem" }}>
               <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#F8FAFC", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }}>{name}</span>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", flexWrap: "wrap" }}>
-                <RoleBadge role={role} size="sm" />
-                <EidBadge employeeId={employeeId} size="sm" />
-              </div>
+              <span style={{ fontSize: "0.72rem", color: "#64748B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.2 }}>{department}</span>
             </div>
           </div>
         )}

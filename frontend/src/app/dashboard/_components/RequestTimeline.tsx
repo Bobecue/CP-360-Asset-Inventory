@@ -264,6 +264,7 @@ export function RequestTimeline({
   const mapStatus = (statusStr: string): string => {
     const s = statusStr.toUpperCase();
     if (s === 'PENDING' || s === 'PENDING_APPROVAL' || s === 'REQUESTED') return 'PENDING_APPROVAL';
+    if (s === 'PROCUREMENT_DONE' || s === 'STOCK_REPLENISHED' || s === 'PROCUREMENT_COMPLETED') return 'PROCUREMENT_DONE';
     if (s === 'PENDING_OPS_APPROVAL') return 'PENDING_OPS_APPROVAL';
     if (s === 'APPROVED') return 'APPROVED';
     if (s === 'READY_FOR_PICKUP') return 'READY_FOR_PICKUP';
@@ -435,6 +436,19 @@ export function RequestTimeline({
           timestamp: evt.timestamp,
           boxText: evt.comment || 'No stock available at target site. Automatically routed to Pending Procurement.',
           bottomHtml: <span>Requested by: <strong>{evt.byName || requestedByName}</strong> &middot; Status: <strong style={{ color: '#6d28d9' }}>Pending Procurement</strong></span>
+        });
+      }
+
+      if (s === 'PROCUREMENT_DONE') {
+        nodes.push({
+          type: 'procurement_done',
+          title: 'PROCUREMENT COMPLETED',
+          titleColor: '#0284c7',
+          iconColor: '#0284c7',
+          iconSvg: getApprovedIcon(),
+          timestamp: evt.timestamp,
+          boxText: evt.comment || 'Stock levels adjusted and replenished. Procurement completed.',
+          bottomHtml: <span>Updated by: <strong>{evt.byName || 'Inventory Staff'}</strong> &middot; Status: <strong style={{ color: '#0284c7' }}>Procurement Completed</strong></span>
         });
       }
 

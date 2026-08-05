@@ -513,29 +513,7 @@ export class RequestsService implements OnModuleInit {
         });
       }
 
-      // 2. Increase stock at the DESTINATION site selected in deployment form (if source != destination)
-      if (siteObj.id !== sourceSiteId) {
-        const destStock = await this.prisma.siteStock.findFirst({
-          where: {
-            siteId: siteObj.id,
-            itemId: item.id,
-          }
-        });
-        if (destStock) {
-          await this.prisma.siteStock.update({
-            where: { id: destStock.id },
-            data: { quantity: { increment: deployQty } }
-          });
-        } else {
-          await this.prisma.siteStock.create({
-            data: {
-              siteId: siteObj.id,
-              itemId: item.id,
-              quantity: deployQty
-            }
-          });
-        }
-      }
+
     }
 
     const r = await this.prisma.request.create({
@@ -602,11 +580,27 @@ export class RequestsService implements OnModuleInit {
           });
           const stockQty = siteStock ? siteStock.quantity : 0;
           if (stockQty > 0) {
+            await this.prisma.requestEvent.create({
+              data: {
+                requestId: req.id,
+                status: 'PROCUREMENT_DONE',
+                comment: 'Stock levels adjusted and replenished. Procurement completed.',
+                userId: req.requesterId
+              }
+            });
+
             await this.prisma.request.update({
               where: { id: req.id },
               data: {
-                status: 'APPROVED',
-                comments: 'Stock confirmed available in system inventory.'
+                status: 'PENDING_APPROVAL',
+                comments: 'Stock confirmed available in system inventory. Pending approval.',
+                events: {
+                  create: {
+                    status: 'PENDING_APPROVAL',
+                    comment: 'Submitted for Inventory Staff review',
+                    userId: req.requesterId
+                  }
+                }
               }
             });
           }
@@ -1004,6 +998,9 @@ export class RequestsService implements OnModuleInit {
     if (!currentReq) {
       throw new NotFoundException('Request not found');
     }
+    if (currentReq.requesterId === u.id) {
+      throw new ForbiddenException('Self-request: You cannot approve your own request.');
+    }
     if (currentReq.status !== 'PENDING_APPROVAL') {
       throw new BadRequestException(`Cannot staff-approve a request that is currently ${currentReq.status}.`);
     }
@@ -1050,6 +1047,9 @@ export class RequestsService implements OnModuleInit {
     });
     if (!currentReq) {
       throw new NotFoundException('Request not found');
+    }
+    if (currentReq.requesterId === u.id) {
+      throw new ForbiddenException('Self-request: You cannot approve your own request.');
     }
     if (currentReq.status !== 'PENDING_OPS_APPROVAL') {
       throw new BadRequestException(`Cannot ops-approve a request that is currently ${currentReq.status}.`);
@@ -1356,8 +1356,9 @@ export class RequestsService implements OnModuleInit {
         } catch { /* ignore */ }
 
         if (isConsumable) {
-          // Decrement stock for consumable items
-          if (releaseSiteId) {
+          // Decrement stock for consumable items (if not already decremented during approval/deployment)
+          const alreadyDeducted = ['APPROVED', 'RELEASED', 'AWAITING_CONFIRMATION', 'ITEM_RECEIVED'].includes(req.status);
+          if (releaseSiteId && !alreadyDeducted) {
             const stock = await this.prisma.siteStock.findFirst({
               where: { siteId: releaseSiteId, itemId: req.itemId }
             });
@@ -1417,8 +1418,9 @@ export class RequestsService implements OnModuleInit {
             });
           }
 
-          // Decrement stock for non-consumable items
-          if (effectiveSiteId) {
+          // Decrement stock for non-consumable items (if not already decremented during approval/deployment)
+          const alreadyDeducted = ['APPROVED', 'RELEASED', 'AWAITING_CONFIRMATION', 'ITEM_RECEIVED'].includes(req.status);
+          if (effectiveSiteId && !alreadyDeducted) {
             const stock = await this.prisma.siteStock.findFirst({
               where: { siteId: effectiveSiteId, itemId: req.itemId }
             });
@@ -1489,7 +1491,7 @@ export class RequestsService implements OnModuleInit {
         const req = await this.prisma.request.findUnique({ where: { id } });
         if (!req) continue;
         const currentStatus = req.status as string;
-        if (['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'APPROVED', 'READY_FOR_PICKUP'].includes(currentStatus)) {
+        if (['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'PENDING_PROCUREMENT', 'APPROVED', 'READY_FOR_PICKUP'].includes(currentStatus)) {
           const updated = await this.prisma.request.update({
             where: { id },
             data: {
@@ -1589,7 +1591,8 @@ export class RequestsService implements OnModuleInit {
         } catch { /* ignore parse errors */ }
         // Do NOT fall back to requester.siteId — that's the requester's home site, not the stock site
 
-        if (releaseSiteId) {
+        const alreadyDeducted = ['APPROVED', 'RELEASED', 'AWAITING_CONFIRMATION', 'ITEM_RECEIVED'].includes(req.status);
+        if (releaseSiteId && !alreadyDeducted) {
           let relQty = 1;
           try {
             if (req.purpose && req.purpose.startsWith('{')) {
@@ -1756,7 +1759,8 @@ export class RequestsService implements OnModuleInit {
       } catch {}
       // Fallback to asset.siteId ONLY if purpose has no siteId (non-deployment requests)
       if (!releaseSiteId) releaseSiteId = asset.siteId;
-      if (releaseSiteId) {
+      const alreadyDeducted = ['APPROVED', 'RELEASED', 'AWAITING_CONFIRMATION', 'ITEM_RECEIVED'].includes(req.status);
+      if (releaseSiteId && !alreadyDeducted) {
         let relQty = 1;
         try {
           if (req.purpose && req.purpose.startsWith('{')) {
@@ -1840,7 +1844,7 @@ export class RequestsService implements OnModuleInit {
   async cancel(id: string) {
     const currentReq = await this.prisma.request.findUnique({ where: { id } });
     if (!currentReq) throw new NotFoundException('Request not found');
-    if (currentReq.status !== 'PENDING_APPROVAL' && currentReq.status !== 'PENDING_OPS_APPROVAL' && currentReq.status !== 'APPROVED' && currentReq.status !== 'READY_FOR_PICKUP') {
+    if (currentReq.status !== 'PENDING_APPROVAL' && currentReq.status !== 'PENDING_OPS_APPROVAL' && currentReq.status !== 'APPROVED' && currentReq.status !== 'READY_FOR_PICKUP' && currentReq.status !== 'PENDING_PROCUREMENT') {
       throw new BadRequestException(`Cannot cancel a request that is currently ${currentReq.status}.`);
     }
 
@@ -1869,8 +1873,8 @@ export class RequestsService implements OnModuleInit {
     if (!r) return null;
 
     const isDeployment = r.purpose && r.purpose.includes('[ASSET DEPLOYMENT]');
-    if (r.status !== 'RELEASED' && r.status !== 'AWAITING_CONFIRMATION' && r.status !== 'ITEM_RECEIVED' && !isDeployment) {
-      throw new BadRequestException(`Cannot return a request that is currently ${r.status}.`);
+    if (r.status !== 'ITEM_RECEIVED' && !isDeployment) {
+      throw new BadRequestException(`Cannot return asset: Receipt confirmation is pending (${r.status}).`);
     }
 
     let adminUser = null;
@@ -2054,22 +2058,8 @@ export class RequestsService implements OnModuleInit {
       }
     }
 
-    // 2. Stock updates for return:
-    // a. Deduct stock from the deployed site where asset was currently stationed
+    // 2. Stock updates for return: Add stock back to the original home/source site where asset came from
     if (targetItemId && effectiveReturnQty > 0) {
-      if (deployedSiteResolved) {
-        const deployedStock = await this.prisma.siteStock.findFirst({
-          where: { siteId: deployedSiteResolved, itemId: targetItemId }
-        });
-        if (deployedStock) {
-          await this.prisma.siteStock.update({
-            where: { id: deployedStock.id },
-            data: { quantity: { decrement: effectiveReturnQty } }
-          });
-        }
-      }
-
-      // b. Add stock back to the original home/source site where the asset came from
       if (homeSiteResolved) {
         const homeStock = await this.prisma.siteStock.findFirst({
           where: { siteId: homeSiteResolved, itemId: targetItemId }
@@ -2133,12 +2123,13 @@ export class RequestsService implements OnModuleInit {
     return results;
   }
 
-  async bulkReturn(ids: string[], returnerEmail: string, comment?: string) {
+  async bulkReturn(ids: string[], returnerEmail: string, comment?: string, itemsMap?: Record<string, string>) {
     const results: any[] = [];
     for (const id of ids) {
       try {
-        const item = await this.return(id, comment, returnerEmail);
-        results.push(item);
+        const itemComment = (itemsMap && itemsMap[id]) ? itemsMap[id] : comment;
+        const item = await this.return(id, itemComment, returnerEmail);
+        if (item) results.push(item);
       } catch (err) {
         console.error(`Error in bulkReturn for request ${id}:`, err);
       }
@@ -2150,13 +2141,14 @@ export class RequestsService implements OnModuleInit {
     let user = await this.prisma.user.findFirst({
       where: {
         OR: [
-          { email: userEmail },
-          { name: userEmail }
+          { email: { equals: userEmail, mode: 'insensitive' } },
+          { id: userEmail },
+          { name: { equals: userEmail, mode: 'insensitive' } }
         ]
       }
     });
     if (!user) {
-      user = await this.prisma.user.findFirst({ where: { role: 'SUPER_ADMIN' } });
+      throw new NotFoundException('User not found.');
     }
 
     const req = await this.prisma.request.findUnique({
@@ -2165,6 +2157,10 @@ export class RequestsService implements OnModuleInit {
     });
     if (!req) {
       throw new NotFoundException('Request not found.');
+    }
+
+    if (req.requesterId !== user.id) {
+      throw new ForbiddenException('Only the requesting user can confirm receipt.');
     }
 
     // Idempotence check
@@ -2217,35 +2213,7 @@ export class RequestsService implements OnModuleInit {
         });
       }
 
-      // 3. Update/Increment destination site stock level for the item
-      if (req.itemId && targetSiteId) {
-        let recQty = 1;
-        try {
-          if (req.purpose && req.purpose.startsWith('{')) {
-            const parsed = JSON.parse(req.purpose);
-            recQty = parsed.quantity || 1;
-          }
-        } catch {}
 
-        const existingStock = await tx.siteStock.findFirst({
-          where: { siteId: targetSiteId, itemId: req.itemId }
-        });
-
-        if (existingStock) {
-          await tx.siteStock.update({
-            where: { id: existingStock.id },
-            data: { quantity: { increment: recQty } }
-          });
-        } else {
-          await tx.siteStock.create({
-            data: {
-              siteId: targetSiteId,
-              itemId: req.itemId,
-              quantity: recQty,
-            }
-          });
-        }
-      }
 
       return reqUpdated;
     });

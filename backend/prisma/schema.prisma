@@ -34,6 +34,7 @@ model User {
   passwordHash             String
   name                     String
   employeeId               String?                 @unique
+  accountType              String?
   department               String?
   role                     Role                    @default(EMPLOYEE)
   isActive                 Boolean                 @default(true)
@@ -484,6 +485,7 @@ enum RequestStatus {
   PENDING_OPS_APPROVAL
   READY_FOR_PICKUP
   PENDING_PROCUREMENT
+  PROCUREMENT_DONE
   AWAITING_CONFIRMATION
   ITEM_RECEIVED
 }

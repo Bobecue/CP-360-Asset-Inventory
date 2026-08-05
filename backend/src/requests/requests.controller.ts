@@ -90,9 +90,9 @@ export class RequestsController {
   }
 
   @Post("bulk-return")
-  async bulkReturn(@Body() body: { ids: string[]; returnerEmail?: string; comment?: string }, @ReqCtx() req: any) {
+  async bulkReturn(@Body() body: { ids: string[]; returnerEmail?: string; comment?: string; itemsMap?: Record<string, string> }, @ReqCtx() req: any) {
     const returnerEmail = body.returnerEmail || req.headers["x-user"] || "superadmin@contactpoint360.com";
-    const data = await this.svc.bulkReturn(body.ids || [], returnerEmail, body.comment);
+    const data = await this.svc.bulkReturn(body.ids || [], returnerEmail, body.comment, body.itemsMap);
     return { data, message: `Successfully returned ${data.length} request(s)`, statusCode: 200 };
   }
 

@@ -16,6 +16,8 @@ interface AddUserModalProps {
   setFormRole: (v: string) => void;
   formEmployeeId: string;
   setFormEmployeeId: (v: string) => void;
+  formAccountType: string;
+  setFormAccountType: (v: string) => void;
   formDepartment: string;
   setFormDepartment: (v: string) => void;
   formSiteId: string;
@@ -43,6 +45,8 @@ export const AddUserModal = ({
   setFormRole,
   formEmployeeId,
   setFormEmployeeId,
+  formAccountType,
+  setFormAccountType,
   formDepartment,
   setFormDepartment,
   formSiteId,
@@ -219,24 +223,44 @@ export const AddUserModal = ({
                   </select>
                 </div>
 
-                {/* Employee ID */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-                  <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Employee ID</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. EID-0042 (Optional)"
-                    value={formEmployeeId}
-                    onChange={(e) => setFormEmployeeId(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "0.45rem 0.65rem",
-                      borderRadius: 6,
-                      border: "1px solid #e2e8f0",
-                      fontSize: "0.8rem",
-                      color: "#1e293b",
-                      outline: "none",
-                    }}
-                  />
+                {/* Employee ID & Account Type */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                    <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Employee ID</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. EID - 00021 (Optional)"
+                      value={formEmployeeId}
+                      onChange={(e) => setFormEmployeeId(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "0.45rem 0.65rem",
+                        borderRadius: 6,
+                        border: "1px solid #e2e8f0",
+                        fontSize: "0.8rem",
+                        color: "#1e293b",
+                        outline: "none",
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                    <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Account Type</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. IT Staff, HR Officer"
+                      value={formAccountType}
+                      onChange={(e) => setFormAccountType(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "0.45rem 0.65rem",
+                        borderRadius: 6,
+                        border: "1px solid #e2e8f0",
+                        fontSize: "0.8rem",
+                        color: "#1e293b",
+                        outline: "none",
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -441,6 +465,11 @@ export const AddUserModal = ({
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                    <span style={{ fontSize: "0.68rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase" }}>Account Type</span>
+                    <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>{formAccountType || <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Not Specified</span>}</span>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                     <span style={{ fontSize: "0.68rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase" }}>Assigned Site</span>
                     <div>
                       {(() => {
@@ -449,11 +478,11 @@ export const AddUserModal = ({
                       })()}
                     </div>
                   </div>
+                </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
-                    <span style={{ fontSize: "0.68rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase" }}>Department</span>
-                    <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>{formDepartment || <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Not Specified</span>}</span>
-                  </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
+                  <span style={{ fontSize: "0.68rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase" }}>Department</span>
+                  <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>{formDepartment || <span style={{ color: "#94a3b8", fontStyle: "italic" }}>Not Specified</span>}</span>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem", borderTop: "1px dashed #e2e8f0", paddingTop: "0.65rem", marginTop: "0.25rem" }}>

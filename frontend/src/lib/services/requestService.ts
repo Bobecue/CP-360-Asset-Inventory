@@ -117,14 +117,14 @@ export async function bulkConfirmReceiptApi(ids: string[], userEmail: string) {
   return res.json();
 }
 
-export async function bulkReturnApi(ids: string[], userEmail: string, comment?: string) {
+export async function bulkReturnApi(ids: string[], userEmail: string, comment?: string, itemsMap?: Record<string, string>) {
   const res = await fetch(`${BASE}/requests/bulk-return`, {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json',
       'x-user': userEmail
     },
-    body: JSON.stringify({ ids, returnerEmail: userEmail, comment })
+    body: JSON.stringify({ ids, returnerEmail: userEmail, comment, itemsMap })
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();

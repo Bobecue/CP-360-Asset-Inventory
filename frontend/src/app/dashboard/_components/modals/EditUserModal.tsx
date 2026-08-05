@@ -13,6 +13,8 @@ interface EditUserModalProps {
   setEditFormRole: (v: string) => void;
   editFormEmployeeId: string;
   setEditFormEmployeeId: (v: string) => void;
+  editFormAccountType: string;
+  setEditFormAccountType: (v: string) => void;
   editFormDepartment: string;
   setEditFormDepartment: (v: string) => void;
   editFormSiteId: string;
@@ -38,6 +40,8 @@ export const EditUserModal = ({
   setEditFormRole,
   editFormEmployeeId,
   setEditFormEmployeeId,
+  editFormAccountType,
+  setEditFormAccountType,
   editFormDepartment,
   setEditFormDepartment,
   editFormSiteId,
@@ -198,7 +202,7 @@ export const EditUserModal = ({
                 <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Employee ID</label>
                 <input
                   type="text"
-                  placeholder="e.g. EID-0042"
+                  placeholder="e.g. EID - 00021"
                   value={editFormEmployeeId}
                   onChange={(e) => setEditFormEmployeeId(e.target.value)}
                   style={{
@@ -212,6 +216,26 @@ export const EditUserModal = ({
                   }}
                 />
               </div>
+            </div>
+
+            {/* Account Type */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+              <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Account Type</label>
+              <input
+                type="text"
+                placeholder="e.g. IT Staff, HR Officer"
+                value={editFormAccountType}
+                onChange={(e) => setEditFormAccountType(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "0.45rem 0.65rem",
+                  borderRadius: 6,
+                  border: "1px solid #e2e8f0",
+                  fontSize: "0.8rem",
+                  color: "#1e293b",
+                  outline: "none",
+                }}
+              />
             </div>
 
             {/* Site & Department Selector */}

@@ -14,6 +14,7 @@ export class UsersService {
         email: true,
         name: true,
         employeeId: true,
+        accountType: true,
         department: true,
         role: true,
         isActive: true,
@@ -39,6 +40,7 @@ export class UsersService {
     passwordPlain?: string;
     role: Role;
     employeeId?: string;
+    accountType?: string;
     department?: string;
     siteId?: string;
   }) {
@@ -52,6 +54,7 @@ export class UsersService {
         passwordHash,
         role: data.role,
         employeeId: data.employeeId || null,
+        accountType: data.accountType || null,
         department: data.department || null,
         siteId: data.siteId || null,
       },
@@ -60,6 +63,7 @@ export class UsersService {
         email: true,
         name: true,
         employeeId: true,
+        accountType: true,
         department: true,
         role: true,
         isActive: true,
@@ -149,6 +153,7 @@ export class UsersService {
       name?: string;
       role?: Role;
       employeeId?: string;
+      accountType?: string;
       department?: string;
       isActive?: boolean;
       siteId?: string;
@@ -181,6 +186,7 @@ export class UsersService {
         name: data.name,
         role: data.role,
         employeeId: data.employeeId !== undefined ? (data.employeeId || null) : undefined,
+        accountType: data.accountType !== undefined ? (data.accountType || null) : undefined,
         department: data.department !== undefined ? (data.department || null) : undefined,
         siteId: data.siteId !== undefined ? (data.siteId || null) : undefined,
         isActive: data.isActive,
@@ -190,6 +196,7 @@ export class UsersService {
         email: true,
         name: true,
         employeeId: true,
+        accountType: true,
         department: true,
         role: true,
         isActive: true,
@@ -204,5 +211,41 @@ export class UsersService {
         createdAt: true,
       },
     });
+  }
+
+  async changePassword(id: string, currentPassword: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new NotFoundException("User not found.");
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) {
+      throw new UnauthorizedException("Current password is incorrect.");
+    }
+
+    if (newPassword.length < 8) {
+      throw new Error("New password must be at least 8 characters long.");
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const newHash = await bcrypt.hash(newPassword, salt);
+
+    await this.prisma.user.update({
+      where: { id },
+      data: { passwordHash: newHash },
+    });
+
+    // Audit log
+    await this.prisma.auditLog.create({
+      data: {
+        action: "PASSWORD_CHANGED",
+        details: `User ${user.name || user.email} changed their password`,
+        userId: user.id,
+        ipAddress: "127.0.0.1",
+      },
+    }).catch(err => console.warn("Failed to create password change audit log:", err));
+
+    return { success: true, message: "Password changed successfully." };
   }
 }

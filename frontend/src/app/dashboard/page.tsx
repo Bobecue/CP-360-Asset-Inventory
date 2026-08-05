@@ -98,6 +98,7 @@ export default function DashboardPage() {
   const [formPassword, setFormPassword] = useState("");
   const [formRole, setFormRole] = useState("EMPLOYEE");
   const [formEmployeeId, setFormEmployeeId] = useState("");
+  const [formAccountType, setFormAccountType] = useState("");
   const [formDepartment, setFormDepartment] = useState("");
   const [formSiteId, setFormSiteId] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
@@ -110,6 +111,7 @@ export default function DashboardPage() {
   const [editFormEmail, setEditFormEmail] = useState("");
   const [editFormRole, setEditFormRole] = useState("EMPLOYEE");
   const [editFormEmployeeId, setEditFormEmployeeId] = useState("");
+  const [editFormAccountType, setEditFormAccountType] = useState("");
   const [editFormDepartment, setEditFormDepartment] = useState("");
   const [editFormSiteId, setEditFormSiteId] = useState("");
   const [editFormIsActive, setEditFormIsActive] = useState(true);
@@ -221,6 +223,18 @@ export default function DashboardPage() {
 
   // Toast messages
   const [toastMessage, setToastMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+
+  // Change Password Modal states
+  const [isChangePwModalOpen, setIsChangePwModalOpen] = useState(false);
+  const [changePwCurrentPw, setChangePwCurrentPw] = useState("");
+  const [changePwNewPw, setChangePwNewPw] = useState("");
+  const [changePwConfirmPw, setChangePwConfirmPw] = useState("");
+  const [changePwError, setChangePwError] = useState<string | null>(null);
+  const [changePwSuccess, setChangePwSuccess] = useState<string | null>(null);
+  const [isSubmittingChangePw, setIsSubmittingChangePw] = useState(false);
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
 
   const showToast = (text: string, type: "success" | "error" = "success") => {
     setToastMessage({ text, type });
@@ -841,24 +855,7 @@ export default function DashboardPage() {
                 });
               }
 
-              // 2. Increase stock at destination site (if source != destination)
-              if (destSiteId && destSiteId !== srcSiteId) {
-                const destIndex = updatedLevels.findIndex(sl => sl.siteId === destSiteId);
-                if (destIndex >= 0) {
-                  updatedLevels[destIndex] = {
-                    ...updatedLevels[destIndex],
-                    quantity: updatedLevels[destIndex].quantity + req.quantity
-                  };
-                } else {
-                  updatedLevels.push({
-                    id: `ss-${Date.now()}-dest`,
-                    siteId: destSiteId,
-                    itemId: item.id,
-                    quantity: req.quantity,
-                    reorderPoint: 5,
-                  });
-                }
-              }
+
 
               // Mark deployed asset as ASSIGNED
               const updatedAssets = (item.assets || []).map((ast: any) => {
@@ -996,6 +993,7 @@ export default function DashboardPage() {
       passwordPlain: generatedPassword,
       role: formRole,
       employeeId: formEmployeeId.trim() || undefined,
+      accountType: formAccountType.trim() || undefined,
       department: formDepartment.trim() || undefined,
       siteId: formSiteId || undefined,
     };
@@ -1008,6 +1006,7 @@ export default function DashboardPage() {
         email: payload.email,
         role: payload.role as any,
         employeeId: payload.employeeId || null,
+        accountType: (payload as any).accountType || null,
         department: payload.department || null,
         siteId: formSiteId || null,
         site: selectedSite ? { id: selectedSite.id, name: selectedSite.name, prefix: selectedSite.prefix } as any : null,
@@ -1025,6 +1024,7 @@ export default function DashboardPage() {
       setFormPassword("");
       setFormRole("EMPLOYEE");
       setFormEmployeeId("");
+      setFormAccountType("");
       setFormDepartment("");
       setFormSiteId("");
       setIsSubmittingForm(false);
@@ -1053,6 +1053,7 @@ export default function DashboardPage() {
         setFormPassword("");
         setFormRole("EMPLOYEE");
         setFormEmployeeId("");
+        setFormAccountType("");
         setFormDepartment("");
         setFormSiteId("");
       } catch (err: any) {
@@ -1731,6 +1732,55 @@ export default function DashboardPage() {
         setNotifications((prev) => [newNotif, ...prev]);
       }
 
+      // Update any pending procurement requests for this item to PENDING for approval
+      if (qty > 0) {
+        try {
+          const storedRequests = localStorage.getItem('salivio_requests');
+          if (storedRequests) {
+            const reqs = JSON.parse(storedRequests);
+            if (Array.isArray(reqs)) {
+              let updatedAny = false;
+              const updatedReqs = reqs.map((req: any) => {
+                if (req.itemId === stockItem.id && req.status === 'PENDING_PROCUREMENT') {
+                  updatedAny = true;
+                  const procDoneEvt = {
+                    status: 'PROCUREMENT_DONE',
+                    timestamp: new Date(Date.now() - 1000).toISOString(),
+                    comment: 'Stock levels adjusted and replenished. Procurement completed.',
+                    byName: currentUser?.name || 'Super Admin'
+                  };
+                  const pendingEvt = {
+                    status: 'PENDING',
+                    timestamp: new Date().toISOString(),
+                    comment: 'Submitted for Inventory Staff review',
+                    byName: currentUser?.name || 'Super Admin'
+                  };
+                  const currentHistory = Array.isArray(req.history) ? req.history : [];
+                  const hasProcPending = currentHistory.some((h: any) => h.status === 'PENDING_PROCUREMENT');
+                  const newHistory = hasProcPending
+                    ? [...currentHistory, procDoneEvt, pendingEvt]
+                    : [{ status: 'PENDING_PROCUREMENT', timestamp: new Date(Date.now() - 60000).toISOString(), comment: 'No stock available at target site. Automatically routed to Pending Procurement.', byName: req.requestedByName || 'Super Admin' }, procDoneEvt, pendingEvt];
+
+                  return {
+                    ...req,
+                    status: 'PENDING',
+                    comments: 'Request submitted and pending approval.',
+                    history: newHistory
+                  };
+                }
+                return req;
+              });
+              if (updatedAny) {
+                localStorage.setItem('salivio_requests', JSON.stringify(updatedReqs));
+                window.dispatchEvent(new Event('storage'));
+              }
+            }
+          }
+        } catch (err) {
+          console.warn("Failed updating cached requests on stock adjust:", err);
+        }
+      }
+
       showToast("Stock levels updated successfully!");
       setStockModalOpen(false);
       setStockItem(null);
@@ -1760,6 +1810,7 @@ export default function DashboardPage() {
         }
         await fetchItems();
         await fetchNotifications();
+        window.dispatchEvent(new Event('storage'));
         showToast("Stock levels updated successfully!");
         setStockModalOpen(false);
         setStockItem(null);
@@ -1842,6 +1893,7 @@ export default function DashboardPage() {
       email: editFormEmail.trim(),
       role: editFormRole as any,
       employeeId: editFormEmployeeId.trim() || null,
+      accountType: editFormAccountType.trim() || null,
       department: editFormDepartment.trim() || null,
       siteId: editFormSiteId || null,
       isActive: editFormIsActive,
@@ -1942,6 +1994,53 @@ export default function DashboardPage() {
     }
   };
 
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setChangePwError(null);
+    setChangePwSuccess(null);
+
+    if (!changePwNewPw || changePwNewPw.length < 8) {
+      setChangePwError("New password must be at least 8 characters long.");
+      return;
+    }
+    if (changePwNewPw !== changePwConfirmPw) {
+      setChangePwError("New passwords do not match.");
+      return;
+    }
+    if (!currentUser?.id) {
+      setChangePwError("User session not found. Please log in again.");
+      return;
+    }
+
+    setIsSubmittingChangePw(true);
+    try {
+      const res = await fetch(`http://localhost:3001/users/${currentUser.id}/change-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: changePwCurrentPw,
+          newPassword: changePwNewPw,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to change password.");
+      }
+      setChangePwSuccess("Password changed successfully!");
+      setChangePwCurrentPw("");
+      setChangePwNewPw("");
+      setChangePwConfirmPw("");
+      setTimeout(() => {
+        setIsChangePwModalOpen(false);
+        setChangePwSuccess(null);
+      }, 1800);
+    } catch (err: any) {
+      setChangePwError(err.message || "Failed to change password.");
+    } finally {
+      setIsSubmittingChangePw(false);
+    }
+  };
+
   const renderActiveTab = () => {
     switch (activeTab) {
       case "dashboard":
@@ -1974,6 +2073,7 @@ export default function DashboardPage() {
               setFormLastName("");
               setFormEmail("");
               setFormEmployeeId("");
+              setFormAccountType("");
               setFormDepartment("");
               setFormSiteId("");
               setFormRole("EMPLOYEE");
@@ -1985,6 +2085,7 @@ export default function DashboardPage() {
               setEditFormEmail(u.email);
               setEditFormRole(u.role);
               setEditFormEmployeeId(u.employeeId || "");
+              setEditFormAccountType(u.accountType || "");
               setEditFormDepartment(u.department || "");
               setEditFormSiteId(u.siteId || "");
               setEditFormIsActive(u.isActive !== false);
@@ -2314,6 +2415,15 @@ export default function DashboardPage() {
           onMarkRead={handleMarkNotificationRead}
           onMarkAllRead={handleMarkAllNotificationsRead}
           currentUser={currentUser}
+          onChangePassword={() => {
+            setChangePwError(null);
+            setChangePwSuccess(null);
+            setChangePwCurrentPw("");
+            setChangePwNewPw("");
+            setChangePwConfirmPw("");
+            setIsChangePwModalOpen(true);
+          }}
+          onLogout={handleLogout}
         />
 
         {/* Main Content Area */}
@@ -2450,6 +2560,8 @@ export default function DashboardPage() {
         setFormRole={setFormRole}
         formEmployeeId={formEmployeeId}
         setFormEmployeeId={setFormEmployeeId}
+        formAccountType={formAccountType}
+        setFormAccountType={setFormAccountType}
         formDepartment={formDepartment}
         setFormDepartment={setFormDepartment}
         formSiteId={formSiteId}
@@ -2474,6 +2586,8 @@ export default function DashboardPage() {
         setEditFormRole={setEditFormRole}
         editFormEmployeeId={editFormEmployeeId}
         setEditFormEmployeeId={setEditFormEmployeeId}
+        editFormAccountType={editFormAccountType}
+        setEditFormAccountType={setEditFormAccountType}
         editFormDepartment={editFormDepartment}
         setEditFormDepartment={setEditFormDepartment}
         editFormSiteId={editFormSiteId}
@@ -2594,6 +2708,7 @@ export default function DashboardPage() {
               };
             })}
           sites={sites}
+          users={users}
           initialMode={bulkRequestInitialMode}
           sourceSiteId={selectedSiteId}
           onSubmit={handleBulkRequestSubmit}
@@ -2635,6 +2750,259 @@ export default function DashboardPage() {
           `}</style>
         </div>
       )}
+
+      {/* Change Password Modal */}
+      {isChangePwModalOpen && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9000,
+          backgroundColor: "rgba(15, 23, 42, 0.55)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          backdropFilter: "blur(4px)",
+          animation: "scaleIn 0.15s ease forwards",
+        }}
+          onClick={(e) => { if (e.target === e.currentTarget) setIsChangePwModalOpen(false); }}
+        >
+          <div style={{
+            backgroundColor: "#FFFFFF", borderRadius: 18,
+            boxShadow: "0 25px 50px -12px rgba(15, 23, 42, 0.25), 0 12px 20px -8px rgba(15, 23, 42, 0.1)",
+            border: "1px solid #E2E8F0",
+            width: "100%", maxWidth: 420, overflow: "hidden",
+            animation: "scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              background: "linear-gradient(135deg, #1E293B 0%, #334155 100%)",
+              padding: "1.25rem 1.5rem",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: "50%",
+                  background: "linear-gradient(135deg, #6366F1 0%, #818CF8 100%)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "#F8FAFC" }}>Change Password</h3>
+                  <p style={{ margin: 0, fontSize: "0.72rem", color: "#94A3B8" }}>Secure your account with a new password</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsChangePwModalOpen(false)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#64748B", padding: 4, borderRadius: 6, display: "flex", alignItems: "center" }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#F8FAFC")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#64748B")}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleChangePasswordSubmit} style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+              {/* Success Message */}
+              {changePwSuccess && (
+                <div style={{
+                  backgroundColor: "#ECFDF5", border: "1px solid #6EE7B7",
+                  borderRadius: 10, padding: "0.75rem 1rem",
+                  display: "flex", alignItems: "center", gap: "0.5rem",
+                  color: "#047857", fontSize: "0.82rem", fontWeight: 600,
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+                  {changePwSuccess}
+                </div>
+              )}
+
+              {/* Error Message */}
+              {changePwError && (
+                <div style={{
+                  backgroundColor: "#FEF2F2", border: "1px solid #FECACA",
+                  borderRadius: 10, padding: "0.75rem 1rem",
+                  display: "flex", alignItems: "center", gap: "0.5rem",
+                  color: "#DC2626", fontSize: "0.82rem", fontWeight: 600,
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                  {changePwError}
+                </div>
+              )}
+
+              {/* Current Password */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>Current Password</label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={showCurrentPw ? "text" : "password"}
+                    value={changePwCurrentPw}
+                    onChange={(e) => setChangePwCurrentPw(e.target.value)}
+                    placeholder="Enter current password"
+                    required
+                    style={{
+                      width: "100%", padding: "0.65rem 2.8rem 0.65rem 0.85rem",
+                      borderRadius: 10, border: "1.5px solid #E2E8F0",
+                      fontSize: "0.85rem", color: "#0F172A",
+                      outline: "none", boxSizing: "border-box",
+                      transition: "border-color 0.15s ease",
+                      backgroundColor: "#F8FAFC",
+                    }}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = "#6366F1")}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = "#E2E8F0")}
+                  />
+                  <button type="button" onClick={() => setShowCurrentPw(p => !p)}
+                    style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#94A3B8", display: "flex", padding: 2 }}>
+                    {showCurrentPw
+                      ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+                      : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                    }
+                  </button>
+                </div>
+              </div>
+
+              {/* New Password */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>New Password</label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={showNewPw ? "text" : "password"}
+                    value={changePwNewPw}
+                    onChange={(e) => setChangePwNewPw(e.target.value)}
+                    placeholder="Min. 8 characters"
+                    required
+                    style={{
+                      width: "100%", padding: "0.65rem 2.8rem 0.65rem 0.85rem",
+                      borderRadius: 10, border: "1.5px solid #E2E8F0",
+                      fontSize: "0.85rem", color: "#0F172A",
+                      outline: "none", boxSizing: "border-box",
+                      transition: "border-color 0.15s ease",
+                      backgroundColor: "#F8FAFC",
+                    }}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = "#6366F1")}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = "#E2E8F0")}
+                  />
+                  <button type="button" onClick={() => setShowNewPw(p => !p)}
+                    style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#94A3B8", display: "flex", padding: 2 }}>
+                    {showNewPw
+                      ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+                      : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                    }
+                  </button>
+                </div>
+                {/* Strength indicator */}
+                {changePwNewPw.length > 0 && (
+                  <div style={{ display: "flex", gap: "0.3rem", marginTop: "0.15rem" }}>
+                    {[1, 2, 3, 4].map(i => {
+                      const len = changePwNewPw.length;
+                      const hasUpper = /[A-Z]/.test(changePwNewPw);
+                      const hasNum = /\d/.test(changePwNewPw);
+                      const hasSpecial = /[^A-Za-z0-9]/.test(changePwNewPw);
+                      const score = (len >= 8 ? 1 : 0) + (hasUpper ? 1 : 0) + (hasNum ? 1 : 0) + (hasSpecial ? 1 : 0);
+                      const colors = ["#EF4444", "#F59E0B", "#10B981", "#6366F1"];
+                      const labels = ["Weak", "Fair", "Good", "Strong"];
+                      return (
+                        <div key={i} style={{
+                          flex: 1, height: 4, borderRadius: 2,
+                          backgroundColor: i <= score ? colors[score - 1] : "#E2E8F0",
+                          transition: "background-color 0.2s",
+                        }} />
+                      );
+                    })}
+                  </div>
+                )}
+                {changePwNewPw.length > 0 && (
+                  <span style={{ fontSize: "0.7rem", color: "#64748B" }}>
+                    {(() => {
+                      const len = changePwNewPw.length;
+                      const hasUpper = /[A-Z]/.test(changePwNewPw);
+                      const hasNum = /\d/.test(changePwNewPw);
+                      const hasSpecial = /[^A-Za-z0-9]/.test(changePwNewPw);
+                      const score = (len >= 8 ? 1 : 0) + (hasUpper ? 1 : 0) + (hasNum ? 1 : 0) + (hasSpecial ? 1 : 0);
+                      return ["Weak – add more characters", "Fair – try uppercase or numbers", "Good password", "Strong password!"][score - 1] || "Too short";
+                    })()}
+                  </span>
+                )}
+              </div>
+
+              {/* Confirm New Password */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>Confirm New Password</label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={showConfirmPw ? "text" : "password"}
+                    value={changePwConfirmPw}
+                    onChange={(e) => setChangePwConfirmPw(e.target.value)}
+                    placeholder="Re-enter new password"
+                    required
+                    style={{
+                      width: "100%", padding: "0.65rem 2.8rem 0.65rem 0.85rem",
+                      borderRadius: 10,
+                      border: `1.5px solid ${changePwConfirmPw && changePwConfirmPw !== changePwNewPw ? "#EF4444" : "#E2E8F0"}`,
+                      fontSize: "0.85rem", color: "#0F172A",
+                      outline: "none", boxSizing: "border-box",
+                      transition: "border-color 0.15s ease",
+                      backgroundColor: "#F8FAFC",
+                    }}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = "#6366F1")}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = changePwConfirmPw && changePwConfirmPw !== changePwNewPw ? "#EF4444" : "#E2E8F0")}
+                  />
+                  <button type="button" onClick={() => setShowConfirmPw(p => !p)}
+                    style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#94A3B8", display: "flex", padding: 2 }}>
+                    {showConfirmPw
+                      ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+                      : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                    }
+                  </button>
+                </div>
+                {changePwConfirmPw && changePwConfirmPw !== changePwNewPw && (
+                  <span style={{ fontSize: "0.7rem", color: "#EF4444" }}>Passwords do not match</span>
+                )}
+                {changePwConfirmPw && changePwConfirmPw === changePwNewPw && changePwNewPw.length >= 8 && (
+                  <span style={{ fontSize: "0.7rem", color: "#10B981" }}>✓ Passwords match</span>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.25rem" }}>
+                <button
+                  type="button"
+                  onClick={() => setIsChangePwModalOpen(false)}
+                  style={{
+                    flex: 1, padding: "0.7rem", borderRadius: 10,
+                    border: "1.5px solid #E2E8F0", backgroundColor: "#FFFFFF",
+                    color: "#374151", cursor: "pointer", fontSize: "0.85rem", fontWeight: 600,
+                    transition: "all 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#F8FAFC"; e.currentTarget.style.borderColor = "#CBD5E1"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#FFFFFF"; e.currentTarget.style.borderColor = "#E2E8F0"; }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingChangePw}
+                  style={{
+                    flex: 1, padding: "0.7rem", borderRadius: 10,
+                    border: "none",
+                    background: isSubmittingChangePw ? "#94A3B8" : "linear-gradient(135deg, #6366F1 0%, #818CF8 100%)",
+                    color: "#FFFFFF", cursor: isSubmittingChangePw ? "not-allowed" : "pointer",
+                    fontSize: "0.85rem", fontWeight: 700,
+                    transition: "all 0.15s ease",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem",
+                  }}
+                >
+                  {isSubmittingChangePw ? (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ animation: "spin 0.8s linear infinite" }}><circle cx="12" cy="12" r="10" strokeOpacity="0.25" /><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+                      Updating...
+                    </>
+                  ) : "Update Password"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

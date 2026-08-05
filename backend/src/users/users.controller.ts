@@ -34,6 +34,7 @@ export class UsersController {
       passwordPlain: string;
       role: Role;
       employeeId?: string;
+      accountType?: string;
       department?: string;
       siteId?: string;
     },
@@ -50,11 +51,20 @@ export class UsersController {
       name?: string;
       role?: Role;
       employeeId?: string;
+      accountType?: string;
       department?: string;
       isActive?: boolean;
       siteId?: string;
     },
   ) {
     return this.usersService.update(id, body);
+  }
+
+  @Post(":id/change-password")
+  async changePassword(
+    @Param("id") id: string,
+    @Body() body: { currentPassword: string; newPassword: string },
+  ) {
+    return this.usersService.changePassword(id, body.currentPassword, body.newPassword);
   }
 }

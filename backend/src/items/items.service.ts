@@ -673,6 +673,42 @@ export class ItemsService {
           },
         });
       }
+      if (quantity !== undefined && quantity > oldQty) {
+        const pendingProcRequests = await tx.request.findMany({
+          where: {
+            itemId,
+            status: "PENDING_PROCUREMENT",
+          },
+        });
+
+        for (const req of pendingProcRequests) {
+          // Add PROCUREMENT_DONE event first, then PENDING_APPROVAL event
+          await tx.requestEvent.create({
+            data: {
+              requestId: req.id,
+              status: "PROCUREMENT_DONE",
+              comment: "Stock levels adjusted and replenished. Procurement completed.",
+              userId: meta?.userId || req.requesterId,
+            },
+          });
+
+          await tx.request.update({
+            where: { id: req.id },
+            data: {
+              status: "PENDING_APPROVAL",
+              comments: "Stock levels adjusted and replenished. Pending for approval.",
+              events: {
+                create: {
+                  status: "PENDING_APPROVAL",
+                  comment: "Submitted for Inventory Staff review",
+                  userId: meta?.userId || req.requesterId,
+                },
+              },
+            },
+          });
+        }
+      }
+
       await this.notificationsService.checkAndTriggerLowStockAlert(itemId, siteId, stock.quantity, stock.reorderPoint);
       return stock;
     });

@@ -134,6 +134,13 @@ export const CatalogTab = ({
   const [deploymentsList, setDeploymentsList] = useState<any[]>([]);
   const [selectedDeployment, setSelectedDeployment] = useState<any | null>(null);
   const [isDeploymentDrawerOpen, setIsDeploymentDrawerOpen] = useState(false);
+  const [selectedDeploymentIds, setSelectedDeploymentIds] = useState<string[]>([]);
+  const [isBulkDeploymentReturnModalOpen, setIsBulkDeploymentReturnModalOpen] = useState(false);
+  const [bulkDepReturnCondition, setBulkDepReturnCondition] = useState<'GOOD' | 'BAD' | 'RETIRED'>('GOOD');
+  const [bulkDepReturnQuantityStatus, setBulkDepReturnQuantityStatus] = useState<'COMPLETE' | 'MISSING'>('COMPLETE');
+  const [bulkDepReturnMissingCount, setBulkDepReturnMissingCount] = useState<number>(1);
+  const [itemDepReturnStates, setItemDepReturnStates] = useState<Record<string, { condition: 'GOOD' | 'BAD' | 'RETIRED'; completeness: 'COMPLETE' | 'MISSING'; missingCount: number; remarks: string }>>({});
+  const [isSubmittingBulkDepReturn, setIsSubmittingBulkDepReturn] = useState(false);
   const [deploymentSearch, setDeploymentSearch] = useState("");
   const [deploymentSiteFilter, setDeploymentSiteFilter] = useState("ALL");
   const [deploymentStatusFilter, setDeploymentStatusFilter] = useState("ALL");
@@ -168,13 +175,6 @@ export const CatalogTab = ({
   const [missingCount, setMissingCount] = useState<number>(1);
   const [returnNotes, setReturnNotes] = useState<string>("");
   const [isSubmittingReturn, setIsSubmittingReturn] = useState<boolean>(false);
-
-  // Bulk deployed asset return state
-  const [selectedDeploymentIds, setSelectedDeploymentIds] = useState<string[]>([]);
-  const [isBulkDeploymentReturnModalOpen, setIsBulkDeploymentReturnModalOpen] = useState(false);
-  const [bulkReturnCondition, setBulkReturnCondition] = useState<"GOOD" | "DAMAGED" | "MISSING">("GOOD");
-  const [bulkReturnNotes, setBulkReturnNotes] = useState("");
-  const [isSubmittingBulkReturn, setIsSubmittingBulkReturn] = useState(false);
 
   // Excel Asset Import modal state
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -407,6 +407,150 @@ export const CatalogTab = ({
   useEffect(() => {
     fetchDeployments();
   }, []);
+
+  const handleConfirmBulkDeploymentReturn = async () => {
+    if (selectedDeploymentIds.length === 0 || isSubmittingBulkDepReturn) return;
+    setIsSubmittingBulkDepReturn(true);
+
+    try {
+      const selectedDeps = deploymentsList.filter(d => selectedDeploymentIds.includes(d.id));
+      const savedReturns = JSON.parse(localStorage.getItem("cp_returned_deployments") || "{}");
+      const nowStr = new Date().toISOString();
+
+      for (const dep of selectedDeps) {
+        const st = itemDepReturnStates[dep.id] || { condition: bulkDepReturnCondition, completeness: bulkDepReturnQuantityStatus, missingCount: bulkDepReturnMissingCount, remarks: '' };
+        const condLabel = st.condition === 'GOOD' ? 'Good / Operational' : st.condition === 'BAD' ? 'Damaged / Defective' : 'Retired / Beyond Repair';
+        const qtyLabel = st.completeness === 'COMPLETE' ? 'Complete' : `Missing ${st.missingCount || 1} item(s)`;
+        const fullComment = `Condition: ${condLabel} | Quantity: ${qtyLabel}${st.remarks.trim() ? ` | Remarks: ${st.remarks.trim()}` : ''}`;
+
+        savedReturns[dep.id] = {
+          returnedAt: nowStr,
+          returnCondition: st.condition,
+          missingCount: st.completeness === 'MISSING' ? st.missingCount : 0,
+          returnNotes: fullComment
+        };
+
+        const reqId = dep.rawRequest?.id || dep.requestId || (dep.id.startsWith('req-') ? dep.id : null);
+        if (reqId) {
+          try {
+            await fetch(`http://localhost:3001/requests/${reqId}/return`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-user': currentUser.email },
+              body: JSON.stringify({ comment: fullComment, returnerEmail: currentUser.email })
+            });
+          } catch (e) {
+            console.warn(`Failed to call backend return for deployment ${dep.id}:`, e);
+          }
+        }
+      }
+
+      localStorage.setItem("cp_returned_deployments", JSON.stringify(savedReturns));
+
+      // Restore stock counts for returned deployed assets in frontend catalog state & localStorage
+      for (const dep of selectedDeps) {
+        const st = itemDepReturnStates[dep.id] || { condition: bulkDepReturnCondition, completeness: bulkDepReturnQuantityStatus, missingCount: bulkDepReturnMissingCount, remarks: '' };
+        const totalQtyDeployed = dep.rawRequest?.quantity || dep.quantity || 1;
+        const missingCountNum = st.completeness === 'MISSING' ? (st.missingCount || 1) : 0;
+        const qtyToReturnToStock = Math.max(0, totalQtyDeployed - missingCountNum);
+
+        if (qtyToReturnToStock > 0 && setCatalogItems) {
+          setCatalogItems((prevItems: CatalogItem[]) => {
+            const updatedItems = prevItems.map((item) => {
+              const isTargetItem =
+                item.id === dep.rawRequest?.itemId ||
+                item.id === dep.itemId ||
+                (item.name || "").toLowerCase() === (dep.itemName || "").toLowerCase();
+
+              if (!isTargetItem) return item;
+
+              const newOverallQty = (item.quantity ?? 0) + qtyToReturnToStock;
+
+              const deployedSiteObj = sites.find((s: any) => s.id === dep.siteId || s.name === dep.siteLocation);
+              const deployedSiteId = deployedSiteObj ? deployedSiteObj.id : (dep.siteId && dep.siteId !== "ALL" ? dep.siteId : undefined);
+              const homeSiteId = dep.rawRequest?.sourceSiteId || dep.rawRequest?.asset?.siteId || dep.siteId;
+              const homeSiteObj = sites.find((s: any) => s.id === homeSiteId || s.name === homeSiteId);
+              const resolvedHomeSiteId = homeSiteObj ? homeSiteObj.id : (homeSiteId && homeSiteId !== "ALL" ? homeSiteId : deployedSiteId);
+
+              let updatedStockLevels = item.stockLevels ? [...item.stockLevels] : [];
+
+              if (resolvedHomeSiteId) {
+                const homeIdx = updatedStockLevels.findIndex(sl => sl.siteId === resolvedHomeSiteId);
+                if (homeIdx >= 0) {
+                  updatedStockLevels[homeIdx] = {
+                    ...updatedStockLevels[homeIdx],
+                    quantity: (updatedStockLevels[homeIdx].quantity || 0) + qtyToReturnToStock
+                  };
+                } else {
+                  updatedStockLevels.push({
+                    id: `ss-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                    siteId: resolvedHomeSiteId,
+                    itemId: item.id,
+                    quantity: qtyToReturnToStock,
+                    reorderPoint: 5
+                  } as any);
+                }
+              }
+
+              let updatedAssets = item.assets || [];
+              const returnedTag = dep.assetTag || dep.rawRequest?.assetTag || dep.rawRequest?.asset?.tagCode;
+              if (returnedTag && returnedTag !== 'AST-DEP') {
+                const restoredStatus = st.condition === 'BAD' ? 'UNDER_MAINTENANCE' : st.condition === 'RETIRED' ? 'RETIRED' : 'AVAILABLE';
+                const existingIdx = updatedAssets.findIndex((a: any) => a.tagCode === returnedTag || a.assetTag === returnedTag);
+                if (existingIdx >= 0) {
+                  updatedAssets = updatedAssets.map((a: any, idx: number) =>
+                    idx === existingIdx ? { ...a, status: restoredStatus } : a
+                  );
+                }
+              }
+
+              return {
+                ...item,
+                quantity: newOverallQty,
+                stockLevels: updatedStockLevels,
+                assets: updatedAssets
+              };
+            });
+
+            try {
+              localStorage.setItem("cp_inventory_catalog", JSON.stringify(updatedItems));
+            } catch (e) {
+              console.error("Failed to save updated catalog to localStorage:", e);
+            }
+
+            return updatedItems;
+          });
+        }
+      }
+
+      setDeploymentsList(prev => prev.map(dep => {
+        if (selectedDeploymentIds.includes(dep.id)) {
+          const st = itemDepReturnStates[dep.id] || { condition: bulkDepReturnCondition, completeness: bulkDepReturnQuantityStatus, missingCount: bulkDepReturnMissingCount, remarks: '' };
+          const condLabel = st.condition === 'GOOD' ? 'Good / Operational' : st.condition === 'BAD' ? 'Damaged / Defective' : 'Retired / Beyond Repair';
+          const qtyLabel = st.completeness === 'COMPLETE' ? 'Complete' : `Missing ${st.missingCount || 1} item(s)`;
+          const fullComment = `Condition: ${condLabel} | Quantity: ${qtyLabel}${st.remarks.trim() ? ` | Remarks: ${st.remarks.trim()}` : ''}`;
+
+          return {
+            ...dep,
+            status: 'RETURNED',
+            returnedAt: nowStr,
+            returnCondition: st.condition,
+            missingCount: st.completeness === 'MISSING' ? st.missingCount : 0,
+            returnNotes: fullComment
+          };
+        }
+        return dep;
+      }));
+
+      setSelectedDeploymentIds([]);
+      setItemDepReturnStates({});
+      if (onUpdateCatalog) onUpdateCatalog();
+    } catch (err) {
+      console.error('Error during bulk deployment return:', err);
+    } finally {
+      setIsSubmittingBulkDepReturn(false);
+      setIsBulkDeploymentReturnModalOpen(false);
+    }
+  };
 
   const filteredDeployments = deploymentsList.filter(dep => {
     const matchesSite = deploymentSiteFilter === "ALL" || dep.siteId === deploymentSiteFilter;
@@ -924,18 +1068,7 @@ export const CatalogTab = ({
 
             let updatedStockLevels = item.stockLevels ? [...item.stockLevels] : [];
             
-            // a. Deduct stock from current deployed site where asset was stationed
-            if (deployedSiteId) {
-              const depIdx = updatedStockLevels.findIndex(sl => sl.siteId === deployedSiteId);
-              if (depIdx >= 0) {
-                updatedStockLevels[depIdx] = {
-                  ...updatedStockLevels[depIdx],
-                  quantity: Math.max(0, (updatedStockLevels[depIdx].quantity || 0) - qtyReturnedToStock)
-                };
-              }
-            }
-
-            // b. Restock original home site where asset came from
+            // Restock original home site where asset came from (or return site)
             if (resolvedHomeSiteId) {
               const homeIdx = updatedStockLevels.findIndex(sl => sl.siteId === resolvedHomeSiteId);
               if (homeIdx >= 0) {
@@ -1032,143 +1165,7 @@ export const CatalogTab = ({
     }
   };
 
-  const handleBulkDeploymentReturn = async () => {
-    if (selectedDeploymentIds.length === 0) return;
-    setIsSubmittingBulkReturn(true);
-    const returnedAtStr = new Date().toISOString();
-    const finalComment = bulkReturnCondition === "MISSING"
-      ? `[MISSING] ${bulkReturnNotes || 'Bulk return - items missing'}`
-      : bulkReturnCondition === "DAMAGED"
-        ? `[DAMAGED] ${bulkReturnNotes || 'Bulk return - damaged condition'}`
-        : `[GOOD] ${bulkReturnNotes || 'Bulk return - good condition'}`;
 
-    const deploymentsToReturn = deploymentsList.filter((d: any) => selectedDeploymentIds.includes(d.id));
-
-    for (const dep of deploymentsToReturn) {
-      try {
-        if (!isUsingMockData && dep.id) {
-          await fetch(getApiUrl(`/requests/${dep.id}/returned`), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ comment: finalComment, returnerEmail: currentUser?.email })
-          });
-        }
-      } catch (err) {
-        console.warn(`Bulk return backend error for ${dep.id}:`, err);
-      }
-
-      const updatedDep = {
-        ...dep,
-        status: "RETURNED",
-        returnCondition: bulkReturnCondition,
-        returnNotes: finalComment,
-        returnedAt: returnedAtStr
-      };
-
-      // Persist to localStorage
-      try {
-        const savedReturns = JSON.parse(localStorage.getItem("cp_returned_deployments") || "{}");
-        savedReturns[dep.id] = updatedDep;
-        localStorage.setItem("cp_returned_deployments", JSON.stringify(savedReturns));
-      } catch (e) {
-        console.error("Failed to save bulk return state:", e);
-      }
-
-      setDeploymentsList((prev: any[]) => prev.map((d: any) => d.id === dep.id ? updatedDep : d));
-
-      // Restore stock
-      const totalQtyDeployed = dep.rawRequest?.quantity || 1;
-      const qtyReturnedToStock = totalQtyDeployed;
-      if (qtyReturnedToStock > 0 && setCatalogItems) {
-        setCatalogItems((prevItems: CatalogItem[]) => {
-          const updatedItems = prevItems.map((item) => {
-            const isTargetItem =
-              item.id === dep.rawRequest?.itemId ||
-              (item.name || "").toLowerCase() === (dep.itemName || "").toLowerCase();
-            if (!isTargetItem) return item;
-
-            const newQty = (item.quantity ?? 0) + qtyReturnedToStock;
-            const deployedSiteObj = sites.find((s: any) => s.id === dep.siteId || s.name === dep.siteLocation);
-            const deployedSiteId = deployedSiteObj ? deployedSiteObj.id : (dep.siteId && dep.siteId !== "ALL" ? dep.siteId : undefined);
-
-            const tagForPrefix = dep.assetTag || dep.rawRequest?.assetTag || dep.rawRequest?.asset?.tagCode;
-            let homeSiteIdFromTag: string | undefined = undefined;
-            if (tagForPrefix) {
-              const parts = tagForPrefix.split('-');
-              if (parts.length >= 3) {
-                const prefix = parts[0];
-                const siteObj = sites.find((s: any) => (s.prefix || "").toLowerCase() === prefix.toLowerCase());
-                if (siteObj) homeSiteIdFromTag = siteObj.id;
-              }
-            }
-
-            const homeSiteId = dep.rawRequest?.sourceSiteId || homeSiteIdFromTag || dep.rawRequest?.asset?.siteId || dep.siteId;
-            const homeSiteObj = sites.find((s: any) => s.id === homeSiteId || s.name === homeSiteId);
-            const resolvedHomeSiteId = homeSiteObj ? homeSiteObj.id : (homeSiteId && homeSiteId !== "ALL" ? homeSiteId : deployedSiteId);
-
-            let updatedStockLevels = item.stockLevels ? [...item.stockLevels] : [];
-
-            // a. Deduct stock from current deployed site
-            if (deployedSiteId) {
-              const depIdx = updatedStockLevels.findIndex(sl => sl.siteId === deployedSiteId);
-              if (depIdx >= 0) {
-                updatedStockLevels[depIdx] = {
-                  ...updatedStockLevels[depIdx],
-                  quantity: Math.max(0, (updatedStockLevels[depIdx].quantity || 0) - qtyReturnedToStock)
-                };
-              }
-            }
-
-            // b. Restock original home site where asset came from
-            if (resolvedHomeSiteId) {
-              const homeIdx = updatedStockLevels.findIndex(sl => sl.siteId === resolvedHomeSiteId);
-              if (homeIdx >= 0) {
-                updatedStockLevels[homeIdx] = {
-                  ...updatedStockLevels[homeIdx],
-                  quantity: (updatedStockLevels[homeIdx].quantity || 0) + qtyReturnedToStock
-                };
-              } else {
-                updatedStockLevels.push({
-                  id: `ss-${Date.now()}-bulk-home`,
-                  siteId: resolvedHomeSiteId,
-                  itemId: item.id,
-                  quantity: qtyReturnedToStock,
-                  reorderPoint: 5
-                } as any);
-              }
-            }
-
-            const catType = item.category?.type || "NON_CONSUMABLE";
-            let updatedAssets = item.assets || [];
-            if (catType === "NON_CONSUMABLE") {
-              const returnedTag = dep.assetTag || dep.rawRequest?.assetTag || dep.rawRequest?.asset?.tagCode;
-              if (returnedTag) {
-                const restoredStatus = bulkReturnCondition === "DAMAGED" ? "UNDER_MAINTENANCE" : "AVAILABLE";
-                const existingIdx = updatedAssets.findIndex((a: any) => a.tagCode === returnedTag || a.assetTag === returnedTag);
-                if (existingIdx >= 0) {
-                  updatedAssets = updatedAssets.map((a: any, idx: number) =>
-                    idx === existingIdx ? { ...a, status: restoredStatus } : a
-                  );
-                }
-              }
-            }
-
-            return { ...item, quantity: newQty, stockLevels: updatedStockLevels || item.stockLevels, assets: updatedAssets };
-          });
-          try { localStorage.setItem("cp_inventory_catalog", JSON.stringify(updatedItems)); } catch {}
-          return updatedItems;
-        });
-      }
-    }
-
-    setIsSubmittingBulkReturn(false);
-    setIsBulkDeploymentReturnModalOpen(false);
-    setSelectedDeploymentIds([]);
-    setBulkReturnNotes("");
-    setBulkReturnCondition("GOOD");
-    if (onUpdateCatalog) onUpdateCatalog();
-    fetchDeployments();
-  };
 
   return (
     <div className="animate-module-flip" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -3504,75 +3501,7 @@ export const CatalogTab = ({
             )}
           </div>
 
-          {/* Bulk Deployed Asset Return Modal */}
-          {isBulkDeploymentReturnModalOpen && (
-            <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(4px)' }}>
-              <div style={{ backgroundColor: '#ffffff', borderRadius: 18, padding: '2rem', minWidth: 460, maxWidth: 560, boxShadow: '0 20px 60px rgba(15,23,42,0.18)', animation: 'slideFadeIn 0.25s ease-out' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1.25rem' }}>
-                  <div style={{ width: 44, height: 44, borderRadius: '50%', backgroundColor: '#ffedd5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>🔄</div>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Bulk Return Deployed Assets</h3>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>{selectedDeploymentIds.length} asset{selectedDeploymentIds.length > 1 ? 's' : ''} will be returned to inventory stock</p>
-                  </div>
-                </div>
 
-                <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, padding: '0.85rem 1rem', marginBottom: '1.25rem', fontSize: '0.85rem', color: '#92400e', lineHeight: 1.5 }}>
-                  ⚠️ <strong>{selectedDeploymentIds.length} deployed asset{selectedDeploymentIds.length > 1 ? 's' : ''}</strong> will be marked as <strong>RETURNED</strong> and their stock counts will be restored. This action updates localStorage and syncs with the backend.
-                </div>
-
-                <div style={{ marginBottom: '1.1rem' }}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#374151', marginBottom: '0.5rem' }}>Return Condition</label>
-                  <div style={{ display: 'flex', gap: '0.6rem' }}>
-                    {(['GOOD', 'DAMAGED', 'MISSING'] as const).map((cond) => (
-                      <button
-                        key={cond}
-                        onClick={() => setBulkReturnCondition(cond)}
-                        style={{
-                          flex: 1, padding: '0.55rem 0.5rem', borderRadius: 8, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', border: '2px solid',
-                          backgroundColor: bulkReturnCondition === cond ? (cond === 'GOOD' ? '#d1fae5' : cond === 'DAMAGED' ? '#fee2e2' : '#fef3c7') : '#f8fafc',
-                          borderColor: bulkReturnCondition === cond ? (cond === 'GOOD' ? '#6ee7b7' : cond === 'DAMAGED' ? '#fca5a5' : '#fcd34d') : '#e2e8f0',
-                          color: bulkReturnCondition === cond ? (cond === 'GOOD' ? '#065f46' : cond === 'DAMAGED' ? '#991b1b' : '#92400e') : '#64748b',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        {cond === 'GOOD' ? '✅ Good' : cond === 'DAMAGED' ? '⚠️ Damaged' : '❌ Missing'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: '1.25rem' }}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#374151', marginBottom: '0.4rem' }}>Return Notes (optional)</label>
-                  <textarea
-                    value={bulkReturnNotes}
-                    onChange={(e) => setBulkReturnNotes(e.target.value)}
-                    placeholder="e.g. Employee resigned, contract ended, batch equipment refresh..."
-                    rows={3}
-                    style={{ width: '100%', borderRadius: 8, border: '1px solid #d1d5db', padding: '0.65rem 0.85rem', fontSize: '0.85rem', color: '#1e293b', resize: 'vertical', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                  <button
-                    onClick={() => { setIsBulkDeploymentReturnModalOpen(false); setBulkReturnNotes(''); setBulkReturnCondition('GOOD'); }}
-                    disabled={isSubmittingBulkReturn}
-                    style={{ backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', borderRadius: 8, padding: '0.55rem 1.1rem', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleBulkDeploymentReturn}
-                    disabled={isSubmittingBulkReturn}
-                    style={{ backgroundColor: '#ea580c', color: '#ffffff', border: 'none', borderRadius: 8, padding: '0.55rem 1.4rem', fontSize: '0.85rem', fontWeight: 700, cursor: isSubmittingBulkReturn ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', boxShadow: '0 2px 8px rgba(234,88,12,0.3)' }}
-                  >
-                    {isSubmittingBulkReturn ? (
-                      <><span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} /> Processing...</>
-                    ) : `🔄 Confirm Return (${selectedDeploymentIds.length} Asset${selectedDeploymentIds.length > 1 ? 's' : ''})`}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -4177,6 +4106,200 @@ export const CatalogTab = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Bulk Deployment Return Modal */}
+      {isBulkDeploymentReturnModalOpen && isMounted && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(4px)' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: 16, padding: '1.75rem', width: 620, maxWidth: '92vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(15,23,42,0.18)', animation: 'slideFadeIn 0.25s ease-out' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: '#ffedd5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>↩️</div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Bulk Deployment Return</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Specify return status & remarks for {selectedDeploymentIds.length} deployed asset{selectedDeploymentIds.length > 1 ? 's' : ''}</p>
+              </div>
+            </div>
+
+            {/* Quick Apply to All Bar */}
+            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '0.75rem 0.9rem', marginBottom: '1rem', flexShrink: 0 }}>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                ⚡ <span>Quick Apply to All Selected Deployments:</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, display: 'block', marginBottom: '0.2rem' }}>Condition for All:</span>
+                  <select
+                    value={bulkDepReturnCondition}
+                    onChange={(e) => {
+                      const val = e.target.value as 'GOOD' | 'BAD' | 'RETIRED';
+                      setBulkDepReturnCondition(val);
+                      setItemDepReturnStates(prev => {
+                        const next = { ...prev };
+                        selectedDeploymentIds.forEach(id => {
+                          next[id] = { ...(next[id] || { completeness: 'COMPLETE', missingCount: 1, remarks: '' }), condition: val };
+                        });
+                        return next;
+                      });
+                    }}
+                    style={{ width: '100%', borderRadius: 6, border: '1px solid #cbd5e1', padding: '0.4rem 0.6rem', fontSize: '0.78rem', color: '#1e293b', backgroundColor: '#ffffff', fontWeight: 600 }}
+                  >
+                    <option value="GOOD">Operational / Good Condition</option>
+                    <option value="BAD">Damaged / Defective</option>
+                    <option value="RETIRED">Beyond Economic Repair (Retired)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, display: 'block', marginBottom: '0.2rem' }}>Completeness for All:</span>
+                  <select
+                    value={bulkDepReturnQuantityStatus}
+                    onChange={(e) => {
+                      const val = e.target.value as 'COMPLETE' | 'MISSING';
+                      setBulkDepReturnQuantityStatus(val);
+                      setItemDepReturnStates(prev => {
+                        const next = { ...prev };
+                        selectedDeploymentIds.forEach(id => {
+                          next[id] = { ...(next[id] || { condition: 'GOOD', missingCount: 1, remarks: '' }), completeness: val };
+                        });
+                        return next;
+                      });
+                    }}
+                    style={{ width: '100%', borderRadius: 6, border: '1px solid #cbd5e1', padding: '0.4rem 0.6rem', fontSize: '0.78rem', color: '#1e293b', backgroundColor: '#ffffff', fontWeight: 600 }}
+                  >
+                    <option value="COMPLETE">Complete (All items present)</option>
+                    <option value="MISSING">Incomplete / Missing Items</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Scrollable Itemized Deployments List */}
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '0.35rem', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {deploymentsList.filter(d => selectedDeploymentIds.includes(d.id)).map((dep) => {
+                const st = itemDepReturnStates[dep.id] || { condition: 'GOOD', completeness: 'COMPLETE', missingCount: 1, remarks: '' };
+                return (
+                  <div key={dep.id} style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: '0.85rem', backgroundColor: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem', borderBottom: '1px dashed #e2e8f0', paddingBottom: '0.4rem' }}>
+                      <div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>{dep.itemName || 'Deployed Hardware'}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Custodian: <span style={{ fontWeight: 600, color: '#334155' }}>{dep.employeeName}</span> ({dep.employeeEid || 'EID-N/A'})</div>
+                      </div>
+                      {(() => {
+                        const tagStr = dep.assetTag || dep.rawRequest?.assetTag || dep.rawRequest?.asset?.tagCode;
+                        if (tagStr && tagStr !== 'AST-DEP') {
+                          return (
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, backgroundColor: '#eef2ff', color: '#210cae', border: '1px solid #c7d2fe', padding: '0.2rem 0.5rem', borderRadius: 6, fontFamily: 'monospace' }}>
+                              🏷️ {tagStr}
+                            </span>
+                          );
+                        }
+                        return (
+                          <span style={{ fontSize: '0.72rem', fontWeight: 700, backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '0.2rem 0.5rem', borderRadius: 6 }}>
+                            📦 Consumable / Stock Item
+                          </span>
+                        );
+                      })()}
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem', marginBottom: '0.5rem' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#475569', marginBottom: '0.2rem' }}>Asset Condition</label>
+                        <select
+                          value={st.condition}
+                          onChange={(e) => {
+                            const val = e.target.value as 'GOOD' | 'BAD' | 'RETIRED';
+                            setItemDepReturnStates(prev => ({
+                              ...prev,
+                              [dep.id]: { ...(prev[dep.id] || { completeness: 'COMPLETE', missingCount: 1, remarks: '' }), condition: val }
+                            }));
+                          }}
+                          style={{ width: '100%', borderRadius: 6, border: '1px solid #cbd5e1', padding: '0.35rem 0.55rem', fontSize: '0.78rem', color: '#0f172a', fontWeight: 600, backgroundColor: '#ffffff' }}
+                        >
+                          <option value="GOOD">Operational / Good</option>
+                          <option value="BAD">Damaged / Defective</option>
+                          <option value="RETIRED">Retired / Beyond Repair</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#475569', marginBottom: '0.2rem' }}>Completeness</label>
+                        <select
+                          value={st.completeness}
+                          onChange={(e) => {
+                            const val = e.target.value as 'COMPLETE' | 'MISSING';
+                            setItemDepReturnStates(prev => ({
+                              ...prev,
+                              [dep.id]: { ...(prev[dep.id] || { condition: 'GOOD', missingCount: 1, remarks: '' }), completeness: val }
+                            }));
+                          }}
+                          style={{ width: '100%', borderRadius: 6, border: '1px solid #cbd5e1', padding: '0.35rem 0.55rem', fontSize: '0.78rem', color: '#0f172a', fontWeight: 600, backgroundColor: '#ffffff' }}
+                        >
+                          <option value="COMPLETE">Complete</option>
+                          <option value="MISSING">Incomplete / Missing</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {st.completeness === 'MISSING' && (
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#dc2626', marginBottom: '0.2rem' }}>Number of Missing Items</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={st.missingCount || 1}
+                          onChange={(e) => {
+                            const val = Math.max(1, parseInt(e.target.value) || 1);
+                            setItemDepReturnStates(prev => ({
+                              ...prev,
+                              [dep.id]: { ...(prev[dep.id] || { condition: 'GOOD', completeness: 'MISSING', remarks: '' }), missingCount: val }
+                            }));
+                          }}
+                          style={{ width: '100%', borderRadius: 6, border: '1px solid #fca5a5', padding: '0.35rem 0.55rem', fontSize: '0.78rem', color: '#991b1b', backgroundColor: '#fef2f2', fontWeight: 700 }}
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <input
+                        type="text"
+                        placeholder="Per-asset remarks / condition details (optional)..."
+                        value={st.remarks || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setItemDepReturnStates(prev => ({
+                            ...prev,
+                            [dep.id]: { ...(prev[dep.id] || { condition: 'GOOD', completeness: 'COMPLETE', missingCount: 1 }), remarks: val }
+                          }));
+                        }}
+                        style={{ width: '100%', borderRadius: 6, border: '1px solid #e2e8f0', padding: '0.35rem 0.55rem', fontSize: '0.78rem', color: '#334155', outline: 'none' }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', paddingTop: '0.75rem', borderTop: '1px solid #f1f5f9' }}>
+              <button
+                onClick={() => { setIsBulkDeploymentReturnModalOpen(false); setItemDepReturnStates({}); }}
+                disabled={isSubmittingBulkDepReturn}
+                style={{ backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', borderRadius: 8, padding: '0.5rem 1.1rem', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmBulkDeploymentReturn}
+                disabled={isSubmittingBulkDepReturn}
+                style={{ backgroundColor: '#ea580c', color: '#ffffff', border: 'none', borderRadius: 8, padding: '0.5rem 1.25rem', fontSize: '0.85rem', fontWeight: 700, cursor: isSubmittingBulkDepReturn ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', boxShadow: '0 2px 8px rgba(234,88,12,0.3)' }}
+              >
+                {isSubmittingBulkDepReturn ? (
+                  <><span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} /> Processing...</>
+                ) : `↩️ Return ${selectedDeploymentIds.length} Deployment${selectedDeploymentIds.length > 1 ? 's' : ''}`}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* Excel Asset Import Modal */}

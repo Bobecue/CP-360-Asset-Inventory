@@ -1,6 +1,7 @@
 "use client";
 
-import { DbNotification, RoleBadge, SiteBadge, EidBadge } from "@/types/dashboard";
+import { useState, useRef, useEffect } from "react";
+import { DbNotification, RoleBadge, EidBadge } from "@/types/dashboard";
 
 interface TopBarProps {
   activeTab: string;
@@ -12,6 +13,8 @@ interface TopBarProps {
   onMarkRead: (id: string) => void;
   onMarkAllRead: () => void;
   currentUser: any | null;
+  onChangePassword?: () => void;
+  onLogout?: () => void;
 }
 
 const getPageTitle = (activeTab: string) => {
@@ -38,8 +41,26 @@ export const TopBar = ({
   onMarkRead,
   onMarkAllRead,
   currentUser,
+  onChangePassword,
+  onLogout,
 }: TopBarProps) => {
   const unreadCount = notifications.filter(n => !n.isRead).length;
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close user menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const role = currentUser?.role || "EMPLOYEE";
+  const employeeId = currentUser?.employeeId || "EID-0000";
 
   return (
     <header style={{
@@ -205,39 +226,182 @@ export const TopBar = ({
           )}
         </div>
 
-        {/* User Info Header Section */}
+        {/* User Profile Dropdown */}
         {currentUser && (
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.65rem"
-          }}>
-            <div 
-              className="glitter-glow-avatar"
+          <div ref={userMenuRef} style={{ position: "relative" }}>
+            <button
+              onClick={() => setIsUserMenuOpen(prev => !prev)}
+              className="interactive-element"
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: "50%",
-                background: "linear-gradient(135deg, #3B82F6 0%, #00C6FF 100%)",
-                color: "#FFFFFF",
-                fontWeight: 800,
-                fontSize: "0.85rem",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0
+                gap: "0.65rem",
+                backgroundColor: isUserMenuOpen ? "#F8FAFC" : "transparent",
+                border: "1px solid",
+                borderColor: isUserMenuOpen ? "#CBD5E1" : "transparent",
+                borderRadius: 12,
+                padding: "5px 10px 5px 5px",
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#F8FAFC";
+                e.currentTarget.style.borderColor = "#CBD5E1";
+              }}
+              onMouseLeave={(e) => {
+                if (!isUserMenuOpen) {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                  e.currentTarget.style.borderColor = "transparent";
+                }
               }}
             >
-              {(currentUser.name || "SU").substring(0, 2).toUpperCase()}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-              <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "#0F172A", lineHeight: 1.25 }}>
-                {currentUser.name}
-              </span>
-              <span style={{ fontSize: "0.72rem", color: "#64748B", lineHeight: 1.2 }}>
-                {currentUser.department || "IT Department"}
-              </span>
-            </div>
+              <div
+                className="glitter-glow-avatar"
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #3B82F6 0%, #00C6FF 100%)",
+                  color: "#FFFFFF",
+                  fontWeight: 800,
+                  fontSize: "0.82rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                {(currentUser.name || "SU").substring(0, 2).toUpperCase()}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", minWidth: 0, textAlign: "left" }}>
+                <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0F172A", lineHeight: 1.25 }}>
+                  {currentUser.name}
+                </span>
+                <span style={{ fontSize: "0.7rem", color: "#64748B", lineHeight: 1.2 }}>
+                  {currentUser.department || "IT Department"}
+                </span>
+              </div>
+              {/* Chevron */}
+              <svg
+                width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2.5"
+                strokeLinecap="round" strokeLinejoin="round"
+                style={{ transition: "transform 0.2s ease", transform: isUserMenuOpen ? "rotate(180deg)" : "rotate(0deg)", flexShrink: 0 }}
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+
+            {/* Dropdown Menu */}
+            {isUserMenuOpen && (
+              <div style={{
+                position: "absolute",
+                right: 0,
+                top: "calc(100% + 8px)",
+                width: 230,
+                backgroundColor: "#FFFFFF",
+                borderRadius: 14,
+                boxShadow: "0 10px 30px -5px rgba(15, 23, 42, 0.15), 0 4px 6px -2px rgba(15, 23, 42, 0.05)",
+                border: "1px solid #E2E8F0",
+                zIndex: 300,
+                overflow: "hidden",
+                animation: "scaleIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+                transformOrigin: "top right",
+              }}>
+                {/* User info header in dropdown */}
+                <div style={{
+                  padding: "1rem",
+                  borderBottom: "1px solid #F1F5F9",
+                  backgroundColor: "#F8FAFC",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.6rem",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                    <div style={{
+                      width: 38, height: 38, borderRadius: "50%",
+                      background: "linear-gradient(135deg, #3B82F6 0%, #00C6FF 100%)",
+                      color: "#FFFFFF", fontWeight: 800, fontSize: "0.88rem",
+                      display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                    }}>
+                      {(currentUser.name || "SU").substring(0, 2).toUpperCase()}
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                      <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0F172A", lineHeight: 1.3 }}>
+                        {currentUser.name}
+                      </span>
+                      <span style={{ fontSize: "0.7rem", color: "#64748B", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {currentUser.email}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Badges row */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
+                    <RoleBadge role={role} size="sm" />
+                    <EidBadge employeeId={employeeId} size="sm" />
+                  </div>
+                </div>
+
+                {/* Menu actions */}
+                <div style={{ padding: "0.5rem" }}>
+                  {/* Change Password */}
+                  <button
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      onChangePassword?.();
+                    }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "0.65rem",
+                      width: "100%", padding: "0.6rem 0.75rem", borderRadius: 8,
+                      border: "none", backgroundColor: "transparent",
+                      color: "#374151", cursor: "pointer", fontSize: "0.82rem",
+                      fontWeight: 500, textAlign: "left", transition: "all 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "#F1F5F9";
+                      e.currentTarget.style.color = "#0F172A";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "transparent";
+                      e.currentTarget.style.color = "#374151";
+                    }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                    Change Password
+                  </button>
+
+                  <div style={{ height: 1, backgroundColor: "#F1F5F9", margin: "0.35rem 0" }} />
+
+                  {/* Sign Out */}
+                  <button
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      onLogout?.();
+                    }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "0.65rem",
+                      width: "100%", padding: "0.6rem 0.75rem", borderRadius: 8,
+                      border: "none", backgroundColor: "transparent",
+                      color: "#EF4444", cursor: "pointer", fontSize: "0.82rem",
+                      fontWeight: 500, textAlign: "left", transition: "all 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "#FEF2F2";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "transparent";
+                    }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

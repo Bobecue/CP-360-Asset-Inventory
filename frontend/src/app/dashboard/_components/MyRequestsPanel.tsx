@@ -583,7 +583,7 @@ export function MyRequestsPanel({
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {selectedRequests.some(r => ['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'APPROVED', 'READY_FOR_PICKUP'].includes(r.status as string)) && (
+                {selectedRequests.some(r => ['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'PENDING_PROCUREMENT', 'APPROVED', 'READY_FOR_PICKUP'].includes(r.status as string)) && (
                   <button
                     onClick={() => setIsBulkCancelConfirmOpen(true)}
                     disabled={isSubmittingBulk}

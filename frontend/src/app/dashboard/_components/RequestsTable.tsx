@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import jsPDF from 'jspdf';
 import { InteractiveModal, ModalType } from '../../../components/ui/InteractiveModal';
 import { confirmReceipt, bulkConfirmReceiptApi, bulkReturnApi } from '../../../lib/services/requestService';
@@ -77,7 +78,7 @@ interface RequestsTableProps {
   onBulkRelease?: (selectedIds: string[]) => Promise<void>;
   onBulkCancel?: (selectedIds: string[], comment?: string) => Promise<void>;
   onBulkConfirmReceipt?: (selectedIds: string[]) => Promise<void>;
-  onBulkReturn?: (selectedIds: string[]) => Promise<void>;
+  onBulkReturn?: (selectedIds: string[], comment?: string, itemsMap?: Record<string, string>) => Promise<void>;
 }
 
 import { getCategoryIcon, getDepartmentIcon, RoleBadge, SiteBadge, EidBadge, AssetTagBadge } from '@/types/dashboard';
@@ -108,6 +109,10 @@ export function RequestsTable({
   const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [siteFilter, setSiteFilter] = useState('');
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const [categoryTypeFilter, setCategoryTypeFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -121,6 +126,10 @@ export function RequestsTable({
   const [isBulkConfirmReceiptModalOpen, setIsBulkConfirmReceiptModalOpen] = useState(false);
   const [isBulkReturnModalOpen, setIsBulkReturnModalOpen] = useState(false);
   const [bulkReturnComment, setBulkReturnComment] = useState('');
+  const [bulkReturnCondition, setBulkReturnCondition] = useState<'GOOD' | 'BAD' | 'RETIRED'>('GOOD');
+  const [bulkReturnQuantityStatus, setBulkReturnQuantityStatus] = useState<'COMPLETE' | 'MISSING'>('COMPLETE');
+  const [bulkReturnMissingCount, setBulkReturnMissingCount] = useState<number>(1);
+  const [itemReturnStates, setItemReturnStates] = useState<Record<string, { condition: 'GOOD' | 'BAD' | 'RETIRED'; completeness: 'COMPLETE' | 'MISSING'; missingCount: number; remarks: string }>>({});
   const [bulkReturnError, setBulkReturnError] = useState<string | null>(null);
 
   // Sorting
@@ -644,15 +653,25 @@ export function RequestsTable({
   const handleBulkConfirmReceiptClick = async () => {
     if (selectedReqIds.length === 0 || isSubmittingBulk) return;
     setIsSubmittingBulk(true);
+    const validIds = selectedReqIds.filter(id => {
+      const req = allRequests.find(r => r.id === id);
+      return req && req.requestedById === currentUserId;
+    });
+
+    if (validIds.length === 0) {
+      setIsSubmittingBulk(false);
+      setIsBulkConfirmReceiptModalOpen(false);
+      return;
+    }
+
     try {
       const userIdentifier = currentUserId || 'superadmin@contactpoint360.com';
       if (onBulkConfirmReceipt) {
-        await onBulkConfirmReceipt(selectedReqIds);
+        await onBulkConfirmReceipt(validIds);
       } else {
-        await bulkConfirmReceiptApi(selectedReqIds, userIdentifier);
+        await bulkConfirmReceiptApi(validIds, userIdentifier);
       }
       setSelectedReqIds([]);
-      if (typeof window !== 'undefined') window.location.reload();
     } catch (err) {
       console.error('Error during bulk confirm receipt:', err);
     } finally {
@@ -665,16 +684,32 @@ export function RequestsTable({
     if (selectedReqIds.length === 0 || isSubmittingBulk) return;
     setIsSubmittingBulk(true);
     setBulkReturnError(null);
+
+    const itemsMap: Record<string, string> = {};
+    selectedReqIds.forEach(id => {
+      const st = itemReturnStates[id] || { condition: bulkReturnCondition, completeness: bulkReturnQuantityStatus, missingCount: bulkReturnMissingCount, remarks: '' };
+      const condLabel = st.condition === 'GOOD' ? 'Good / Operational' : st.condition === 'BAD' ? 'Damaged / Defective' : 'Retired / Beyond Repair';
+      const qtyLabel = st.completeness === 'COMPLETE' ? 'Complete' : `Missing ${st.missingCount || 1} item(s)`;
+      itemsMap[id] = `Condition: ${condLabel} | Quantity: ${qtyLabel}${st.remarks.trim() ? ` | Remarks: ${st.remarks.trim()}` : ''}`;
+    });
+
+    const fallbackConditionLabel = bulkReturnCondition === 'GOOD' ? 'Good / Operational' : bulkReturnCondition === 'BAD' ? 'Damaged / Defective' : 'Retired / Beyond Repair';
+    const fallbackQuantityLabel = bulkReturnQuantityStatus === 'COMPLETE' ? 'Complete' : `Missing ${bulkReturnMissingCount} item(s)`;
+    const fallbackComment = `Condition: ${fallbackConditionLabel} | Quantity: ${fallbackQuantityLabel}${bulkReturnComment.trim() ? ` | Remarks: ${bulkReturnComment.trim()}` : ''}`;
+
     try {
       const userIdentifier = currentUserId || 'superadmin@contactpoint360.com';
       if (onBulkReturn) {
-        await onBulkReturn(selectedReqIds);
+        await onBulkReturn(selectedReqIds, fallbackComment, itemsMap);
       } else {
-        await bulkReturnApi(selectedReqIds, userIdentifier, bulkReturnComment || 'Bulk return by inventory staff');
+        await bulkReturnApi(selectedReqIds, userIdentifier, fallbackComment, itemsMap);
       }
       setSelectedReqIds([]);
       setBulkReturnComment('');
-      if (typeof window !== 'undefined') window.location.reload();
+      setBulkReturnCondition('GOOD');
+      setBulkReturnQuantityStatus('COMPLETE');
+      setBulkReturnMissingCount(1);
+      setItemReturnStates({});
     } catch (err: any) {
       setBulkReturnError(err?.message || 'An error occurred during bulk return.');
     } finally {
@@ -1171,7 +1206,7 @@ export function RequestsTable({
             {(() => {
               const eligibleApproveReqs = selectedRequests.filter(
                 r => ['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL'].includes(r.status as string) && 
-                     (r.requestedById !== currentUserId || currentUserRole === 'SUPER_ADMIN')
+                     r.requestedById !== currentUserId
               );
               const eligiblePrepareReqs = selectedRequests.filter(
                 r => ['APPROVED'].includes(r.status as string)
@@ -1180,10 +1215,11 @@ export function RequestsTable({
                 r => ['READY_FOR_PICKUP'].includes(r.status as string)
               );
               const eligibleConfirmReqs = selectedRequests.filter(
-                r => ['AWAITING_CONFIRMATION', 'RELEASED'].includes(r.status as string)
+                r => ['AWAITING_CONFIRMATION', 'RELEASED'].includes(r.status as string) &&
+                     r.requestedById === currentUserId
               );
               const eligibleReturnReqs = selectedRequests.filter(
-                r => ['RELEASED', 'AWAITING_CONFIRMATION', 'ITEM_RECEIVED'].includes(r.status as string)
+                r => ['ITEM_RECEIVED'].includes(r.status as string)
               );
 
               if (canApprove && eligibleApproveReqs.length > 0) {
@@ -1267,7 +1303,7 @@ export function RequestsTable({
                 );
               }
 
-              if (canApprove && eligibleConfirmReqs.length > 0) {
+              if (eligibleConfirmReqs.length > 0) {
                 return (
                   <button
                     onClick={() => setIsBulkConfirmReceiptModalOpen(true)}
@@ -1317,6 +1353,48 @@ export function RequestsTable({
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                     {isSubmittingBulk ? 'Processing...' : 'Bulk Return'}
+                  </button>
+                );
+              }
+
+              const eligibleCancelReqs = selectedRequests.filter(
+                r => ['PENDING', 'PENDING_APPROVAL', 'PENDING_OPS_APPROVAL', 'PENDING_PROCUREMENT', 'APPROVED', 'READY_FOR_PICKUP'].includes(r.status as string) &&
+                     (r.requestedById === currentUserId || canApprove || canRelease)
+              );
+
+              if (onBulkCancel && eligibleCancelReqs.length > 0) {
+                return (
+                  <button
+                    onClick={async () => {
+                      if (onBulkCancel) {
+                        setIsSubmittingBulk(true);
+                        try {
+                          await onBulkCancel(eligibleCancelReqs.map(r => r.id), 'Cancelled by requester');
+                          setSelectedReqIds([]);
+                        } finally {
+                          setIsSubmittingBulk(false);
+                        }
+                      }
+                    }}
+                    disabled={isSubmittingBulk}
+                    style={{
+                      backgroundColor: '#dc2626',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: 8,
+                      padding: '0.45rem 0.95rem',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      cursor: isSubmittingBulk ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      boxShadow: '0 2px 6px rgba(220, 38, 38, 0.3)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                    {isSubmittingBulk ? 'Processing...' : 'Cancel Transfers'}
                   </button>
                 );
               }
@@ -2006,17 +2084,24 @@ export function RequestsTable({
           }
           setIsSubmittingBulk(true);
           try {
-            if (onBulkApprove) {
-              await onBulkApprove(selectedReqIds, comment);
-            } else {
-              for (const id of selectedReqIds) {
-                const req = allRequests.find(r => r.id === id);
-                if (!req) continue;
-                let targetStatus: RequestStatus = 'APPROVED';
-                if (req.status === 'PENDING' || (req.status as string) === 'PENDING_APPROVAL') {
-                  targetStatus = (currentUserRole === 'ADMIN' || currentUserRole === 'SUPER_ADMIN') ? 'APPROVED' : 'PENDING_OPS_APPROVAL';
+            const validReqIds = selectedReqIds.filter(id => {
+              const req = allRequests.find(r => r.id === id);
+              return req && req.requestedById !== currentUserId;
+            });
+
+            if (validReqIds.length > 0) {
+              if (onBulkApprove) {
+                await onBulkApprove(validReqIds, comment);
+              } else {
+                for (const id of validReqIds) {
+                  const req = allRequests.find(r => r.id === id);
+                  if (!req) continue;
+                  let targetStatus: RequestStatus = 'APPROVED';
+                  if (req.status === 'PENDING' || (req.status as string) === 'PENDING_APPROVAL') {
+                    targetStatus = (currentUserRole === 'ADMIN' || currentUserRole === 'SUPER_ADMIN') ? 'APPROVED' : 'PENDING_OPS_APPROVAL';
+                  }
+                  await onReview(id, targetStatus, comment);
                 }
-                await onReview(id, targetStatus, comment);
               }
             }
             setSelectedReqIds([]);
@@ -2050,8 +2135,8 @@ export function RequestsTable({
       />
 
       {/* Bulk Confirm Receipt Modal */}
-      {isBulkConfirmReceiptModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(4px)' }}>
+      {isBulkConfirmReceiptModalOpen && isMounted && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(4px)' }}>
           <div style={{ backgroundColor: '#ffffff', borderRadius: 16, padding: '2rem', minWidth: 420, maxWidth: 520, boxShadow: '0 20px 60px rgba(15,23,42,0.18)', animation: 'slideFadeIn 0.25s ease-out' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
               <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>✅</div>
@@ -2082,41 +2167,176 @@ export function RequestsTable({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Bulk Return Modal */}
-      {isBulkReturnModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(4px)' }}>
-          <div style={{ backgroundColor: '#ffffff', borderRadius: 16, padding: '2rem', minWidth: 440, maxWidth: 540, boxShadow: '0 20px 60px rgba(15,23,42,0.18)', animation: 'slideFadeIn 0.25s ease-out' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-              <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: '#ffedd5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>🔄</div>
+      {isBulkReturnModalOpen && isMounted && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(4px)' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: 16, padding: '1.75rem', width: 620, maxWidth: '92vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(15,23,42,0.18)', animation: 'slideFadeIn 0.25s ease-out' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: '#ffedd5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>🔄</div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Bulk Asset Return</h3>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Return {selectedReqIds.length} selected asset{selectedReqIds.length > 1 ? 's' : ''} back to stock</p>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Bulk Asset Return</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Specify return status & remarks for {selectedReqIds.length} selected asset{selectedReqIds.length > 1 ? 's' : ''}</p>
               </div>
             </div>
-            <p style={{ fontSize: '0.875rem', color: '#475569', lineHeight: 1.6, marginBottom: '1rem', backgroundColor: '#fff7ed', padding: '0.85rem 1rem', borderRadius: 10, border: '1px solid #fed7aa' }}>
-              You are about to mark <strong>{selectedReqIds.length} request{selectedReqIds.length > 1 ? 's' : ''}</strong> as <strong>Returned</strong>. The assets will be added back to inventory stock.
-            </p>
-            <div style={{ marginBottom: '1.25rem' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.4rem' }}>Return Comment (optional)</label>
-              <textarea
-                value={bulkReturnComment}
-                onChange={(e) => setBulkReturnComment(e.target.value)}
-                placeholder="e.g. Employee resigned, contract ended, equipment replacement..."
-                rows={3}
-                style={{ width: '100%', borderRadius: 8, border: '1px solid #d1d5db', padding: '0.6rem 0.8rem', fontSize: '0.85rem', color: '#1e293b', resize: 'vertical', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
-              />
+
+            {/* Quick Apply to All Bar */}
+            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '0.75rem 0.9rem', marginBottom: '1rem', flexShrink: 0 }}>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                ⚡ <span>Quick Apply to All Selected Assets:</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, display: 'block', marginBottom: '0.2rem' }}>Condition for All:</span>
+                  <select
+                    value={bulkReturnCondition}
+                    onChange={(e) => {
+                      const val = e.target.value as 'GOOD' | 'BAD' | 'RETIRED';
+                      setBulkReturnCondition(val);
+                      setItemReturnStates(prev => {
+                        const next = { ...prev };
+                        selectedReqIds.forEach(id => {
+                          next[id] = { ...(next[id] || { completeness: 'COMPLETE', missingCount: 1, remarks: '' }), condition: val };
+                        });
+                        return next;
+                      });
+                    }}
+                    style={{ width: '100%', borderRadius: 6, border: '1px solid #cbd5e1', padding: '0.4rem 0.6rem', fontSize: '0.78rem', color: '#1e293b', backgroundColor: '#ffffff', fontWeight: 600 }}
+                  >
+                    <option value="GOOD">Operational / Good Condition</option>
+                    <option value="BAD">Damaged / Defective</option>
+                    <option value="RETIRED">Beyond Economic Repair (Retired)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, display: 'block', marginBottom: '0.2rem' }}>Completeness for All:</span>
+                  <select
+                    value={bulkReturnQuantityStatus}
+                    onChange={(e) => {
+                      const val = e.target.value as 'COMPLETE' | 'MISSING';
+                      setBulkReturnQuantityStatus(val);
+                      setItemReturnStates(prev => {
+                        const next = { ...prev };
+                        selectedReqIds.forEach(id => {
+                          next[id] = { ...(next[id] || { condition: 'GOOD', missingCount: 1, remarks: '' }), completeness: val };
+                        });
+                        return next;
+                      });
+                    }}
+                    style={{ width: '100%', borderRadius: 6, border: '1px solid #cbd5e1', padding: '0.4rem 0.6rem', fontSize: '0.78rem', color: '#1e293b', backgroundColor: '#ffffff', fontWeight: 600 }}
+                  >
+                    <option value="COMPLETE">Complete (All items present)</option>
+                    <option value="MISSING">Incomplete / Missing Items</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Scrollable Itemized Assets List */}
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '0.35rem', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {selectedRequests.map((req) => {
+                const st = itemReturnStates[req.id] || { condition: 'GOOD', completeness: 'COMPLETE', missingCount: 1, remarks: '' };
+                return (
+                  <div key={req.id} style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: '0.85rem', backgroundColor: '#ffffff', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem', borderBottom: '1px dashed #e2e8f0', paddingBottom: '0.4rem' }}>
+                      <div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>{req.itemName}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Requested by: <span style={{ fontWeight: 600, color: '#334155' }}>{req.requestedByName}</span> ({getFormattedRequestId(req)})</div>
+                      </div>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, backgroundColor: '#f1f5f9', color: '#475569', padding: '0.2rem 0.5rem', borderRadius: 6 }}>
+                        Qty: {req.quantity || 1}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem', marginBottom: '0.5rem' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#475569', marginBottom: '0.2rem' }}>Asset Condition</label>
+                        <select
+                          value={st.condition}
+                          onChange={(e) => {
+                            const val = e.target.value as 'GOOD' | 'BAD' | 'RETIRED';
+                            setItemReturnStates(prev => ({
+                              ...prev,
+                              [req.id]: { ...(prev[req.id] || { completeness: 'COMPLETE', missingCount: 1, remarks: '' }), condition: val }
+                            }));
+                          }}
+                          style={{ width: '100%', borderRadius: 6, border: '1px solid #cbd5e1', padding: '0.35rem 0.55rem', fontSize: '0.78rem', color: '#0f172a', fontWeight: 600, backgroundColor: '#ffffff' }}
+                        >
+                          <option value="GOOD">Operational / Good</option>
+                          <option value="BAD">Damaged / Defective</option>
+                          <option value="RETIRED">Retired / Beyond Repair</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#475569', marginBottom: '0.2rem' }}>Completeness</label>
+                        <select
+                          value={st.completeness}
+                          onChange={(e) => {
+                            const val = e.target.value as 'COMPLETE' | 'MISSING';
+                            setItemReturnStates(prev => ({
+                              ...prev,
+                              [req.id]: { ...(prev[req.id] || { condition: 'GOOD', missingCount: 1, remarks: '' }), completeness: val }
+                            }));
+                          }}
+                          style={{ width: '100%', borderRadius: 6, border: '1px solid #cbd5e1', padding: '0.35rem 0.55rem', fontSize: '0.78rem', color: '#0f172a', fontWeight: 600, backgroundColor: '#ffffff' }}
+                        >
+                          <option value="COMPLETE">Complete</option>
+                          <option value="MISSING">Incomplete / Missing</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {st.completeness === 'MISSING' && (
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#dc2626', marginBottom: '0.2rem' }}>Number of Missing Items</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={st.missingCount || 1}
+                          onChange={(e) => {
+                            const val = Math.max(1, parseInt(e.target.value) || 1);
+                            setItemReturnStates(prev => ({
+                              ...prev,
+                              [req.id]: { ...(prev[req.id] || { condition: 'GOOD', completeness: 'MISSING', remarks: '' }), missingCount: val }
+                            }));
+                          }}
+                          style={{ width: '100%', borderRadius: 6, border: '1px solid #fca5a5', padding: '0.35rem 0.55rem', fontSize: '0.78rem', color: '#991b1b', backgroundColor: '#fef2f2', fontWeight: 700 }}
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <input
+                        type="text"
+                        placeholder="Per-asset remarks / serial / condition details (optional)..."
+                        value={st.remarks || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setItemReturnStates(prev => ({
+                            ...prev,
+                            [req.id]: { ...(prev[req.id] || { condition: 'GOOD', completeness: 'COMPLETE', missingCount: 1 }), remarks: val }
+                          }));
+                        }}
+                        style={{ width: '100%', borderRadius: 6, border: '1px solid #e2e8f0', padding: '0.35rem 0.55rem', fontSize: '0.78rem', color: '#334155', outline: 'none' }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             {bulkReturnError && (
               <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '0.65rem 0.9rem', marginBottom: '1rem', fontSize: '0.82rem', color: '#dc2626', fontWeight: 600 }}>
                 ⚠️ {bulkReturnError}
               </div>
             )}
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', paddingTop: '0.75rem', borderTop: '1px solid #f1f5f9' }}>
               <button
-                onClick={() => { setIsBulkReturnModalOpen(false); setBulkReturnError(null); setBulkReturnComment(''); }}
+                onClick={() => { setIsBulkReturnModalOpen(false); setItemReturnStates({}); }}
                 disabled={isSubmittingBulk}
                 style={{ backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', borderRadius: 8, padding: '0.5rem 1.1rem', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
               >
@@ -2133,7 +2353,8 @@ export function RequestsTable({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       </div>

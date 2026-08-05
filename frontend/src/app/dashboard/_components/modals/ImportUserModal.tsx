@@ -38,7 +38,8 @@ export const ImportUserModal = ({
         "Last Name *": "Doe",
         "Email Address *": "john.doe@contactpoint360.com",
         "System Role *": "Employee", // Employee, Team Leader, Inventory Staff, Ops Manager, Super Admin
-        "Employee ID": "EID-0042",
+        "Employee ID": "EID - 00021",
+        "Account Type": "IT Staff",
         "Assigned Site *": defaultSite,
         "Department": defaultDept,
       },
@@ -47,7 +48,8 @@ export const ImportUserModal = ({
         "Last Name *": "Smith",
         "Email Address *": "jane.smith@contactpoint360.com",
         "System Role *": "Team Leader",
-        "Employee ID": "EID-0088",
+        "Employee ID": "EID - 00022",
+        "Account Type": "HR Officer",
         "Assigned Site *": defaultSite,
         "Department": defaultDept,
       },
@@ -62,6 +64,7 @@ export const ImportUserModal = ({
       { wch: 32 }, // Email Address
       { wch: 20 }, // System Role
       { wch: 16 }, // Employee ID
+      { wch: 22 }, // Account Type
       { wch: 25 }, // Assigned Site
       { wch: 25 }, // Department
     ];
@@ -127,6 +130,7 @@ export const ImportUserModal = ({
           const email = (findValue(["Email Address *", "Email Address", "Email"]) || "").toString().trim();
           const roleRaw = (findValue(["System Role *", "System Role", "Role"]) || "Employee").toString().trim();
           const employeeId = (findValue(["Employee ID", "EmployeeID", "EID"]) || "").toString().trim();
+          const accountType = (findValue(["Account Type", "AccountType", "Account"]) || "").toString().trim();
           const locationName = (findValue(["Assigned Site *", "Assigned Site", "Site", "Location"]) || "").toString().trim();
           const departmentName = (findValue(["Department", "Dept"]) || "").toString().trim();
 
@@ -164,6 +168,7 @@ export const ImportUserModal = ({
             role: roleKey,
             roleDisplay: roleRaw || roleKey,
             employeeId: employeeId || null,
+            accountType: accountType || null,
             siteId: matchedSite?.id || sites[0]?.id || "",
             siteName: matchedSite?.name || "Default Site",
             department: matchedDept?.name || departmentName || "IT Department",
@@ -383,6 +388,7 @@ export const ImportUserModal = ({
                       <th style={{ padding: "8px 10px" }}>Email</th>
                       <th style={{ padding: "8px 10px" }}>Role</th>
                       <th style={{ padding: "8px 10px" }}>Emp ID</th>
+                      <th style={{ padding: "8px 10px" }}>Account</th>
                       <th style={{ padding: "8px 10px" }}>Site</th>
                       <th style={{ padding: "8px 10px" }}>Dept</th>
                     </tr>
@@ -394,6 +400,7 @@ export const ImportUserModal = ({
                         <td style={{ padding: "8px 10px", color: "#475569" }}>{row.email}</td>
                         <td style={{ padding: "8px 10px", color: "#210cae", fontWeight: 600 }}>{row.role}</td>
                         <td style={{ padding: "8px 10px", color: "#64748B" }}>{row.employeeId || "-"}</td>
+                        <td style={{ padding: "8px 10px", color: "#15803d", fontWeight: 600 }}>{row.accountType || "-"}</td>
                         <td style={{ padding: "8px 10px", color: "#334155" }}>{row.siteName}</td>
                         <td style={{ padding: "8px 10px", color: "#334155" }}>{row.department}</td>
                       </tr>

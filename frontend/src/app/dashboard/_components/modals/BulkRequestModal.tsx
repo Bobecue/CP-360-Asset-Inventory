@@ -30,6 +30,7 @@ interface BulkRequestModalProps {
   onClose: () => void;
   selectedItems: SelectedItem[];
   sites: Site[];
+  users?: any[];
   currentUser?: any;
   initialMode?: 'deploy' | 'request';
   sourceSiteId?: string;
@@ -51,7 +52,7 @@ const parseFloors = (floorStr?: string): string[] => {
     .filter(Boolean);
 };
 
-export function BulkRequestModal({ open, onClose, selectedItems, sites, currentUser, initialMode, sourceSiteId, onSubmit }: BulkRequestModalProps) {
+export function BulkRequestModal({ open, onClose, selectedItems, sites, users = [], currentUser, initialMode, sourceSiteId, onSubmit }: BulkRequestModalProps) {
   const canDeploy = !currentUser || currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'INVENTORY_STAFF' || currentUser?.role === 'OPS_MANAGER' || currentUser?.role === 'ADMIN';
   const [mode, setMode] = useState<'deploy' | 'request'>(initialMode || (canDeploy ? 'deploy' : 'request'));
   const isDeployMode = canDeploy && mode === 'deploy';
@@ -74,6 +75,47 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
   const [reqSiteId, setReqSiteId] = useState('');
   const [selectedFloor, setSelectedFloor] = useState('');
   const [deploymentNotes, setDeploymentNotes] = useState('');
+  const [eidSuggestions, setEidSuggestions] = useState<any[]>([]);
+  const [showEidSuggestions, setShowEidSuggestions] = useState(false);
+
+  // Auto-fill employee details based on EID lookup
+  const autofillUserByEid = (inputEid: string) => {
+    if (!inputEid.trim() || !users || users.length === 0) return;
+    const cleanEid = inputEid.trim().toLowerCase();
+    const matchedUser = users.find((u: any) => u.employeeId && u.employeeId.trim().toLowerCase() === cleanEid);
+
+    if (matchedUser) {
+      if (matchedUser.name) setEmployeeName(matchedUser.name);
+      if (matchedUser.accountType || matchedUser.department) {
+        setEmployeeAccount(matchedUser.accountType || matchedUser.department || '');
+      }
+      if (matchedUser.site?.name) {
+        setReqSiteId(matchedUser.site.name);
+      } else if (matchedUser.siteId) {
+        const matchingSite = sites.find((s: any) => s.id === matchedUser.siteId || s.name === matchedUser.siteId);
+        if (matchingSite) setReqSiteId(matchingSite.name);
+      }
+    }
+  };
+
+  const handleEidChange = (val: string) => {
+    setEmployeeEid(val);
+    if (!val.trim()) {
+      setEidSuggestions([]);
+      setShowEidSuggestions(false);
+      return;
+    }
+    autofillUserByEid(val);
+
+    if (users && users.length > 0) {
+      const q = val.trim().toLowerCase();
+      const matches = users.filter((u: any) =>
+        u.employeeId && u.employeeId.toLowerCase().includes(q)
+      );
+      setEidSuggestions(matches.slice(0, 5));
+      setShowEidSuggestions(matches.length > 0);
+    }
+  };
 
   // E-Signature States
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -798,15 +840,74 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, currentU
                     )}
 
                     {/* Employee ID (EID) */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', position: 'relative' }}>
                       <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Employee ID (EID) *</label>
                       <input
                         type="text"
                         placeholder="e.g. EMP-10492"
                         value={employeeEid}
-                        onChange={(e) => setEmployeeEid(e.target.value)}
+                        onChange={(e) => handleEidChange(e.target.value)}
+                        onFocus={() => {
+                          if (employeeEid.trim() && eidSuggestions.length > 0) setShowEidSuggestions(true);
+                        }}
+                        onBlur={() => {
+                          setTimeout(() => setShowEidSuggestions(false), 200);
+                        }}
                         style={{ padding: '0.55rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none', color: '#0f172a', width: '100%', backgroundColor: '#ffffff' }}
                       />
+
+                      {/* EID Autocomplete Dropdown */}
+                      {showEidSuggestions && eidSuggestions.length > 0 && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            zIndex: 50,
+                            backgroundColor: '#ffffff',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '8px',
+                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                            marginTop: '4px',
+                            maxHeight: '180px',
+                            overflowY: 'auto'
+                          }}
+                        >
+                          {eidSuggestions.map((userItem: any) => (
+                            <div
+                              key={userItem.id}
+                              onMouseDown={() => {
+                                setEmployeeEid(userItem.employeeId || '');
+                                autofillUserByEid(userItem.employeeId || '');
+                                setShowEidSuggestions(false);
+                              }}
+                              style={{
+                                padding: '0.5rem 0.75rem',
+                                cursor: 'pointer',
+                                borderBottom: '1px solid #f1f5f9',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+                              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
+                            >
+                              <div>
+                                <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f172a' }}>
+                                  {userItem.employeeId}
+                                </div>
+                                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                                  {userItem.name} {userItem.accountType || userItem.department ? `• ${userItem.accountType || userItem.department}` : ''}
+                                </div>
+                              </div>
+                              <span style={{ fontSize: '0.7rem', color: '#210cae', fontWeight: 600, backgroundColor: '#eef2ff', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
+                                Match
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Employee's Account */}
