@@ -26,8 +26,9 @@ export class ItemsController {
   async getAllItems(
     @Query("categoryId") categoryId?: string,
     @Query("search") search?: string,
+    @Headers("x-user-id") userId?: string,
   ) {
-    return this.itemsService.findAll(categoryId, search);
+    return this.itemsService.findAll(categoryId, search, userId);
   }
 
   @Post()

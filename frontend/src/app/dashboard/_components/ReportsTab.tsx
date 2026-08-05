@@ -18,6 +18,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { getApiUrl } from "../../../utils/api";
 import { requestFilePreview } from "@/utils/filePreview";
+import { drawPdfHeader } from "@/utils/pdfHeader";
 
 interface ReportRecord {
   id: string;
@@ -1275,13 +1276,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
         // PDF Export - tailored by Report Type
         const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
         
-        doc.setFillColor(37, 99, 235);
-        doc.rect(0, 0, 210, 24, "F");
-
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "bold");
-        doc.text("ASSET INVENTORY MANAGEMENT SYSTEM", 14, 15);
+        await drawPdfHeader(doc, "ASSET INVENTORY MANAGEMENT SYSTEM");
 
         doc.setTextColor(17, 24, 39);
         doc.setFontSize(13);

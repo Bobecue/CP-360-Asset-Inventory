@@ -78,7 +78,7 @@ export const FilePreviewModal = ({
       display: "flex",
       justifyContent: "center",
       alignItems: "center",
-      zIndex: 1100,
+      zIndex: 9999999,
     }}>
       <div style={{
         width: "90%",
@@ -124,24 +124,30 @@ export const FilePreviewModal = ({
         {/* Modal Content / Preview Area */}
         <div style={{ flex: 1, overflow: "auto", padding: "1.5rem", backgroundColor: "#fdfdfd" }}>
           {isPdf ? (
-            pdfUrl && (
-              <iframe
-                src={pdfUrl}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "8px",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                }}
-                title="PDF File Preview"
-              />
-            )
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem", height: "100%" }}>
+              <div style={{ padding: "0.75rem 1rem", backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, fontSize: "0.76rem", color: "#1e3a8a", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <span>Previewing generated PDF document. If the preview is blank, please click <strong>Export PDF</strong> to download and view it directly.</span>
+              </div>
+              {pdfUrl && (
+                <iframe
+                  src={pdfUrl}
+                  style={{
+                    width: "100%",
+                    flex: 1,
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "8px",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                  }}
+                  title="PDF File Preview"
+                />
+              )}
+            </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <div style={{ padding: "0.75rem 1rem", backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, fontSize: "0.76rem", color: "#1e3a8a", display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                <span>Showing a preview of the first few rows. Click <strong>Download File</strong> to save the complete spreadsheet.</span>
+                <span>Showing a preview of the first few rows. Click <strong>Download Spreadsheet</strong> to save the complete spreadsheet.</span>
               </div>
               <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.74rem", textAlign: "left" }}>
@@ -213,7 +219,7 @@ export const FilePreviewModal = ({
             }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Download File
+            {isPdf ? "Export PDF" : "Download Spreadsheet"}
           </button>
         </div>
       </div>

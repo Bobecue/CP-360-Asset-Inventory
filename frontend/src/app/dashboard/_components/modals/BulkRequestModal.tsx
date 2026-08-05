@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import jsPDF from 'jspdf';
 import { requestFilePreview } from '@/utils/filePreview';
+import { drawPdfHeader } from '@/utils/pdfHeader';
 
 type UrgencyLevel = 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
 
@@ -191,7 +192,11 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, users = 
     if (!open || selectedItems.length === 0) return;
     const fetchLiveAssets = async () => {
       try {
-        const res = await fetch('http://localhost:3001/items');
+        const res = await fetch('http://localhost:3001/items', {
+          headers: {
+            "x-user-id": currentUser?.id || "",
+          },
+        });
         if (res.ok) {
           const itemsData = await res.json();
           const newMap: Record<string, { availableTags: string[]; allExistingTags: string[] }> = {};
@@ -344,20 +349,12 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, users = 
     }
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     try {
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const nowStr = new Date().toLocaleString();
 
-      // Title
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(18);
-      doc.setTextColor(33, 12, 174);
-      doc.text('CP-360 ASSET DEPLOYMENT FORM', 20, 20);
-
-      doc.setLineWidth(0.5);
-      doc.setDrawColor(200, 200, 200);
-      doc.line(20, 25, 190, 25);
+      await drawPdfHeader(doc, 'CP-360 ASSET DEPLOYMENT FORM');
 
       // Metadata
       doc.setFontSize(10);

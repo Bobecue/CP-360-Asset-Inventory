@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import jsPDF from 'jspdf';
 import { requestFilePreview } from '@/utils/filePreview';
+import { drawPdfHeader } from '@/utils/pdfHeader';
 import { InteractiveModal, ModalType } from '../../../components/ui/InteractiveModal';
 import { confirmReceipt, bulkConfirmReceiptApi, bulkReturnApi } from '../../../lib/services/requestService';
 
@@ -401,65 +402,8 @@ export function RequestsTable({
     const items: RequestEntry[] = group.items || [];
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-    // Header Banner
-    doc.setFillColor(33, 12, 174);
-    doc.rect(0, 0, 210, 24, 'F');
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.setTextColor(255, 255, 255);
-    doc.text("GROUP HARDWARE ASSET REQUISITION RECEIPT", 14, 15);
-
-    // Logo
-    try {
-      const loadLogo = (): Promise<HTMLImageElement | null> => {
-        return new Promise((resolve) => {
-          const img = new Image();
-          img.crossOrigin = "Anonymous";
-          img.src = "/logo.png";
-          img.onload = () => resolve(img);
-          img.onerror = () => resolve(null);
-        });
-      };
-
-      const logoImg = await loadLogo();
-      if (logoImg && logoImg.width > 0 && logoImg.height > 0) {
-        const canvas = document.createElement("canvas");
-        canvas.width = logoImg.width;
-        canvas.height = logoImg.height;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(logoImg, 0, 0);
-          const logoDataUrl = canvas.toDataURL("image/png");
-
-          const badgeX = 155;
-          const badgeY = 3;
-          const badgeW = 44;
-          const badgeH = 18;
-          doc.setFillColor(255, 255, 255);
-          doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 3, 3, 'F');
-
-          const maxW = 38;
-          const maxH = 14;
-          const aspect = logoImg.width / logoImg.height;
-          let renderW = maxW;
-          let renderH = maxW / aspect;
-
-          if (renderH > maxH) {
-            renderH = maxH;
-            renderW = maxH * aspect;
-          }
-
-          const renderX = badgeX + (badgeW - renderW) / 2;
-          const renderY = badgeY + (badgeH - renderH) / 2;
-
-          doc.addImage(logoDataUrl, "PNG", renderX, renderY, renderW, renderH);
-        }
-      }
-    } catch (e) {
-      console.error("Error drawing logo in group request PDF:", e);
-    }
+    // Header Banner & Logo
+    await drawPdfHeader(doc, "GROUP HARDWARE ASSET REQUISITION RECEIPT");
 
     doc.setFontSize(9.5);
     doc.setTextColor(50, 50, 50);

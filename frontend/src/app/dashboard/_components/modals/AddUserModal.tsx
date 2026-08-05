@@ -387,7 +387,7 @@ export const AddUserModal = ({
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          zIndex: 1100,
+          zIndex: 9999999,
         }}>
           <div style={{
             width: "100%",

@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { CatalogItem, getCategoryIcon, RoleBadge, SiteBadge, EidBadge, AssetTagBadge, AssetTypeBadge, isCategoryConsumable } from "@/types/dashboard";
 import jsPDF from "jspdf";
 import { requestFilePreview } from "@/utils/filePreview";
+import { drawPdfHeader } from "@/utils/pdfHeader";
 import { RequestTimeline } from "./RequestTimeline";
 import { getApiUrl } from "../../../utils/api";
 import { ImportAssetModal } from "./modals/ImportAssetModal";
@@ -658,65 +659,8 @@ export const CatalogTab = ({
     const items = group.items || [];
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-    // Header Banner
-    doc.setFillColor(33, 12, 174);
-    doc.rect(0, 0, 210, 24, 'F');
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.setTextColor(255, 255, 255);
-    doc.text("GROUP HARDWARE ASSET DEPLOYMENT RECEIPT", 14, 15);
-
-    // Logo
-    try {
-      const loadLogo = (): Promise<HTMLImageElement | null> => {
-        return new Promise((resolve) => {
-          const img = new Image();
-          img.crossOrigin = "Anonymous";
-          img.src = "/logo.png";
-          img.onload = () => resolve(img);
-          img.onerror = () => resolve(null);
-        });
-      };
-
-      const logoImg = await loadLogo();
-      if (logoImg && logoImg.width > 0 && logoImg.height > 0) {
-        const canvas = document.createElement("canvas");
-        canvas.width = logoImg.width;
-        canvas.height = logoImg.height;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(logoImg, 0, 0);
-          const logoDataUrl = canvas.toDataURL("image/png");
-
-          const badgeX = 155;
-          const badgeY = 3;
-          const badgeW = 44;
-          const badgeH = 18;
-          doc.setFillColor(255, 255, 255);
-          doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 3, 3, 'F');
-
-          const maxW = 38;
-          const maxH = 14;
-          const aspect = logoImg.width / logoImg.height;
-          let renderW = maxW;
-          let renderH = maxW / aspect;
-
-          if (renderH > maxH) {
-            renderH = maxH;
-            renderW = maxH * aspect;
-          }
-
-          const renderX = badgeX + (badgeW - renderW) / 2;
-          const renderY = badgeY + (badgeH - renderH) / 2;
-
-          doc.addImage(logoDataUrl, "PNG", renderX, renderY, renderW, renderH);
-        }
-      }
-    } catch (e) {
-      console.error("Error drawing logo in group receipt PDF:", e);
-    }
+    // Header Banner & Logo
+    await drawPdfHeader(doc, "GROUP HARDWARE ASSET DEPLOYMENT RECEIPT");
 
     doc.setFontSize(9.5);
     doc.setTextColor(50, 50, 50);
@@ -821,67 +765,8 @@ export const CatalogTab = ({
     const cond = dep.returnCondition || "GOOD";
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-    // Header Banner: Contact Point 360 Brand Theme Color (#210cae)
-    doc.setFillColor(33, 12, 174);
-    doc.rect(0, 0, 210, 24, 'F');
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.setTextColor(255, 255, 255);
-    doc.text(isReturned ? "HARDWARE ASSET RETURN RECEIPT" : "HARDWARE ASSET DEPLOYMENT RECEIPT", 14, 15);
-
-    // Add Contact Point 360 Logo to top right of header banner
-    try {
-      const loadLogo = (): Promise<HTMLImageElement | null> => {
-        return new Promise((resolve) => {
-          const img = new Image();
-          img.crossOrigin = "Anonymous";
-          img.src = "/logo.png";
-          img.onload = () => resolve(img);
-          img.onerror = () => resolve(null);
-        });
-      };
-
-      const logoImg = await loadLogo();
-      if (logoImg && logoImg.width > 0 && logoImg.height > 0) {
-        const canvas = document.createElement("canvas");
-        canvas.width = logoImg.width;
-        canvas.height = logoImg.height;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(logoImg, 0, 0);
-          const logoDataUrl = canvas.toDataURL("image/png");
-
-          // White rounded background container pill for logo
-          const badgeX = 155;
-          const badgeY = 3;
-          const badgeW = 44;
-          const badgeH = 18;
-          doc.setFillColor(255, 255, 255);
-          doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 3, 3, 'F');
-
-          // Preserve exact original aspect ratio without stretching
-          const maxW = 38;
-          const maxH = 14;
-          const aspect = logoImg.width / logoImg.height;
-          let renderW = maxW;
-          let renderH = maxW / aspect;
-
-          if (renderH > maxH) {
-            renderH = maxH;
-            renderW = maxH * aspect;
-          }
-
-          const renderX = badgeX + (badgeW - renderW) / 2;
-          const renderY = badgeY + (badgeH - renderH) / 2;
-
-          doc.addImage(logoDataUrl, "PNG", renderX, renderY, renderW, renderH);
-        }
-      }
-    } catch (e) {
-      console.error("Error drawing logo in receipt PDF:", e);
-    }
+    // Header Banner & Logo
+    await drawPdfHeader(doc, isReturned ? "HARDWARE ASSET RETURN RECEIPT" : "HARDWARE ASSET DEPLOYMENT RECEIPT");
 
     doc.setFontSize(10);
     doc.setTextColor(50, 50, 50);
@@ -1430,6 +1315,7 @@ export const CatalogTab = ({
                 <select
                   value={selectedSiteId}
                   onChange={(e) => setSelectedSiteId(e.target.value)}
+                  disabled={currentUser?.role === "EMPLOYEE" || currentUser?.role === "TEAM_LEADER"}
                   style={{
                     height: "42px",
                     padding: "0 12px",
@@ -1437,18 +1323,25 @@ export const CatalogTab = ({
                     border: "1px solid #E5E7EB",
                     fontSize: "14px",
                     color: "#111827",
-                    backgroundColor: "#F9FAFB",
+                    backgroundColor: (currentUser?.role === "EMPLOYEE" || currentUser?.role === "TEAM_LEADER") ? "#E5E7EB" : "#F9FAFB",
                     outline: "none",
-                    cursor: "pointer",
+                    cursor: (currentUser?.role === "EMPLOYEE" || currentUser?.role === "TEAM_LEADER") ? "not-allowed" : "pointer",
                   }}
                   onFocus={(e) => e.currentTarget.style.border = "2px solid #DC2626"}
                   onBlur={(e) => e.currentTarget.style.border = "1px solid #E5E7EB"}
                 >
-                  {sites.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.prefix})
-                    </option>
-                  ))}
+                  {sites
+                    .filter((s) => {
+                      if (currentUser?.role === "EMPLOYEE" || currentUser?.role === "TEAM_LEADER") {
+                        return s.id === currentUser?.siteId;
+                      }
+                      return true;
+                    })
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.prefix})
+                      </option>
+                    ))}
                 </select>
               </div>
 
@@ -1621,30 +1514,32 @@ export const CatalogTab = ({
 
               {/* Action Buttons Group */}
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <button
-                  onClick={onExportCSV}
-                  style={{
-                    height: "42px",
-                    padding: "0 16px",
-                    borderRadius: "10px",
-                    border: "1px solid #E5E7EB",
-                    background: "#FFFFFF",
-                    color: "#374151",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                    transition: "all 0.15s ease",
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F9FAFB"}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#FFFFFF"}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-                  Export CSV
-                </button>
+                {!(currentUser?.role === "EMPLOYEE" || currentUser?.role === "TEAM_LEADER") && (
+                  <button
+                    onClick={onExportCSV}
+                    style={{
+                      height: "42px",
+                      padding: "0 16px",
+                      borderRadius: "10px",
+                      border: "1px solid #E5E7EB",
+                      background: "#FFFFFF",
+                      color: "#374151",
+                      fontSize: "14px",
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                      transition: "all 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F9FAFB"}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#FFFFFF"}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                    Export CSV
+                  </button>
+                )}
 
                 {canEditAddRemove && (
                   <button
@@ -2210,7 +2105,7 @@ export const CatalogTab = ({
                                   Adjust Stock
                                 </button>
                               )}
-                              {it.category?.type === "NON_CONSUMABLE" && (
+                              {it.category?.type === "NON_CONSUMABLE" && !(currentUser?.role === "EMPLOYEE" || currentUser?.role === "TEAM_LEADER") && (
                                 <button
                                   onClick={() => onOpenViewTags(it)}
                                   title="View Asset Tags"
@@ -2254,26 +2149,28 @@ export const CatalogTab = ({
                                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
                                 </button>
                               )}
-                              <button
-                                onClick={() => onOpenHistoryModal(it)}
-                                title="View Change History"
-                                style={{
-                                  width: "32px",
-                                  height: "32px",
-                                  borderRadius: "50%",
-                                  backgroundColor: "#FFFFFF",
-                                  border: "1px solid #E5E7EB",
-                                  cursor: "pointer",
-                                  color: "#374151",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F3F4F6"}
-                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#FFFFFF"}
-                              >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                              </button>
+                              {!(currentUser?.role === "EMPLOYEE" || currentUser?.role === "TEAM_LEADER") && (
+                                <button
+                                  onClick={() => onOpenHistoryModal(it)}
+                                  title="View Change History"
+                                  style={{
+                                    width: "32px",
+                                    height: "32px",
+                                    borderRadius: "50%",
+                                    backgroundColor: "#FFFFFF",
+                                    border: "1px solid #E5E7EB",
+                                    cursor: "pointer",
+                                    color: "#374151",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#F3F4F6"}
+                                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#FFFFFF"}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                                </button>
+                              )}
                               {canEditAddRemove && (
                                 <button
                                   onClick={() => onDeleteTarget("item", it.id, it.name)}
@@ -2891,7 +2788,7 @@ export const CatalogTab = ({
 
                           {/* Secondary action icon buttons with soft circular hovers */}
                           <div style={{ display: "flex", gap: "5px", marginLeft: "auto", flexShrink: 0, flexWrap: "nowrap" }}>
-                            {it.category?.type === "NON_CONSUMABLE" && (
+                            {it.category?.type === "NON_CONSUMABLE" && !(currentUser?.role === "EMPLOYEE" || currentUser?.role === "TEAM_LEADER") && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -2946,31 +2843,33 @@ export const CatalogTab = ({
                               </button>
                             )}
 
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onOpenHistoryModal(it);
-                              }}
-                              title="View Change History"
-                              className="glitter-action-btn"
-                              style={{
-                                width: "36px",
-                                height: "36px",
-                                borderRadius: "50%",
-                                backgroundColor: "#FFFFFF",
-                                border: "1px solid #E5E7EB",
-                                cursor: "pointer",
-                                color: "#374151",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                transition: "all 0.15s ease",
-                              }}
-                              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#F3F4F6"; e.currentTarget.style.color = "#111827"; }}
-                              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#FFFFFF"; e.currentTarget.style.color = "#374151"; }}
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                            </button>
+                            {!(currentUser?.role === "EMPLOYEE" || currentUser?.role === "TEAM_LEADER") && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onOpenHistoryModal(it);
+                                }}
+                                title="View Change History"
+                                className="glitter-action-btn"
+                                style={{
+                                  width: "36px",
+                                  height: "36px",
+                                  borderRadius: "50%",
+                                  backgroundColor: "#FFFFFF",
+                                  border: "1px solid #E5E7EB",
+                                  cursor: "pointer",
+                                  color: "#374151",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  transition: "all 0.15s ease",
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#F3F4F6"; e.currentTarget.style.color = "#111827"; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#FFFFFF"; e.currentTarget.style.color = "#374151"; }}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                              </button>
+                            )}
                             {canEditAddRemove && (
                               <button
                                 onClick={(e) => {
@@ -3775,31 +3674,7 @@ export const CatalogTab = ({
                 </div>
               )}
 
-              {/* Download PDF Receipt Action */}
-              <div style={{ paddingTop: '0.5rem' }}>
-                <button
-                  onClick={() => selectedDeployment.isGroupDep && selectedDeployment.groupItems ? handleDownloadGroupReceipt({ items: selectedDeployment.groupItems, employeeName: selectedDeployment.employeeName }) : handleDownloadDeploymentReceipt(selectedDeployment)}
-                  style={{
-                    width: '100%',
-                    padding: '0.65rem 1rem',
-                    borderRadius: 8,
-                    border: '1px solid #2563eb',
-                    backgroundColor: '#2563eb',
-                    color: '#ffffff',
-                    fontSize: '0.85rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem',
-                    boxShadow: '0 2px 6px rgba(37,99,235,0.2)'
-                  }}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                  Download Deployment PDF Receipt
-                </button>
-              </div>
+
 
             </div>
           </div>

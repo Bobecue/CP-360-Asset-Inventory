@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import * as XLSX from "xlsx";
+import { createPortal } from "react-dom";
 import { User } from "@/types/dashboard";
 
 interface ImportUserModalProps {
@@ -201,7 +202,9 @@ export const ImportUserModal = ({
     }
   };
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div style={{
       position: "fixed",
       top: 0, left: 0,
@@ -318,7 +321,7 @@ export const ImportUserModal = ({
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = "#210cae";
-              e.currentTarget.style.backgroundColor = "#F5F3FF";
+              e.currentTarget.style.backgroundColor = "#EEF2FF";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.borderColor = "#CBD5E1";
@@ -339,7 +342,7 @@ export const ImportUserModal = ({
               {file ? file.name : "Click to select or drop your Excel file here"}
             </p>
             <p style={{ fontSize: "0.75rem", color: "#94A3B8", margin: 0 }}>
-              Supports .xlsx, .xls, and .csv files. Automatic password initialization applied.
+              Supports .xlsx, .xls, and .csv files. Password fields are automatically auto-generated on import.
             </p>
           </div>
 
@@ -367,14 +370,9 @@ export const ImportUserModal = ({
           {/* Preview Table */}
           {previewData.length > 0 && errors.length === 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#334155" }}>
-                  Preview Ready Rows ({previewData.length})
-                </span>
-                <span style={{ fontSize: "0.72rem", color: "#10B981", fontWeight: 600 }}>
-                  ✓ All user rows validated
-                </span>
-              </div>
+              <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#334155" }}>
+                Preview Ready Rows ({previewData.length})
+              </span>
               <div style={{
                 maxHeight: "220px",
                 overflowY: "auto",
@@ -384,25 +382,23 @@ export const ImportUserModal = ({
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.75rem", textAlign: "left" }}>
                   <thead>
                     <tr style={{ backgroundColor: "#F1F5F9", color: "#475569", fontWeight: 600 }}>
-                      <th style={{ padding: "8px 10px" }}>Name</th>
+                      <th style={{ padding: "8px 10px" }}>Employee ID</th>
+                      <th style={{ padding: "8px 10px" }}>Full Name</th>
                       <th style={{ padding: "8px 10px" }}>Email</th>
                       <th style={{ padding: "8px 10px" }}>Role</th>
-                      <th style={{ padding: "8px 10px" }}>Emp ID</th>
-                      <th style={{ padding: "8px 10px" }}>Account</th>
                       <th style={{ padding: "8px 10px" }}>Site</th>
-                      <th style={{ padding: "8px 10px" }}>Dept</th>
                     </tr>
                   </thead>
                   <tbody>
                     {previewData.map((row, idx) => (
                       <tr key={idx} style={{ borderBottom: "1px solid #F1F5F9" }}>
-                        <td style={{ padding: "8px 10px", fontWeight: 600, color: "#1E293B" }}>{row.name}</td>
-                        <td style={{ padding: "8px 10px", color: "#475569" }}>{row.email}</td>
-                        <td style={{ padding: "8px 10px", color: "#210cae", fontWeight: 600 }}>{row.role}</td>
-                        <td style={{ padding: "8px 10px", color: "#64748B" }}>{row.employeeId || "-"}</td>
-                        <td style={{ padding: "8px 10px", color: "#15803d", fontWeight: 600 }}>{row.accountType || "-"}</td>
+                        <td style={{ padding: "8px 10px", fontWeight: 600, color: "#1E293B" }}>
+                          {row.employeeId || "N/A"}
+                        </td>
+                        <td style={{ padding: "8px 10px", color: "#334155" }}>{row.name}</td>
+                        <td style={{ padding: "8px 10px", color: "#64748b" }}>{row.email}</td>
+                        <td style={{ padding: "8px 10px", color: "#334155" }}>{row.role}</td>
                         <td style={{ padding: "8px 10px", color: "#334155" }}>{row.siteName}</td>
-                        <td style={{ padding: "8px 10px", color: "#334155" }}>{row.department}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -425,7 +421,6 @@ export const ImportUserModal = ({
           <button
             type="button"
             onClick={onClose}
-            disabled={isProcessing}
             style={{
               padding: "0.5rem 1.1rem",
               borderRadius: "8px",
@@ -463,6 +458,7 @@ export const ImportUserModal = ({
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

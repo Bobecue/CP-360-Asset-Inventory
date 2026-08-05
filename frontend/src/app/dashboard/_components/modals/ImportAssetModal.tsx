@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import * as XLSX from "xlsx";
+import { createPortal } from "react-dom";
 import { CatalogItem } from "@/types/dashboard";
 
 interface ImportAssetModalProps {
@@ -215,7 +216,9 @@ export const ImportAssetModal = ({
     }
   };
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div style={{
       position: "fixed",
       top: 0, left: 0,
@@ -318,105 +321,130 @@ export const ImportAssetModal = ({
             </button>
           </div>
 
-          {/* File Upload Box */}
+          {/* Upload Drag & Drop Area */}
           <div
             onClick={() => fileInputRef.current?.click()}
             style={{
               border: "2px dashed #CBD5E1",
               borderRadius: "12px",
-              padding: "2rem 1rem",
+              padding: "2rem 1.5rem",
               textAlign: "center",
-              backgroundColor: "#F8FAFC",
               cursor: "pointer",
-              transition: "all 0.15s ease",
+              backgroundColor: file ? "#F8FAFC" : "#FFFFFF",
+              transition: "all 0.2s ease",
             }}
-            onMouseEnter={(e) => {
+            onDragOver={(e) => {
+              e.preventDefault();
               e.currentTarget.style.borderColor = "#6366F1";
               e.currentTarget.style.backgroundColor = "#F5F3FF";
             }}
-            onMouseLeave={(e) => {
+            onDragLeave={(e) => {
+              e.preventDefault();
               e.currentTarget.style.borderColor = "#CBD5E1";
-              e.currentTarget.style.backgroundColor = "#F8FAFC";
+              e.currentTarget.style.backgroundColor = file ? "#F8FAFC" : "#FFFFFF";
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.currentTarget.style.borderColor = "#CBD5E1";
+              e.currentTarget.style.backgroundColor = file ? "#F8FAFC" : "#FFFFFF";
+              const droppedFile = e.dataTransfer.files?.[0];
+              if (droppedFile) {
+                const dummyEvent = { target: { files: [droppedFile] } } as any;
+                handleFileChange(dummyEvent);
+              }
             }}
           >
             <input
-              ref={fileInputRef}
               type="file"
-              accept=".xlsx, .xls, .csv"
+              ref={fileInputRef}
               onChange={handleFileChange}
+              accept=".xlsx, .xls, .csv"
               style={{ display: "none" }}
             />
-            <div style={{ width: 44, height: 44, borderRadius: "50%", backgroundColor: "#E0E7FF", color: "#4F46E5", margin: "0 auto 10px auto", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: "50%",
+              backgroundColor: "#EEF2FF", color: "#6366F1",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 0.75rem auto"
+            }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
             </div>
-            <p style={{ fontSize: "0.85rem", fontWeight: 600, color: "#334155", margin: "0 0 4px 0" }}>
-              {file ? file.name : "Click to select or drop your Excel file here"}
-            </p>
-            <p style={{ fontSize: "0.75rem", color: "#94A3B8", margin: 0 }}>
-              Supports .xlsx, .xls, and .csv files. Asset ID is optional (leave blank to auto-generate).
-            </p>
+            {file ? (
+              <div>
+                <p style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1E293B", margin: "0 0 0.25rem 0" }}>{file.name}</p>
+                <p style={{ fontSize: "0.72rem", color: "#64748b", margin: 0 }}>{(file.size / 1024).toFixed(1)} KB — Click or drag to replace</p>
+              </div>
+            ) : (
+              <div>
+                <p style={{ fontSize: "0.85rem", fontWeight: 600, color: "#1E293B", margin: "0 0 0.25rem 0" }}>Click to select or drop your Excel file here</p>
+                <p style={{ fontSize: "0.72rem", color: "#64748b", margin: 0 }}>Supports .xlsx, .xls, and .csv files. Asset ID is optional (leave blank to auto-generate).</p>
+              </div>
+            )}
           </div>
 
-          {/* Validation Errors */}
+          {/* Errors list */}
           {errors.length > 0 && (
             <div style={{
+              padding: "1rem",
               backgroundColor: "#FEF2F2",
-              border: "1px solid #FCA5A5",
               borderRadius: "8px",
-              padding: "0.85rem",
-              fontSize: "0.78rem",
-              color: "#991B1B",
-              maxHeight: "120px",
-              overflowY: "auto"
+              border: "1px solid #FCA5A5",
+              maxHeight: "140px",
+              overflowY: "auto",
             }}>
-              <strong style={{ display: "block", marginBottom: "4px" }}>Please fix the following validation errors:</strong>
-              <ul style={{ margin: 0, paddingLeft: "1.25rem" }}>
-                {errors.map((err, i) => (
-                  <li key={i}>{err}</li>
+              <h5 style={{ fontSize: "0.78rem", fontWeight: 700, color: "#991B1B", margin: "0 0 0.5rem 0", display: "flex", alignItems: "center", gap: "6px" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                Please correct the following errors ({errors.length}):
+              </h5>
+              <ul style={{ margin: 0, paddingLeft: "1.2rem", fontSize: "0.72rem", color: "#B91C1C", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                {errors.map((err, idx) => (
+                  <li key={idx}>{err}</li>
                 ))}
               </ul>
             </div>
           )}
 
-          {/* Preview Table */}
+          {/* Import Preview Table */}
           {previewData.length > 0 && errors.length === 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#334155" }}>
-                  Preview Ready Rows ({previewData.length})
-                </span>
-                <span style={{ fontSize: "0.72rem", color: "#10B981", fontWeight: 600 }}>
-                  ✓ All rows validated
+                <h5 style={{ fontSize: "0.8rem", fontWeight: 700, color: "#334155", margin: 0 }}>
+                  Preview: Ready to Import ({previewData.length} item{previewData.length > 1 ? "s" : ""})
+                </h5>
+                <span style={{ fontSize: "0.72rem", color: "#16A34A", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+                  All Rows Validated Successfully
                 </span>
               </div>
               <div style={{
-                maxHeight: "220px",
-                overflowY: "auto",
                 border: "1px solid #E2E8F0",
                 borderRadius: "8px",
+                maxHeight: "180px",
+                overflowY: "auto",
+                backgroundColor: "#F8FAFC",
               }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.75rem", textAlign: "left" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.72rem" }}>
                   <thead>
-                    <tr style={{ backgroundColor: "#F1F5F9", color: "#475569", fontWeight: 600 }}>
-                      <th style={{ padding: "8px 10px" }}>Asset ID</th>
-                      <th style={{ padding: "8px 10px" }}>Brand</th>
-                      <th style={{ padding: "8px 10px" }}>Model</th>
-                      <th style={{ padding: "8px 10px" }}>Category</th>
-                      <th style={{ padding: "8px 10px" }}>Qty</th>
-                      <th style={{ padding: "8px 10px" }}>Cost (₱)</th>
+                    <tr style={{ backgroundColor: "#F1F5F9", borderBottom: "1px solid #E2E8F0", textAlign: "left", position: "sticky", top: 0 }}>
+                      <th style={{ padding: "0.5rem 0.75rem", fontWeight: 600, color: "#475569" }}>Brand & Spec</th>
+                      <th style={{ padding: "0.5rem 0.75rem", fontWeight: 600, color: "#475569" }}>Site</th>
+                      <th style={{ padding: "0.5rem 0.75rem", fontWeight: 600, color: "#475569" }}>Category</th>
+                      <th style={{ padding: "0.5rem 0.75rem", fontWeight: 600, color: "#475569", textAlign: "right" }}>Qty</th>
+                      <th style={{ padding: "0.5rem 0.75rem", fontWeight: 600, color: "#475569", textAlign: "right" }}>Unit Cost</th>
                     </tr>
                   </thead>
                   <tbody>
                     {previewData.map((row, idx) => (
                       <tr key={idx} style={{ borderBottom: "1px solid #F1F5F9" }}>
-                        <td style={{ padding: "8px 10px", fontWeight: 600, color: row.assetId ? "#1E293B" : "#94A3B8" }}>
-                          {row.assetId || "(Auto-generate)"}
+                        <td style={{ padding: "0.4rem 0.75rem", color: "#1E293B", fontWeight: 500 }}>
+                          {row.brandName} {row.modelSpec ? `- ${row.modelSpec}` : ""}
                         </td>
-                        <td style={{ padding: "8px 10px", color: "#334155" }}>{row.brandName}</td>
-                        <td style={{ padding: "8px 10px", color: "#64748B" }}>{row.modelSpec || "-"}</td>
-                        <td style={{ padding: "8px 10px", color: "#334155" }}>{row.categoryName}</td>
-                        <td style={{ padding: "8px 10px", fontWeight: 600, color: "#334155" }}>{row.quantity}</td>
-                        <td style={{ padding: "8px 10px", color: "#334155" }}>₱{row.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        <td style={{ padding: "0.4rem 0.75rem", color: "#475569" }}>{row.siteName}</td>
+                        <td style={{ padding: "0.4rem 0.75rem", color: "#475569" }}>{row.categoryName}</td>
+                        <td style={{ padding: "0.4rem 0.75rem", color: "#1E293B", fontWeight: 600, textAlign: "right" }}>{row.quantity}</td>
+                        <td style={{ padding: "0.4rem 0.75rem", color: "#0F172A", fontWeight: 500, textAlign: "right" }}>
+                          ₱{row.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -429,11 +457,12 @@ export const ImportAssetModal = ({
 
         {/* Modal Footer */}
         <div style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: "0.5rem",
           padding: "1rem 1.5rem",
-          borderTop: "1px solid #F1F5F9",
+          borderTop: "1px solid #e2e8f0",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          gap: "0.75rem",
           backgroundColor: "#F8FAFC"
         }}>
           <button
@@ -477,6 +506,7 @@ export const ImportAssetModal = ({
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

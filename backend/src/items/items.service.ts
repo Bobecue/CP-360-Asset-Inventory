@@ -110,8 +110,27 @@ export class ItemsService {
   }
 
 
-  async findAll(categoryId?: string, search?: string) {
+  async findAll(categoryId?: string, search?: string, userId?: string) {
     await this.reconcileAssetStatuses();
+
+    let userHasSiteRestrictions = false;
+    let userSiteId: string | null = null;
+
+    if (userId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+      if (user && (user.role === "EMPLOYEE" || user.role === "TEAM_LEADER")) {
+        userHasSiteRestrictions = true;
+        userSiteId = user.siteId;
+      }
+    }
+
+    if (userHasSiteRestrictions && !userSiteId) {
+      return [];
+    }
+
+    const activeSiteId = userSiteId as string;
 
     const where: any = {};
     if (categoryId) {
@@ -125,13 +144,30 @@ export class ItemsService {
       ];
     }
 
+    if (userHasSiteRestrictions && activeSiteId) {
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            { stockLevels: { some: { siteId: activeSiteId } } },
+            { assets: { some: { siteId: activeSiteId } } },
+          ],
+        },
+      ];
+    }
+
     return this.prisma.item.findMany({
       where,
       include: {
         category: true,
-        stockLevels: true,
+        stockLevels: userHasSiteRestrictions
+          ? { where: { siteId: activeSiteId } }
+          : true,
         supplier: true,
         assets: {
+          where: userHasSiteRestrictions
+            ? { siteId: activeSiteId }
+            : undefined,
           include: {
             assignedTo: true,
           },

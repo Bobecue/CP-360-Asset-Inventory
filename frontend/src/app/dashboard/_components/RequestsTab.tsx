@@ -1210,50 +1210,37 @@ export function RequestsTab({
     line-height: 1.45;
   }
   .page { width: 794px; margin: 0 auto; padding: 36px 48px; }
-
   /* ── Letterhead ── */
   .letterhead {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    padding-bottom: 12px;
-    border-bottom: 3px solid #2a6496;
-    margin-bottom: 4px;
+    align-items: center;
+    background: #210cae;
+    padding: 14px 20px;
+    border-radius: 4px;
+    margin-bottom: 18px;
+    color: #ffffff;
   }
-  .org-name {
-    font-size: 17pt;
-    font-weight: 700;
-    color: #2a6496;
-    letter-spacing: -0.3px;
-    line-height: 1.1;
-  }
-  .org-sub {
-    font-size: 7.5pt;
-    color: #555;
-    margin-top: 3px;
-    letter-spacing: 0.2px;
-  }
-  .doc-meta { text-align: right; }
   .doc-title {
-    font-size: 10pt;
+    font-size: 13pt;
     font-weight: 700;
-    color: #2a6496;
+    color: #ffffff;
     text-transform: uppercase;
     letter-spacing: 0.8px;
   }
-  .doc-ref {
-    font-size: 7pt;
-    color: #666;
+  .doc-meta-info {
+    font-size: 8pt;
+    color: #e2e8f0;
     margin-top: 4px;
-    font-family: 'Courier New', monospace;
   }
-  .doc-date { font-size: 8pt; color: #444; margin-top: 2px; }
-
-  /* ── Accent bar ── */
-  .accent-bar {
-    height: 3px;
-    background: linear-gradient(to right, #2a6496, #5bc0de);
-    margin-bottom: 18px;
+  .logo-container {
+    background: #ffffff;
+    padding: 4px 10px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
   }
 
   /* ── Section headers ── */
@@ -1383,16 +1370,13 @@ export function RequestsTab({
   <!-- Letterhead -->
   <div class="letterhead">
     <div>
-      <div class="org-name">ContactPoint 360</div>
-      <div class="org-sub">Asset Inventory System &nbsp;&bull;&nbsp; Internal Use Only</div>
-    </div>
-    <div class="doc-meta">
       <div class="doc-title">Asset Movement Report</div>
-      <div class="doc-ref">Ref No.: ${request.id.substring(0, 16).toUpperCase()}</div>
-      <div class="doc-date">Date: ${fmtDateShort(request.createdAt)}</div>
+      <div class="doc-meta-info">Ref No.: ${request.id.substring(0, 16).toUpperCase()} &nbsp;&bull;&nbsp; Date: ${fmtDateShort(request.createdAt)}</div>
+    </div>
+    <div class="logo-container">
+      <img src="/logo.png" style="max-height: 24px; max-width: 100px; object-fit: contain;" />
     </div>
   </div>
-  <div class="accent-bar"></div>
 
   <!-- Status Strip -->
   <div class="status-strip">

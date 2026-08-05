@@ -385,7 +385,11 @@ export default function DashboardPage() {
     setIsLoadingItems(true);
     setItemsError(null);
     try {
-      const res = await fetch("http://localhost:3001/items");
+      const res = await fetch("http://localhost:3001/items", {
+        headers: {
+          "x-user-id": currentUser?.id || "",
+        },
+      });
       if (!res.ok) {
         throw new Error(`Failed to fetch items: status ${res.status}`);
       }
@@ -463,7 +467,7 @@ export default function DashboardPage() {
       fetchItems();
       fetchAllMetadata();
     }
-  }, [activeTab, isBackendOffline]);
+  }, [activeTab, isBackendOffline, currentUser]);
 
   useEffect(() => {
     setSelectedItemIds([]);
@@ -742,6 +746,12 @@ export default function DashboardPage() {
   useEffect(() => {
     if (currentUser) {
       fetchNotifications();
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser && (currentUser.role === "EMPLOYEE" || currentUser.role === "TEAM_LEADER") && currentUser.siteId) {
+      setSelectedSiteId(currentUser.siteId);
     }
   }, [currentUser]);
 
@@ -2059,8 +2069,6 @@ export default function DashboardPage() {
         return (
           <DashboardOverview
             onViewRequests={() => setActiveTab("requests")}
-            selectedSiteId={selectedSiteId}
-            setSelectedSiteId={setSelectedSiteId}
             sites={sites}
           />
         );
