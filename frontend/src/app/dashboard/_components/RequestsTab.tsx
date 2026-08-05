@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { requestFilePreview } from '@/utils/filePreview';
 import { User, CatalogItem, getCategoryIcon } from '@/types/dashboard';
 import { RequestsTable } from './RequestsTable';
 import { NewRequestModal } from './NewRequestModal';
@@ -1528,7 +1529,8 @@ export function RequestsTab({
       const pdfW = pdf.internal.pageSize.getWidth();
       const pdfH = (canvas.height * pdfW) / canvas.width;
       pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH);
-      pdf.save(`asset-movement-${selectedRequest.id}.pdf`);
+      const pdfBlob = pdf.output('blob');
+      requestFilePreview(pdfBlob, `asset-movement-${selectedRequest.id}.pdf`);
     } catch (error) {
       showAlert(error instanceof Error ? error.message : String(error), 'Export PDF Failed');
     } finally {

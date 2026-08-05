@@ -150,18 +150,7 @@ export class ItemsService {
     });
     if (category) return category;
 
-    // 2. Try to find if it is an ExpenseCategory ID
-    const expCat = await this.prisma.expenseCategory.findUnique({
-      where: { id: categoryId },
-    });
-    if (expCat) {
-      category = await this.prisma.assetCategory.findFirst({
-        where: { name: { equals: expCat.name, mode: "insensitive" } },
-      });
-      if (category) return category;
-    }
-
-    // 3. Fallback to matching by name/prefix
+    // 2. Fallback to matching by name/prefix
     category = await this.prisma.assetCategory.findFirst({
       where: {
         OR: [

@@ -50,40 +50,54 @@ export class CategoriesService implements OnModuleInit {
   // Seed default categories & backfill OpexEntry relations
   async seedDefaultCategories() {
     const defaultCategories = [
-      { name: 'Monitors', type: ExpenseCategoryType.CAPEX },
-      { name: 'Mouse', type: ExpenseCategoryType.OPEX },
-      { name: 'Headsets', type: ExpenseCategoryType.CAPEX },
-      { name: 'Ram', type: ExpenseCategoryType.CAPEX },
-      { name: 'System Unit', type: ExpenseCategoryType.CAPEX },
-      { name: 'Keyboards', type: ExpenseCategoryType.OPEX },
+      { name: 'Monitors', type: ExpenseCategoryType.CAPEX, prefix: 'MON', assetType: CategoryType.NON_CONSUMABLE },
+      { name: 'Mouse', type: ExpenseCategoryType.OPEX, prefix: 'MOU', assetType: CategoryType.CONSUMABLE },
+      { name: 'Headsets', type: ExpenseCategoryType.CAPEX, prefix: 'HDS', assetType: CategoryType.NON_CONSUMABLE },
+      { name: 'Ram', type: ExpenseCategoryType.CAPEX, prefix: 'RAM', assetType: CategoryType.NON_CONSUMABLE },
+      { name: 'System Unit', type: ExpenseCategoryType.CAPEX, prefix: 'SYS', assetType: CategoryType.NON_CONSUMABLE },
+      { name: 'Keyboards', type: ExpenseCategoryType.OPEX, prefix: 'KBD', assetType: CategoryType.CONSUMABLE },
+      { name: 'Cables', type: ExpenseCategoryType.OPEX, prefix: 'CAB', assetType: CategoryType.CONSUMABLE },
+      { name: 'Camera', type: ExpenseCategoryType.CAPEX, prefix: 'CAM', assetType: CategoryType.NON_CONSUMABLE },
+      { name: 'Printers', type: ExpenseCategoryType.CAPEX, prefix: 'PRT', assetType: CategoryType.NON_CONSUMABLE },
     ];
 
     for (const cat of defaultCategories) {
-      await this.prisma.expenseCategory.upsert({
+      await this.prisma.assetCategory.upsert({
         where: { name: cat.name },
-        update: {},
+        update: {
+          expenseType: cat.type,
+          type: cat.assetType,
+          prefix: cat.prefix,
+        },
         create: {
           name: cat.name,
-          type: cat.type,
+          expenseType: cat.type,
+          type: cat.assetType,
+          prefix: cat.prefix,
           isActive: true,
         },
       });
     }
 
     // Backfill OpexEntry.expenseCategoryId if missing
-    const allCategories = await this.prisma.expenseCategory.findMany();
-    const categoryMap = new Map(allCategories.map(c => [c.name, c.id]));
+    const allCategories = await this.prisma.assetCategory.findMany();
 
     const unlinkedEntries = await this.prisma.opexEntry.findMany({
       where: { expenseCategoryId: null },
     });
 
     for (const entry of unlinkedEntries) {
-      const catId = categoryMap.get(entry.category);
-      if (catId) {
+      let matchName = entry.category as string;
+      if (matchName === 'IT_PERIPHERALS') matchName = 'Keyboards';
+
+      const matchedCat = allCategories.find(c => 
+        c.name.replace(/\s+/g, '_').toUpperCase() === matchName.toUpperCase() || 
+        c.name.toLowerCase() === matchName.toLowerCase()
+      );
+      if (matchedCat) {
         await this.prisma.opexEntry.update({
           where: { id: entry.id },
-          data: { expenseCategoryId: catId },
+          data: { expenseCategoryId: matchedCat.id },
         });
       }
     }
@@ -92,7 +106,7 @@ export class CategoriesService implements OnModuleInit {
   // CATEGORY OPERATIONS
   async findAllCategories(activeOnly = false) {
     const where = activeOnly ? { isActive: true } : {};
-    const categories = await this.prisma.expenseCategory.findMany({
+    const categories = await this.prisma.assetCategory.findMany({
       where,
       orderBy: { name: 'asc' },
       include: {
@@ -102,17 +116,10 @@ export class CategoriesService implements OnModuleInit {
       },
     });
 
-    const assetCategories = await this.prisma.assetCategory.findMany();
-    const assetMap = new Map(assetCategories.map(ac => [ac.name.toLowerCase(), ac]));
-
     return categories.map(c => {
-      const matchingAssetCat = assetMap.get(c.name.toLowerCase());
-      const isConsumable = c.type === 'OPEX' || (matchingAssetCat && matchingAssetCat.type === 'CONSUMABLE') || /mouse|mice|keyboard|cable|consumable/i.test(c.name);
       return {
         ...c,
-        prefix: matchingAssetCat?.prefix || c.name.substring(0, 3).toUpperCase(),
-        type: isConsumable ? 'CONSUMABLE' : 'NON_CONSUMABLE',
-        expenseType: c.type,
+        expenseType: c.expenseType,
         transactionCount: c._count.opexEntries,
       };
     });
@@ -121,50 +128,44 @@ export class CategoriesService implements OnModuleInit {
   async createCategory(dto: any, userIdentifier?: string) {
     const user = await this.assertSuperAdmin(userIdentifier);
     const rawName = dto.name.trim();
-    const { expenseType, assetType } = this.mapCategoryType(dto.type);
+    
+    const assetType = dto.type === 'CONSUMABLE' ? CategoryType.CONSUMABLE : CategoryType.NON_CONSUMABLE;
+    const expenseType = dto.expenseType === 'CAPEX' ? ExpenseCategoryType.CAPEX : ExpenseCategoryType.OPEX;
+    const prefix = (dto.prefix || rawName.substring(0, 3)).toUpperCase();
 
-    const existing = await this.prisma.expenseCategory.findFirst({
+    const existing = await this.prisma.assetCategory.findFirst({
       where: { name: { equals: rawName, mode: 'insensitive' } }
     });
+
     if (existing) {
-      const category = await this.prisma.expenseCategory.update({
+      const category = await this.prisma.assetCategory.update({
         where: { id: existing.id },
         data: {
-          type: expenseType,
+          type: assetType,
+          expenseType: expenseType,
+          prefix,
           isActive: true,
         }
       });
-      const prefix = (dto.prefix || rawName.substring(0, 3)).toUpperCase();
-      await this.prisma.assetCategory.upsert({
-        where: { name: rawName },
-        update: { type: assetType, prefix },
-        create: { name: rawName, type: assetType, prefix, description: dto.description }
-      }).catch(() => {});
       return category;
     }
 
-    const category = await this.prisma.expenseCategory.create({
+    const category = await this.prisma.assetCategory.create({
       data: {
         name: rawName,
-        type: expenseType,
+        type: assetType,
+        expenseType: expenseType,
+        prefix,
         isActive: true,
-        createdByUserId: user.id,
       },
     });
-
-    const prefix = (dto.prefix || rawName.substring(0, 3)).toUpperCase();
-    await this.prisma.assetCategory.upsert({
-      where: { name: rawName },
-      update: { type: assetType, prefix },
-      create: { name: rawName, type: assetType, prefix, description: dto.description }
-    }).catch(() => {});
 
     await this.prisma.categoryAuditLog.create({
       data: {
         categoryId: category.id,
         action: CategoryAuditAction.CREATED,
         performedByUserId: user.id,
-        newValue: JSON.stringify({ name: category.name, type: category.type }),
+        newValue: JSON.stringify({ name: category.name, type: category.type, expenseType: category.expenseType }),
       },
     }).catch(() => {});
 
@@ -173,65 +174,34 @@ export class CategoriesService implements OnModuleInit {
 
   async updateCategory(id: string, dto: any, userIdentifier?: string) {
     const user = await this.assertSuperAdmin(userIdentifier);
-    let category = await this.prisma.expenseCategory.findUnique({ where: { id } });
+    const category = await this.prisma.assetCategory.findUnique({ where: { id } });
+    if (!category) throw new NotFoundException('Category not found.');
 
-    if (!category) {
-      const assetCat = await this.prisma.assetCategory.findUnique({ where: { id } });
-      if (assetCat) {
-        const { assetType, expenseType } = this.mapCategoryType(dto.type);
-        const updatedAssetCat = await this.prisma.assetCategory.update({
-          where: { id },
-          data: {
-            ...(dto.name ? { name: dto.name.trim() } : {}),
-            ...(dto.prefix ? { prefix: dto.prefix.trim().toUpperCase() } : {}),
-            ...(dto.type ? { type: assetType } : {}),
-            ...(dto.description !== undefined ? { description: dto.description } : {}),
-          }
-        });
-        await this.prisma.expenseCategory.updateMany({
-          where: { name: { equals: assetCat.name, mode: 'insensitive' } },
-          data: {
-            ...(dto.name ? { name: dto.name.trim() } : {}),
-            ...(dto.type ? { type: expenseType } : {}),
-          }
-        }).catch(() => {});
-        return updatedAssetCat;
-      }
-      throw new NotFoundException('Category not found.');
-    }
-
-    const { expenseType, assetType } = this.mapCategoryType(dto.type || category.type);
+    const assetType = dto.type ? (dto.type === 'CONSUMABLE' ? CategoryType.CONSUMABLE : CategoryType.NON_CONSUMABLE) : undefined;
+    const expenseType = dto.expenseType ? (dto.expenseType === 'CAPEX' ? ExpenseCategoryType.CAPEX : ExpenseCategoryType.OPEX) : undefined;
     const newName = dto.name ? dto.name.trim() : category.name;
 
-    const updated = await this.prisma.expenseCategory.update({
+    const updated = await this.prisma.assetCategory.update({
       where: { id },
       data: {
         name: newName,
-        type: dto.type ? expenseType : category.type,
-        isActive: dto.isActive !== undefined ? dto.isActive : category.isActive,
+        ...(assetType ? { type: assetType } : {}),
+        ...(expenseType ? { expenseType } : {}),
+        ...(dto.prefix ? { prefix: dto.prefix.trim().toUpperCase() } : {}),
+        ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
       },
     });
-
-    await this.prisma.assetCategory.updateMany({
-      where: { name: { equals: category.name, mode: 'insensitive' } },
-      data: {
-        name: newName,
-        type: assetType,
-        ...(dto.prefix ? { prefix: dto.prefix.trim().toUpperCase() } : {}),
-        ...(dto.description !== undefined ? { description: dto.description } : {}),
-      }
-    }).catch(() => {});
 
     return updated;
   }
 
   async deleteCategory(id: string, userIdentifier?: string) {
     const user = await this.assertSuperAdmin(userIdentifier);
-    const category = await this.prisma.expenseCategory.findUnique({ where: { id } });
-    if (!category) throw new NotFoundException('Expense Category not found.');
+    const category = await this.prisma.assetCategory.findUnique({ where: { id } });
+    if (!category) throw new NotFoundException('Category not found.');
 
-    const updated = await this.prisma.expenseCategory.update({
-      where: { id },
+    const updated = await this.prisma.assetCategory.update({
+      where: { id: id },
       data: { isActive: false },
     });
 

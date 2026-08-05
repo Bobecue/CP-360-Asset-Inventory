@@ -44,6 +44,8 @@ import { EditUserModal } from "./_components/modals/EditUserModal";
 import { SiteModal } from "./_components/modals/SiteModal";
 import { DeptModal } from "./_components/modals/DeptModal";
 import { CategoryModal } from "./_components/modals/CategoryModal";
+import { registerPreviewHandler, unregisterPreviewHandler, requestFilePreview } from "@/utils/filePreview";
+import { FilePreviewModal } from "./_components/modals/FilePreviewModal";
 
 // Custom fetch monkey patch to dynamically route API calls to the correct hostname on port 3001
 if (typeof window !== "undefined" && !(window as any).__fetch_patched__) {
@@ -119,7 +121,7 @@ export default function DashboardPage() {
   const [isSubmittingEditForm, setIsSubmittingEditForm] = useState(false);
 
   // Settings configuration states
-  const [settingsSubTab, setSettingsSubTab] = useState<"sites" | "departments" | "categories" | "expense-units" | "expense-categories">("sites");
+  const [settingsSubTab, setSettingsSubTab] = useState<"sites" | "departments" | "categories" | "expense-units">("sites");
   const [sites, setSites] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -146,7 +148,7 @@ export default function DashboardPage() {
   const [categoryName, setCategoryName] = useState("");
   const [categoryPrefix, setCategoryPrefix] = useState("");
   const [categoryType, setCategoryType] = useState<"CONSUMABLE" | "NON_CONSUMABLE">("NON_CONSUMABLE");
-  const [categoryDescription, setCategoryDescription] = useState("");
+  const [categoryExpenseType, setCategoryExpenseType] = useState<"OPEX" | "CAPEX">("OPEX");
   const [categoryError, setCategoryError] = useState<string | null>(null);
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -172,6 +174,11 @@ export default function DashboardPage() {
   const [historyItem, setHistoryItem] = useState<CatalogItem | null>(null);
   const [historyLogs, setHistoryLogs] = useState<any[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // File Preview Modal states
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
+  const [previewFilename, setPreviewFilename] = useState("");
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   // Scan Modal state
   const [isScanModalOpen, setIsScanModalOpen] = useState(false);
@@ -590,6 +597,17 @@ export default function DashboardPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [catalogItems]);
 
+  useEffect(() => {
+    registerPreviewHandler((blob, filename) => {
+      setPreviewBlob(blob);
+      setPreviewFilename(filename);
+      setIsPreviewOpen(true);
+    });
+    return () => {
+      unregisterPreviewHandler();
+    };
+  }, []);
+
   const fetchNotifications = async () => {
     if (isUsingMockData) {
       // Mock mode handles local state of notifications
@@ -935,19 +953,13 @@ export default function DashboardPage() {
       ];
     });
 
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF"
-      + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const site = sites.find(s => s.id === selectedSiteId);
     const sitePrefix = site ? site.prefix : "ALL";
-    link.setAttribute("download", `asset_catalog_${sitePrefix.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast("CSV Exported successfully!");
+    const filename = `asset_catalog_${sitePrefix.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`;
+    
+    requestFilePreview(blob, filename);
   };
 
   const handleAddUserPreSubmit = (e: React.FormEvent) => {
@@ -1184,7 +1196,7 @@ export default function DashboardPage() {
       name: categoryName.trim(),
       prefix: categoryPrefix.trim().toUpperCase(),
       type: categoryType,
-      description: categoryDescription.trim() || undefined,
+      expenseType: categoryExpenseType,
     };
 
     setIsSubmittingCategory(true);
@@ -1202,7 +1214,7 @@ export default function DashboardPage() {
       setEditingCategory(null);
       setCategoryName("");
       setCategoryPrefix("");
-      setCategoryDescription("");
+      setCategoryExpenseType("OPEX");
       setIsSubmittingCategory(false);
     } else {
       try {
@@ -1226,7 +1238,7 @@ export default function DashboardPage() {
         setEditingCategory(null);
         setCategoryName("");
         setCategoryPrefix("");
-        setCategoryDescription("");
+        setCategoryExpenseType("OPEX");
       } catch (err: any) {
         console.error(err);
         setCategoryError(err.message || "Failed to save category.");
@@ -2239,7 +2251,7 @@ export default function DashboardPage() {
                 setCategoryName("");
                 setCategoryPrefix("");
                 setCategoryType("NON_CONSUMABLE");
-                setCategoryDescription("");
+                setCategoryExpenseType("OPEX");
                 setCategoryError(null);
                 setCategoryModalOpen(true);
               }
@@ -2258,7 +2270,7 @@ export default function DashboardPage() {
               setCategoryName(c.name);
               setCategoryPrefix(c.prefix);
               setCategoryType(c.type);
-              setCategoryDescription(c.description || "");
+              setCategoryExpenseType(c.expenseType || "OPEX");
               setCategoryError(null);
               setCategoryModalOpen(true);
             }}
@@ -2644,8 +2656,8 @@ export default function DashboardPage() {
         setCategoryPrefix={setCategoryPrefix}
         categoryType={categoryType}
         setCategoryType={setCategoryType}
-        categoryDescription={categoryDescription}
-        setCategoryDescription={setCategoryDescription}
+        categoryExpenseType={categoryExpenseType}
+        setCategoryExpenseType={setCategoryExpenseType}
         categoryError={categoryError}
         isSubmittingCategory={isSubmittingCategory}
         onCancel={() => {
@@ -2653,6 +2665,17 @@ export default function DashboardPage() {
           setEditingCategory(null);
         }}
         onSubmit={handleCreateCategorySubmit}
+      />
+
+      <FilePreviewModal
+        isOpen={isPreviewOpen}
+        filename={previewFilename}
+        blob={previewBlob}
+        onClose={() => {
+          setIsPreviewOpen(false);
+          setPreviewBlob(null);
+          setPreviewFilename("");
+        }}
       />
 
       {isBulkRequestOpen && (

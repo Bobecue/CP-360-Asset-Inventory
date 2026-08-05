@@ -45,7 +45,6 @@ model User {
   assetsAssigned           Asset[]                 @relation("AssetAssignment")
   auditLogs                AuditLog[]
   categoryAuditPerforms    CategoryAuditLog[]      @relation("CategoryAuditPerformer")
-  categoriesCreated        ExpenseCategory[]       @relation("CategoryCreator")
   monthlyCloses            MonthlyClose[]          @relation("OpexLocker")
   notifications            Notification[]
   opexEntriesApproved      OpexEntry[]             @relation("OpexApprover")
@@ -93,14 +92,17 @@ model Supplier {
 }
 
 model AssetCategory {
-  id          String       @id @default(uuid())
-  name        String       @unique
-  prefix      String       @unique
-  type        CategoryType @default(NON_CONSUMABLE)
-  description String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id          String              @id @default(uuid())
+  name        String              @unique
+  prefix      String              @unique
+  type        CategoryType        @default(NON_CONSUMABLE)
+  expenseType ExpenseCategoryType @default(OPEX)
+  isActive    Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
   items       Item[]
+  opexEntries OpexEntry[]
+  auditLogs   CategoryAuditLog[]
 
   @@map("asset_categories")
 }
@@ -336,20 +338,7 @@ model AssetEvent {
   @@map("asset_events")
 }
 
-model ExpenseCategory {
-  id              String              @id @default(uuid())
-  name            String              @unique
-  type            ExpenseCategoryType @default(OPEX)
-  isActive        Boolean             @default(true)
-  createdByUserId String?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  auditLogs       CategoryAuditLog[]
-  createdBy       User?               @relation("CategoryCreator", fields: [createdByUserId], references: [id])
-  opexEntries     OpexEntry[]
 
-  @@map("expense_categories")
-}
 
 model CategoryAuditLog {
   id                String              @id @default(uuid())
@@ -360,7 +349,7 @@ model CategoryAuditLog {
   previousValue     String?
   newValue          String?
   createdAt         DateTime            @default(now())
-  category          ExpenseCategory?    @relation(fields: [categoryId], references: [id])
+  category          AssetCategory?      @relation(fields: [categoryId], references: [id])
   performedByUser   User                @relation("CategoryAuditPerformer", fields: [performedByUserId], references: [id])
   site              Site?               @relation(fields: [siteId], references: [id])
 
@@ -397,7 +386,7 @@ model OpexEntry {
   approvedByUser    User?                   @relation("OpexApprover", fields: [approvedByUserId], references: [id])
   department        Department?             @relation(fields: [departmentId], references: [id])
   enteredByUser     User                    @relation("OpexEncoder", fields: [enteredByUserId], references: [id])
-  expenseCategory   ExpenseCategory?        @relation(fields: [expenseCategoryId], references: [id])
+  expenseCategory   AssetCategory?          @relation(fields: [expenseCategoryId], references: [id])
   monthlyClose      MonthlyClose?           @relation(fields: [monthlyCloseId], references: [id])
   site              Site?                   @relation(fields: [siteId], references: [id])
   supplier          Supplier?               @relation(fields: [supplierId], references: [id])

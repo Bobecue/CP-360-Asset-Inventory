@@ -17,6 +17,7 @@ import {
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { getApiUrl } from "../../../utils/api";
+import { requestFilePreview } from "@/utils/filePreview";
 
 interface ReportRecord {
   id: string;
@@ -1121,14 +1122,7 @@ export const ReportsTab = ({ isUsingMockData, mockAuditLogs, currentUser }: Repo
   };
 
   const triggerBlobDownload = (blob: Blob, filename: string) => {
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    requestFilePreview(blob, filename);
   };
 
   const downloadReportFile = async (report: ReportRecord) => {

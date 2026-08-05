@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import jsPDF from 'jspdf';
+import { requestFilePreview } from '@/utils/filePreview';
 
 type UrgencyLevel = 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
 
@@ -458,7 +459,8 @@ export function BulkRequestModal({ open, onClose, selectedItems, sites, users = 
 
       const identifier = deploymentType === 'employee' ? (employeeEid.trim() || 'Record') : (stationName.trim() || 'Record');
       const fileName = `Asset_Deployment_${identifier}_${Date.now()}.pdf`;
-      doc.save(fileName);
+      const pdfBlob = doc.output('blob');
+      requestFilePreview(pdfBlob, fileName);
     } catch (err) {
       console.error('Failed to generate PDF:', err);
     }

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { CatalogItem, getCategoryIcon, RoleBadge, SiteBadge, EidBadge, AssetTagBadge, AssetTypeBadge, isCategoryConsumable } from "@/types/dashboard";
 import jsPDF from "jspdf";
+import { requestFilePreview } from "@/utils/filePreview";
 import { RequestTimeline } from "./RequestTimeline";
 import { getApiUrl } from "../../../utils/api";
 import { ImportAssetModal } from "./modals/ImportAssetModal";
@@ -811,7 +812,8 @@ export const CatalogTab = ({
     doc.setFontSize(8);
     doc.text("Authorized Inventory Issuer", 110, sigY + 37);
 
-    doc.save(`Group_Deployment_Receipt_${group.employeeEid || 'Record'}_${Date.now()}.pdf`);
+    const pdfBlob = doc.output('blob');
+    requestFilePreview(pdfBlob, `Group_Deployment_Receipt_${group.employeeEid || 'Record'}_${Date.now()}.pdf`);
   };
 
   const handleDownloadDeploymentReceipt = async (dep: any) => {
@@ -950,7 +952,8 @@ export const CatalogTab = ({
     doc.text(isReturned ? "Receiving Inventory Staff Signature" : "Authorized Inventory Issuer Signature", 120, lineY + 5);
 
     const fileName = isReturned ? `Asset_Return_Receipt_${dep.employeeEid || dep.id}.pdf` : `Deployment_Receipt_${dep.employeeEid || dep.id}.pdf`;
-    doc.save(fileName);
+    const pdfBlob = doc.output('blob');
+    requestFilePreview(pdfBlob, fileName);
   };
 
   const handleOpenReturnModal = (dep: any) => {

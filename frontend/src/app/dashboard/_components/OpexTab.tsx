@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { requestFilePreview } from "@/utils/filePreview";
 
 interface OpexEntry {
   id: string;
@@ -170,14 +171,7 @@ export default function OpexTab({ currentUser, sites = [], initialSubTab = "trac
       if (disposition && disposition.includes("filename=")) {
         filename = disposition.split("filename=")[1].replace(/"/g, "");
       }
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
+      requestFilePreview(blob, filename);
     } catch (err: any) {
       alert(`Export error: ${err.message}`);
     } finally {

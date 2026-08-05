@@ -2,12 +2,16 @@ import { ExpenseCategoryType, CategoryAuditAction } from '@prisma/client';
 
 export class CreateCategoryDto {
   name: string;
-  type?: ExpenseCategoryType;
+  type?: string;
+  expenseType?: ExpenseCategoryType;
+  prefix?: string;
 }
 
 export class UpdateCategoryDto {
   name?: string;
-  type?: ExpenseCategoryType;
+  type?: string;
+  expenseType?: ExpenseCategoryType;
+  prefix?: string;
   isActive?: boolean;
 }
 

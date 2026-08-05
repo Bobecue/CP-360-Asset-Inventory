@@ -9,8 +9,8 @@ interface CategoryModalProps {
   setCategoryPrefix: (v: string) => void;
   categoryType: "CONSUMABLE" | "NON_CONSUMABLE";
   setCategoryType: (v: "CONSUMABLE" | "NON_CONSUMABLE") => void;
-  categoryDescription: string;
-  setCategoryDescription: (v: string) => void;
+  categoryExpenseType: "OPEX" | "CAPEX";
+  setCategoryExpenseType: (v: "OPEX" | "CAPEX") => void;
   categoryError: string | null;
   isSubmittingCategory: boolean;
   onCancel: () => void;
@@ -26,8 +26,8 @@ export const CategoryModal = ({
   setCategoryPrefix,
   categoryType,
   setCategoryType,
-  categoryDescription,
-  setCategoryDescription,
+  categoryExpenseType,
+  setCategoryExpenseType,
   categoryError,
   isSubmittingCategory,
   onCancel,
@@ -164,22 +164,24 @@ export const CategoryModal = ({
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-              <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Description</label>
-              <input
-                type="text"
-                placeholder="e.g. Laptops and mobile workstations"
-                value={categoryDescription}
-                onChange={(e) => setCategoryDescription(e.target.value)}
+              <label style={{ fontSize: "0.72rem", fontWeight: 600, color: "#475569" }}>Expense Type *</label>
+              <select
+                value={categoryExpenseType}
+                onChange={(e) => setCategoryExpenseType(e.target.value as "OPEX" | "CAPEX")}
                 style={{
                   width: "100%",
                   padding: "0.45rem 0.65rem",
                   borderRadius: 6,
                   border: "1px solid #e2e8f0",
                   fontSize: "0.8rem",
-                  color: "#1e293b",
+                  color: "#475569",
+                  backgroundColor: "#ffffff",
                   outline: "none",
                 }}
-              />
+              >
+                <option value="OPEX">OPEX (Operating Expense)</option>
+                <option value="CAPEX">CAPEX (Capital Expense)</option>
+              </select>
             </div>
           </div>
 

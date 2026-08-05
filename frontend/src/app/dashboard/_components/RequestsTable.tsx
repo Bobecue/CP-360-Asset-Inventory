@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import jsPDF from 'jspdf';
+import { requestFilePreview } from '@/utils/filePreview';
 import { InteractiveModal, ModalType } from '../../../components/ui/InteractiveModal';
 import { confirmReceipt, bulkConfirmReceiptApi, bulkReturnApi } from '../../../lib/services/requestService';
 
@@ -548,7 +549,8 @@ export function RequestsTable({
     doc.setFontSize(8);
     doc.text("Authorized Approving Authority", 110, sigY + 37);
 
-    doc.save(`Group_Requisition_Receipt_${(group.requestedByName || 'Record').replace(/\s+/g, '_')}_${Date.now()}.pdf`);
+    const pdfBlob = doc.output('blob');
+    requestFilePreview(pdfBlob, `Group_Requisition_Receipt_${(group.requestedByName || 'Record').replace(/\s+/g, '_')}_${Date.now()}.pdf`);
   };
 
   const handleOpenBulkApproveModal = () => {
@@ -838,14 +840,7 @@ export function RequestsTable({
     ]);
     const csv = [headers, ...rows].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "RequestLog_Salivio.csv";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    requestFilePreview(blob, "RequestLog_Salivio.csv");
   };
 
   const getDisplayName = (req: RequestEntry) => {
